@@ -233,6 +233,62 @@ public class SteamAchievementProvider : IAchievementProvider
         }
     }
 
+    public async Task<bool> ResetAchievement(string achievementId)
+    {
+        if (!IsAvailable)
+            return false;
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null || string.IsNullOrEmpty(achievement.SteamId))
+            return false;
+
+        try
+        {
+            // Real implementation with Steamworks.NET:
+            // bool success = SteamUserStats.ClearAchievement(achievement.SteamId);
+            // if (success)
+            // {
+            //     success = SteamUserStats.StoreStats();
+            // }
+            // return success;
+
+            GD.Print($"[Steam] Would reset achievement: {achievement.SteamId}");
+            await Task.CompletedTask;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[Steam] Error resetting achievement: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> ResetAllAchievements()
+    {
+        if (!IsAvailable)
+            return false;
+
+        try
+        {
+            // Real implementation with Steamworks.NET:
+            // bool success = SteamUserStats.ResetAllStats(true); // true = reset achievements too
+            // if (success)
+            // {
+            //     success = SteamUserStats.StoreStats();
+            // }
+            // return success;
+
+            GD.Print("[Steam] Would reset all achievements");
+            await Task.CompletedTask;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[Steam] Error resetting all achievements: {ex.Message}");
+            return false;
+        }
+    }
+
     private bool IsSteamworksAvailable()
     {
         // Check if Steamworks.NET types are available via reflection

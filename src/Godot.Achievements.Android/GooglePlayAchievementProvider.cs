@@ -236,6 +236,60 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
+    public async Task<bool> ResetAchievement(string achievementId)
+    {
+        if (!IsAvailable)
+            return false;
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null || string.IsNullOrEmpty(achievement.GooglePlayId))
+            return false;
+
+        try
+        {
+            // Real implementation with Play Games Services:
+            // Note: Google Play Games doesn't officially support resetting individual achievements
+            // This would need to be done through the Play Console or by unlinking/relinking the app
+            // For testing, you'd typically use a test account and reset from Play Console
+
+            GD.Print($"[GooglePlay] Would reset achievement: {achievement.GooglePlayId}");
+            GD.PushWarning("[GooglePlay] Achievement reset must be done through Play Console for testing");
+            await Task.CompletedTask;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GooglePlay] Error resetting achievement: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> ResetAllAchievements()
+    {
+        if (!IsAvailable)
+            return false;
+
+        try
+        {
+            // Real implementation with Play Games Services:
+            // Note: Google Play Games doesn't officially support programmatic achievement reset
+            // For testing:
+            // 1. Use Google Play Console to reset test account achievements
+            // 2. Or clear app data and sign in again
+            // 3. Or use Play Games Services test accounts
+
+            GD.Print("[GooglePlay] Would reset all achievements");
+            GD.PushWarning("[GooglePlay] All achievements reset must be done through Play Console for testing");
+            await Task.CompletedTask;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GooglePlay] Error resetting all achievements: {ex.Message}");
+            return false;
+        }
+    }
+
     private bool IsPlayGamesAvailable()
     {
         // Check if Play Games Services is available

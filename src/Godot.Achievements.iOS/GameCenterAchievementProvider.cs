@@ -257,6 +257,62 @@ public class GameCenterAchievementProvider : IAchievementProvider
         }
     }
 
+    public async Task<bool> ResetAchievement(string achievementId)
+    {
+        if (!IsAvailable)
+            return false;
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null || string.IsNullOrEmpty(achievement.GameCenterId))
+            return false;
+
+        try
+        {
+            // Real implementation with iOS bindings:
+            // var tcs = new TaskCompletionSource<bool>();
+            // GKAchievement.ResetAchievements(new[] { achievement.GameCenterId }, (error) =>
+            // {
+            //     tcs.SetResult(error == null);
+            // });
+            // return await tcs.Task;
+
+            GD.Print($"[GameCenter] Would reset achievement: {achievement.GameCenterId}");
+            await Task.CompletedTask;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GameCenter] Error resetting achievement: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> ResetAllAchievements()
+    {
+        if (!IsAvailable)
+            return false;
+
+        try
+        {
+            // Real implementation with iOS bindings:
+            // var tcs = new TaskCompletionSource<bool>();
+            // GKAchievement.ResetAchievements((error) =>
+            // {
+            //     tcs.SetResult(error == null);
+            // });
+            // return await tcs.Task;
+
+            GD.Print("[GameCenter] Would reset all achievements");
+            await Task.CompletedTask;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GameCenter] Error resetting all achievements: {ex.Message}");
+            return false;
+        }
+    }
+
     private bool IsGameCenterAvailable()
     {
         // Check if Game Center is available on this iOS version

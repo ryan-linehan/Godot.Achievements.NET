@@ -55,4 +55,14 @@ public interface IAchievementProvider
     /// Set progress for a progressive achievement (0.0 to 1.0)
     /// </summary>
     Task SetProgress(string achievementId, float progress);
+
+    /// <summary>
+    /// Reset a specific achievement (for testing)
+    /// </summary>
+    Task<bool> ResetAchievement(string achievementId);
+
+    /// <summary>
+    /// Reset all achievements (for testing)
+    /// </summary>
+    Task<bool> ResetAllAchievements();
 }

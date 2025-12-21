@@ -225,6 +225,76 @@ public partial class AchievementManager : Node
     }
 
     /// <summary>
+    /// Reset a specific achievement on all providers (for testing)
+    /// </summary>
+    public async Task<bool> ResetAchievement(string achievementId)
+    {
+        if (_localProvider == null)
+        {
+            GD.PushError("[Achievements] LocalProvider not initialized");
+            return false;
+        }
+
+        // Reset locally first
+        var localSuccess = await _localProvider.ResetAchievement(achievementId);
+        if (!localSuccess)
+        {
+            GD.PushWarning($"[Achievements] Failed to reset '{achievementId}' locally");
+            return false;
+        }
+
+        // Reset on all platform providers
+        var tasks = new List<Task<bool>>();
+        foreach (var provider in _platformProviders)
+        {
+            if (provider.IsAvailable)
+            {
+                tasks.Add(provider.ResetAchievement(achievementId));
+            }
+        }
+
+        await Task.WhenAll(tasks);
+
+        GD.Print($"[Achievements] Reset achievement: {achievementId}");
+        return true;
+    }
+
+    /// <summary>
+    /// Reset all achievements on all providers (for testing)
+    /// </summary>
+    public async Task<bool> ResetAllAchievements()
+    {
+        if (_localProvider == null)
+        {
+            GD.PushError("[Achievements] LocalProvider not initialized");
+            return false;
+        }
+
+        // Reset locally first
+        var localSuccess = await _localProvider.ResetAllAchievements();
+        if (!localSuccess)
+        {
+            GD.PushWarning("[Achievements] Failed to reset all achievements locally");
+            return false;
+        }
+
+        // Reset on all platform providers
+        var tasks = new List<Task<bool>>();
+        foreach (var provider in _platformProviders)
+        {
+            if (provider.IsAvailable)
+            {
+                tasks.Add(provider.ResetAllAchievements());
+            }
+        }
+
+        await Task.WhenAll(tasks);
+
+        GD.Print("[Achievements] Reset all achievements");
+        return true;
+    }
+
+    /// <summary>
     /// Sync a single achievement to all platform providers
     /// </summary>
     private async Task SyncAchievementToPlatforms(string achievementId)

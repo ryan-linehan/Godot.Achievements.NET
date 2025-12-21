@@ -137,6 +137,49 @@ public class LocalAchievementProvider : IAchievementProvider
         return Task.CompletedTask;
     }
 
+    public Task<bool> ResetAchievement(string achievementId)
+    {
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+        {
+            GD.PushWarning($"[Local] Achievement '{achievementId}' not found in database");
+            return Task.FromResult(false);
+        }
+
+        // Remove from state dictionary
+        if (_achievementStates.Remove(achievementId))
+        {
+            // Reset runtime state
+            achievement.IsUnlocked = false;
+            achievement.UnlockedAt = null;
+            achievement.Progress = 0f;
+
+            SaveToDisk();
+            GD.Print($"[Local] Reset achievement: {achievementId}");
+            return Task.FromResult(true);
+        }
+
+        return Task.FromResult(false);
+    }
+
+    public Task<bool> ResetAllAchievements()
+    {
+        // Clear all states
+        _achievementStates.Clear();
+
+        // Reset all runtime states
+        foreach (var achievement in _database.Achievements)
+        {
+            achievement.IsUnlocked = false;
+            achievement.UnlockedAt = null;
+            achievement.Progress = 0f;
+        }
+
+        SaveToDisk();
+        GD.Print($"[Local] Reset all achievements");
+        return Task.FromResult(true);
+    }
+
     /// <summary>
     /// Load achievement states from disk
     /// </summary>
