@@ -21,7 +21,7 @@ public partial class Achievement : Resource
     [Export] public string GooglePlayId { get; set; } = string.Empty;
 
     // Custom platform metadata (for third-party providers)
-    [Export(PropertyHint.MultilineText)] public string CustomPlatformIds { get; set; } = string.Empty;
+    [Export] public Godot.Collections.Dictionary<string, string> CustomPlatformIds { get; set; } = new();
 
     // Runtime state (managed by LocalProvider, not exported)
     public bool IsUnlocked { get; set; }
@@ -29,44 +29,18 @@ public partial class Achievement : Resource
     public float Progress { get; set; } // 0.0 to 1.0
 
     /// <summary>
-    /// Get a platform-specific ID from the CustomPlatformIds JSON
+    /// Get a platform-specific ID from the CustomPlatformIds dictionary
     /// </summary>
     public string? GetPlatformId(string platform)
     {
-        if (string.IsNullOrEmpty(CustomPlatformIds))
-            return null;
-
-        var json = new Json();
-        var error = json.Parse(CustomPlatformIds);
-        if (error != Error.Ok)
-            return null;
-
-        var dict = json.Data.AsGodotDictionary<string, string>();
-        return dict.TryGetValue(platform, out var id) ? id : null;
+        return CustomPlatformIds.TryGetValue(platform, out var id) ? id : null;
     }
 
     /// <summary>
-    /// Set a platform-specific ID in the CustomPlatformIds JSON
+    /// Set a platform-specific ID in the CustomPlatformIds dictionary
     /// </summary>
     public void SetPlatformId(string platform, string id)
     {
-        Godot.Collections.Dictionary<string, string> dict;
-
-        if (string.IsNullOrEmpty(CustomPlatformIds))
-        {
-            dict = new Godot.Collections.Dictionary<string, string>();
-        }
-        else
-        {
-            var json = new Json();
-            var error = json.Parse(CustomPlatformIds);
-            if (error != Error.Ok)
-                dict = new Godot.Collections.Dictionary<string, string>();
-            else
-                dict = json.Data.AsGodotDictionary<string, string>();
-        }
-
-        dict[platform] = id;
-        CustomPlatformIds = Json.Stringify(dict);
+        CustomPlatformIds[platform] = id;
     }
 }

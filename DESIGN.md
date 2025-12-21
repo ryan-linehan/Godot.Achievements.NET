@@ -205,7 +205,7 @@ public partial class Achievement : Resource
     [Export] public string GooglePlayId { get; set; }         // "CgkI...boss_defeated"
 
     // Custom platform metadata (for third-party providers)
-    [Export] public string CustomPlatformIds { get; set; }    // JSON: {"Epic": "ACH_001", "GOG": "gog_ach_1"}
+    [Export] public Godot.Collections.Dictionary<string, string> CustomPlatformIds { get; set; } = new();
 
     // Runtime state (managed by LocalProvider)
     public bool IsUnlocked { get; set; }
@@ -213,40 +213,14 @@ public partial class Achievement : Resource
     public float Progress { get; set; }                        // 0.0 to 1.0
 
     // Helper methods for custom platforms
-    public string GetPlatformId(string platform)
+    public string? GetPlatformId(string platform)
     {
-        if (string.IsNullOrEmpty(CustomPlatformIds))
-            return null;
-
-        var json = new Json();
-        var error = json.Parse(CustomPlatformIds);
-        if (error != Error.Ok)
-            return null;
-
-        var dict = json.Data.AsGodotDictionary<string, string>();
-        return dict.TryGetValue(platform, out var id) ? id : null;
+        return CustomPlatformIds.TryGetValue(platform, out var id) ? id : null;
     }
 
     public void SetPlatformId(string platform, string id)
     {
-        Godot.Collections.Dictionary<string, string> dict;
-
-        if (string.IsNullOrEmpty(CustomPlatformIds))
-        {
-            dict = new Godot.Collections.Dictionary<string, string>();
-        }
-        else
-        {
-            var json = new Json();
-            var error = json.Parse(CustomPlatformIds);
-            if (error != Error.Ok)
-                dict = new Godot.Collections.Dictionary<string, string>();
-            else
-                dict = json.Data.AsGodotDictionary<string, string>();
-        }
-
-        dict[platform] = id;
-        CustomPlatformIds = Json.Stringify(dict);
+        CustomPlatformIds[platform] = id;
     }
 }
 ```
@@ -1013,8 +987,8 @@ public partial class Achievement : Resource
     [Export] public string GameCenterId { get; set; }
     [Export] public string GooglePlayId { get; set; }
 
-    // Custom platform metadata (JSON dictionary)
-    [Export] public string CustomPlatformIds { get; set; } // JSON: {"Epic": "ACH_001", "GOG": "gog_achievement_1"}
+    // Custom platform metadata (dictionary for third-party providers)
+    [Export] public Godot.Collections.Dictionary<string, string> CustomPlatformIds { get; set; } = new();
 
     // Runtime state
     public bool IsUnlocked { get; set; }
@@ -1022,40 +996,14 @@ public partial class Achievement : Resource
     public float Progress { get; set; }
 
     // Helper to get custom platform IDs
-    public string GetPlatformId(string platform)
+    public string? GetPlatformId(string platform)
     {
-        if (string.IsNullOrEmpty(CustomPlatformIds))
-            return null;
-
-        var json = new Json();
-        var error = json.Parse(CustomPlatformIds);
-        if (error != Error.Ok)
-            return null;
-
-        var dict = json.Data.AsGodotDictionary<string, string>();
-        return dict.TryGetValue(platform, out var id) ? id : null;
+        return CustomPlatformIds.TryGetValue(platform, out var id) ? id : null;
     }
 
     public void SetPlatformId(string platform, string id)
     {
-        Godot.Collections.Dictionary<string, string> dict;
-
-        if (string.IsNullOrEmpty(CustomPlatformIds))
-        {
-            dict = new Godot.Collections.Dictionary<string, string>();
-        }
-        else
-        {
-            var json = new Json();
-            var error = json.Parse(CustomPlatformIds);
-            if (error != Error.Ok)
-                dict = new Godot.Collections.Dictionary<string, string>();
-            else
-                dict = json.Data.AsGodotDictionary<string, string>();
-        }
-
-        dict[platform] = id;
-        CustomPlatformIds = Json.Stringify(dict);
+        CustomPlatformIds[platform] = id;
     }
 }
 ```
