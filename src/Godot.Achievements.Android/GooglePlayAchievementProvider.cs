@@ -1,0 +1,255 @@
+#if GODOT_ANDROID
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Godot.Achievements.Core;
+
+namespace Godot.Achievements.Android;
+
+/// <summary>
+/// Google Play Games achievement provider for Android
+/// Note: This requires Google Play Games Services plugin and configuration
+/// </summary>
+public class GooglePlayAchievementProvider : IAchievementProvider
+{
+    private readonly AchievementDatabase _database;
+    private bool _isSignedIn;
+
+    public string ProviderName => "Google Play Games";
+
+    public bool IsAvailable => _isSignedIn && IsPlayGamesAvailable();
+
+    public GooglePlayAchievementProvider(AchievementDatabase database)
+    {
+        _database = database;
+        InitializePlayGames();
+    }
+
+    private void InitializePlayGames()
+    {
+        try
+        {
+            // Real implementation would use Play Games Services:
+            // PlayGamesPlatform.Activate();
+            //
+            // Social.localUser.Authenticate((bool success) =>
+            // {
+            //     _isSignedIn = success;
+            //     if (success)
+            //     {
+            //         GD.Print("[GooglePlay] Successfully signed in");
+            //     }
+            //     else
+            //     {
+            //         GD.PushWarning("[GooglePlay] Failed to sign in");
+            //     }
+            // });
+
+            GD.Print("[GooglePlay] GooglePlayAchievementProvider initialized (Play Games Services required)");
+            _isSignedIn = false; // Set to true when properly signed in
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GooglePlay] Failed to initialize: {ex.Message}");
+            _isSignedIn = false;
+        }
+    }
+
+    public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
+    {
+        if (!IsAvailable)
+        {
+            return AchievementUnlockResult.FailureResult("Google Play Games is not available");
+        }
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+        {
+            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found");
+        }
+
+        var googlePlayId = achievement.GooglePlayId;
+        if (string.IsNullOrEmpty(googlePlayId))
+        {
+            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' has no Google Play ID configured");
+        }
+
+        try
+        {
+            // Real implementation with Play Games Services:
+            // var tcs = new TaskCompletionSource<bool>();
+            //
+            // Social.ReportProgress(googlePlayId, 100.0, (bool success) =>
+            // {
+            //     tcs.SetResult(success);
+            // });
+            //
+            // bool success = await tcs.Task;
+            // if (!success)
+            // {
+            //     return AchievementUnlockResult.FailureResult("Failed to unlock on Google Play Games");
+            // }
+
+            GD.Print($"[GooglePlay] Would unlock achievement: {googlePlayId}");
+            await Task.Delay(10);
+
+            return AchievementUnlockResult.SuccessResult();
+        }
+        catch (Exception ex)
+        {
+            return AchievementUnlockResult.FailureResult($"Google Play Games exception: {ex.Message}");
+        }
+    }
+
+    public async Task<Achievement?> GetAchievement(string achievementId)
+    {
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return null;
+
+        if (!IsAvailable)
+            return achievement;
+
+        var googlePlayId = achievement.GooglePlayId;
+        if (string.IsNullOrEmpty(googlePlayId))
+            return achievement;
+
+        try
+        {
+            // Real implementation with Play Games Services:
+            // var tcs = new TaskCompletionSource<Achievement>();
+            //
+            // Social.LoadAchievements((IAchievement[] achievements) =>
+            // {
+            //     if (achievements != null)
+            //     {
+            //         var playAchievement = achievements.FirstOrDefault(a => a.id == googlePlayId);
+            //         if (playAchievement != null)
+            //         {
+            //             achievement.IsUnlocked = playAchievement.completed;
+            //             achievement.Progress = (float)(playAchievement.percentCompleted / 100.0);
+            //
+            //             if (playAchievement.completed && playAchievement.lastReportedDate != DateTime.MinValue)
+            //             {
+            //                 achievement.UnlockedAt = playAchievement.lastReportedDate;
+            //             }
+            //         }
+            //     }
+            //
+            //     tcs.SetResult(achievement);
+            // });
+            //
+            // return await tcs.Task;
+
+            await Task.CompletedTask;
+            return achievement;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GooglePlay] Error getting achievement: {ex.Message}");
+            return achievement;
+        }
+    }
+
+    public async Task<Achievement[]> GetAllAchievements()
+    {
+        if (!IsAvailable)
+            return _database.Achievements.ToArray();
+
+        try
+        {
+            // Real implementation with Play Games Services:
+            // Load all achievements and update local database
+            // Social.LoadAchievements((IAchievement[] achievements) => { ... });
+
+            foreach (var achievement in _database.Achievements)
+            {
+                if (!string.IsNullOrEmpty(achievement.GooglePlayId))
+                {
+                    await GetAchievement(achievement.Id);
+                }
+            }
+
+            return _database.Achievements.ToArray();
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GooglePlay] Error getting achievements: {ex.Message}");
+            return _database.Achievements.ToArray();
+        }
+    }
+
+    public async Task<float> GetProgress(string achievementId)
+    {
+        if (!IsAvailable)
+            return 0f;
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null || string.IsNullOrEmpty(achievement.GooglePlayId))
+            return 0f;
+
+        try
+        {
+            // Real implementation with Play Games Services:
+            // Load achievement and return percentCompleted / 100.0
+
+            await Task.CompletedTask;
+            return 0f;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GooglePlay] Error getting progress: {ex.Message}");
+            return 0f;
+        }
+    }
+
+    public async Task SetProgress(string achievementId, float progress)
+    {
+        if (!IsAvailable)
+            return;
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null || string.IsNullOrEmpty(achievement.GooglePlayId))
+            return;
+
+        try
+        {
+            // Real implementation with Play Games Services:
+            // For incremental achievements, use SetSteps:
+            // var steps = (int)(progress * 100); // If achievement has 100 steps
+            // PlayGamesPlatform.Instance.IncrementAchievement(achievement.GooglePlayId, steps, null);
+            //
+            // For standard achievements, report progress:
+            // Social.ReportProgress(achievement.GooglePlayId, progress * 100.0, (success) =>
+            // {
+            //     if (!success)
+            //     {
+            //         GD.PushError($"[GooglePlay] Failed to report progress");
+            //     }
+            // });
+
+            GD.Print($"[GooglePlay] Would set progress for {achievement.GooglePlayId}: {progress * 100:F1}%");
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[GooglePlay] Error setting progress: {ex.Message}");
+        }
+    }
+
+    private bool IsPlayGamesAvailable()
+    {
+        // Check if Play Games Services is available
+        try
+        {
+            // Real implementation:
+            // return PlayGamesPlatform.Instance != null;
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+#endif

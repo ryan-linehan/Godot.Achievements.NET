@@ -1,0 +1,22 @@
+<Project Sdk="Godot.NET.Sdk/4.3.0">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+
+    <!-- Package metadata -->
+    <PackageId>Godot.Achievements.iOS</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Ryan Linehan</Authors>
+    <Description>iOS Game Center achievement provider for Godot.Achievements.NET</Description>
+    <PackageTags>godot;achievements;ios;gamecenter;gamedev;csharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/ryan-linehan/Godot.Achievements.NET</RepositoryUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Godot.Achievements.Core/Godot.Achievements.Core.csproj" />
+  </ItemGroup>
+</Project>
