@@ -425,6 +425,477 @@ private Godot.Collections.Dictionary<string, Godot.Collections.Dictionary> _save
 
 ---
 
+## 📝 Logging Best Practices
+
+### Use Godot's Logging System
+
+**Always use `GD.Print()`, `GD.PushWarning()`, and `GD.PushError()`** - not Console or Debug.
+
+```csharp
+// ✅ GOOD - Shows in Godot editor and exported game logs
+GD.Print("[Achievements] Unlocking achievement: boss_defeated");
+GD.PushWarning("[Achievements] Steam ID missing for achievement 'boss_defeated'");
+GD.PushError("[Achievements] Failed to parse achievements.json: Invalid JSON");
+
+// ❌ BAD - Doesn't show in Godot editor
+Console.WriteLine("Achievement unlocked");  // Wrong!
+Debug.WriteLine("Achievement unlocked");    // Wrong framework!
+```
+
+**Why:**
+- Godot's output panel shows GD logs
+- Exported games write GD logs to log files
+- Console.WriteLine doesn't appear anywhere in Godot
+- Debug.WriteLine is for .NET debugging (not Godot)
+
+### Log Levels
+
+**Error (`GD.PushError`)** - Something went wrong that prevents functionality:
+```csharp
+if (!FileAccess.FileExists(SavePath))
+{
+    GD.PushError($"[Achievements] Save file not found: {SavePath}");
+    return;
+}
+
+if (error != Error.Ok)
+{
+    GD.PushError($"[Achievements] Failed to parse JSON: {json.GetErrorMessage()}");
+}
+```
+
+**Warning (`GD.PushWarning`)** - Something's wrong but not critical:
+```csharp
+if (string.IsNullOrEmpty(achievement.SteamId))
+{
+    GD.PushWarning($"[Achievements] Achievement '{achievement.Id}' missing Steam ID mapping");
+}
+
+if (!provider.IsAvailable)
+{
+    GD.PushWarning($"[Achievements] Provider '{provider.ProviderName}' not available, queuing for retry");
+}
+```
+
+**Info (`GD.Print`)** - Normal operation logs:
+```csharp
+GD.Print($"[Achievements] Manager initialized with {_providers.Count} providers");
+GD.Print($"[Achievements] Loaded {_savedData.Count} achievement states from disk");
+GD.Print($"[Achievements] Achievement '{achievementId}' unlocked successfully");
+```
+
+### Structured Logging Format
+
+**Use consistent prefixes** to make logs searchable:
+
+```csharp
+// ✅ GOOD - Consistent format
+GD.Print($"[Achievements] Unlocking '{achievementId}'");
+GD.Print($"[Achievements:Steam] Syncing to Steam API");
+GD.Print($"[Achievements:Local] Saved to {SavePath}");
+
+// ❌ BAD - Inconsistent, hard to search
+GD.Print("unlocking achievement");
+GD.Print("Steam: syncing");
+```
+
+**Format Template:**
+```
+[Component:SubComponent] Action: details
+```
+
+Examples:
+```csharp
+GD.Print($"[Achievements] Initialization complete");
+GD.Print($"[Achievements:Manager] Registered provider: {provider.ProviderName}");
+GD.Print($"[Achievements:Steam] Achievement '{id}' synced successfully");
+GD.PushWarning($"[Achievements:Retry] Queued '{id}' for retry (attempt {retryCount})");
+GD.PushError($"[Achievements:Local] Failed to write file: {ex.Message}");
+```
+
+### What to Log
+
+**✅ DO log:**
+
+**Initialization & Setup:**
+```csharp
+public override void _Ready()
+{
+    GD.Print("[Achievements:Manager] Initializing...");
+
+    _localProvider = new LocalAchievementProvider();
+    GD.Print($"[Achievements:Local] Loaded {_localProvider.Count} achievements from disk");
+
+    GD.Print($"[Achievements:Manager] Initialized with {_platformProviders.Count} platform providers");
+}
+```
+
+**Provider Registration:**
+```csharp
+public void RegisterProvider(IAchievementProvider provider)
+{
+    if (!provider.IsAvailable)
+    {
+        GD.PushWarning($"[Achievements] Provider '{provider.ProviderName}' not available");
+        return;
+    }
+
+    _platformProviders.Add(provider);
+    GD.Print($"[Achievements] Registered provider: {provider.ProviderName}");
+}
+```
+
+**Achievement Operations:**
+```csharp
+public async Task Unlock(string achievementId)
+{
+    GD.Print($"[Achievements] Unlocking achievement: '{achievementId}'");
+
+    var localResult = await _localProvider.UnlockAchievement(achievementId);
+
+    if (!localResult.Success)
+    {
+        GD.PushError($"[Achievements] Failed to unlock '{achievementId}': {localResult.Error}");
+        return;
+    }
+
+    if (localResult.WasAlreadyUnlocked)
+    {
+        GD.Print($"[Achievements] Achievement '{achievementId}' already unlocked");
+    }
+    else
+    {
+        GD.Print($"[Achievements] Achievement '{achievementId}' unlocked successfully");
+    }
+
+    // Sync to platforms
+    await SyncToPlatforms(achievementId);
+}
+```
+
+**Platform Sync:**
+```csharp
+private async Task SyncToPlatforms(string achievementId)
+{
+    GD.Print($"[Achievements] Syncing '{achievementId}' to {_platformProviders.Count} platforms");
+
+    foreach (var provider in _platformProviders)
+    {
+        try
+        {
+            var result = await provider.UnlockAchievement(achievementId);
+
+            if (result.Success)
+            {
+                GD.Print($"[Achievements:{provider.ProviderName}] Synced '{achievementId}'");
+            }
+            else
+            {
+                GD.PushWarning($"[Achievements:{provider.ProviderName}] Sync failed: {result.Error}");
+                QueueForRetry(provider, achievementId);
+            }
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[Achievements:{provider.ProviderName}] Exception: {ex.Message}");
+            QueueForRetry(provider, achievementId);
+        }
+    }
+}
+```
+
+**File Operations:**
+```csharp
+private void SaveToDisk()
+{
+    GD.Print($"[Achievements:Local] Saving to {SavePath}...");
+
+    try
+    {
+        var jsonString = Json.Stringify(_savedData, "\t");
+        using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
+        file.StoreString(jsonString);
+
+        GD.Print($"[Achievements:Local] Saved {_savedData.Count} achievements");
+    }
+    catch (Exception ex)
+    {
+        GD.PushError($"[Achievements:Local] Save failed: {ex.Message}");
+    }
+}
+```
+
+**Retry Operations:**
+```csharp
+private async void OnRetryTimeout()
+{
+    if (_retryQueue.Count == 0)
+        return;
+
+    GD.Print($"[Achievements:Retry] Processing retry queue ({_retryQueue.Sum(kv => kv.Value.Count)} pending)");
+
+    foreach (var (provider, achievements) in _retryQueue.ToArray())
+    {
+        foreach (var achievementId in achievements.ToArray())
+        {
+            GD.Print($"[Achievements:Retry] Retrying '{achievementId}' on {provider.ProviderName}");
+
+            var result = await provider.UnlockAchievement(achievementId);
+
+            if (result.Success)
+            {
+                GD.Print($"[Achievements:Retry] Success for '{achievementId}' on {provider.ProviderName}");
+                achievements.Remove(achievementId);
+            }
+            else
+            {
+                GD.PushWarning($"[Achievements:Retry] Still failing for '{achievementId}': {result.Error}");
+            }
+        }
+    }
+}
+```
+
+**❌ DON'T log:**
+
+**Every frame or high-frequency operations:**
+```csharp
+// ❌ BAD - Spams logs
+public override void _Process(double delta)
+{
+    GD.Print("Processing...");  // DON'T DO THIS!
+}
+```
+
+**Sensitive information:**
+```csharp
+// ❌ BAD - Don't log passwords, tokens, etc.
+GD.Print($"Steam API Key: {apiKey}");  // NEVER!
+GD.Print($"User password: {password}");  // NEVER!
+```
+
+**Overly verbose success paths:**
+```csharp
+// ❌ TOO VERBOSE
+GD.Print("Entering function");
+GD.Print("Checking if achievement exists");
+GD.Print("Achievement found");
+GD.Print("Checking if unlocked");
+GD.Print("Not unlocked, proceeding");
+// ... etc
+```
+
+### Conditional Logging
+
+**Use conditional compilation for debug-only logs:**
+
+```csharp
+#if DEBUG || TOOLS
+GD.Print($"[Achievements:Debug] Provider state: {provider.GetDetailedState()}");
+GD.Print($"[Achievements:Debug] Retry queue size: {_retryQueue.Count}");
+#endif
+```
+
+**Or use a debug flag:**
+```csharp
+public partial class AchievementManager : Node
+{
+    [Export] public bool VerboseLogging { get; set; } = false;
+
+    private void LogVerbose(string message)
+    {
+        if (VerboseLogging)
+        {
+            GD.Print(message);
+        }
+    }
+
+    public async Task Unlock(string achievementId)
+    {
+        LogVerbose($"[Achievements:Verbose] Starting unlock for '{achievementId}'");
+        // ... operation
+        LogVerbose($"[Achievements:Verbose] Unlock complete for '{achievementId}'");
+    }
+}
+```
+
+### User-Facing Messages vs Developer Logs
+
+**Developer logs** (GD.Print):
+```csharp
+GD.Print($"[Achievements] Syncing to Steam...");  // For developers
+```
+
+**User-facing messages** (UI/signals):
+```csharp
+// Emit signal for UI to show message to user
+EmitSignal(SignalName.SyncFailed, "Unable to connect to Steam. Achievements will sync when online.");
+```
+
+**Example: Show users what they need to know:**
+```csharp
+public async Task Unlock(string achievementId)
+{
+    // Developer log
+    GD.Print($"[Achievements] Unlocking '{achievementId}'");
+
+    var result = await _localProvider.UnlockAchievement(achievementId);
+
+    if (!result.Success)
+    {
+        // Developer log
+        GD.PushError($"[Achievements] Unlock failed: {result.Error}");
+
+        // User-facing message
+        EmitSignal(SignalName.UnlockFailed, achievementId, "Failed to unlock achievement");
+        return;
+    }
+
+    // Developer log
+    GD.Print($"[Achievements] Unlocked '{achievementId}' successfully");
+
+    // User-facing event
+    EmitSignal(SignalName.AchievementUnlocked, achievementId);
+}
+```
+
+### Logging Exceptions
+
+**Always log exceptions with context:**
+
+```csharp
+// ✅ GOOD - Context + exception details
+try
+{
+    await provider.UnlockAchievement(achievementId);
+}
+catch (Exception ex)
+{
+    GD.PushError($"[Achievements:{provider.ProviderName}] Failed to unlock '{achievementId}': {ex.GetType().Name}: {ex.Message}");
+    GD.PushError($"[Achievements] Stack trace: {ex.StackTrace}");
+}
+
+// ❌ BAD - No context
+try
+{
+    await provider.UnlockAchievement(achievementId);
+}
+catch (Exception ex)
+{
+    GD.PushError(ex.Message);  // Missing context!
+}
+```
+
+### Startup Logging Example
+
+**Complete initialization logging:**
+
+```csharp
+public partial class AchievementManager : Node
+{
+    public override void _Ready()
+    {
+        GD.Print("========================================");
+        GD.Print("[Achievements] Initializing Achievement System");
+        GD.Print("========================================");
+
+        // Load database
+        var database = GD.Load<AchievementDatabase>("res://achievements.tres");
+        if (database == null)
+        {
+            GD.PushError("[Achievements] Failed to load achievement database!");
+            return;
+        }
+        GD.Print($"[Achievements] Loaded database with {database.Achievements.Count} achievements");
+
+        // Initialize local provider
+        _localProvider = new LocalAchievementProvider();
+        GD.Print($"[Achievements:Local] Loaded {_localProvider.GetUnlockedCount()} unlocked achievements");
+
+        // Wait for platform providers to register
+        GD.Print("[Achievements] Waiting for platform providers to register...");
+
+        // After providers registered
+        GD.Print($"[Achievements] {_platformProviders.Count} platform providers registered:");
+        foreach (var provider in _platformProviders)
+        {
+            var status = provider.IsAvailable ? "Available" : "Unavailable";
+            GD.Print($"[Achievements]   - {provider.ProviderName}: {status}");
+        }
+
+        // Sync on startup
+        GD.Print("[Achievements] Starting startup sync...");
+        SyncAllLocalToPlatforms();
+
+        GD.Print("[Achievements] Initialization complete");
+        GD.Print("========================================");
+    }
+}
+```
+
+### Performance Considerations
+
+**Cache log strings in hot paths:**
+
+```csharp
+// ❌ BAD - String allocation every call
+private void FrequentlyCalledMethod()
+{
+    GD.Print($"[Achievements] Processing {_count} items");  // Allocates string
+}
+
+// ✅ BETTER - Only log when something changes
+private int _lastLoggedCount = -1;
+
+private void FrequentlyCalledMethod()
+{
+    if (_count != _lastLoggedCount)
+    {
+        GD.Print($"[Achievements] Item count changed: {_count}");
+        _lastLoggedCount = _count;
+    }
+}
+```
+
+### Log Output Example
+
+**What good logging looks like in the Godot console:**
+
+```
+========================================
+[Achievements] Initializing Achievement System
+========================================
+[Achievements] Loaded database with 24 achievements
+[Achievements:Local] Loaded 15 unlocked achievements
+[Achievements] Waiting for platform providers to register...
+[Achievements] Registered provider: Local
+[Achievements] Registered provider: Steam
+[Achievements:Steam] Steam API initialized
+[Achievements] 2 platform providers registered:
+[Achievements]   - Local: Available
+[Achievements]   - Steam: Available
+[Achievements] Starting startup sync...
+[Achievements] Syncing 15 local achievements to platforms
+[Achievements:Steam] Synced 'first_kill'
+[Achievements:Steam] Synced 'boss_defeated'
+... (13 more)
+[Achievements] Startup sync complete (15/15 synced)
+[Achievements] Initialization complete
+========================================
+
+[Achievements] Unlocking achievement: 'speedrun_master'
+[Achievements] Achievement 'speedrun_master' unlocked successfully
+[Achievements] Syncing 'speedrun_master' to 2 platforms
+[Achievements:Steam] Synced 'speedrun_master'
+[Achievements:Local] Saved to user://achievements.json
+
+[Achievements:Retry] Processing retry queue (2 pending)
+[Achievements:Retry] Retrying 'secret_ending' on Steam
+[Achievements:Retry] Success for 'secret_ending' on Steam
+```
+
+---
+
 ## ⚙️ Initialization Patterns
 
 ### Prefer [Export] Over _Ready() Initialization
