@@ -197,15 +197,38 @@ public partial class Achievement : Resource
     [Export] public Texture2D Icon { get; set; }              // Icon image
     [Export] public bool Hidden { get; set; }                  // Hide until unlocked
 
-    // Platform ID mappings
+    // Platform ID mappings (built-in)
     [Export] public string SteamId { get; set; }              // "ACH_BOSS_DEFEATED"
     [Export] public string GameCenterId { get; set; }         // "com.game.boss_defeated"
     [Export] public string GooglePlayId { get; set; }         // "CgkI...boss_defeated"
+
+    // Custom platform metadata (for third-party providers)
+    [Export] public string CustomPlatformIds { get; set; }    // JSON: {"Epic": "ACH_001", "GOG": "gog_ach_1"}
 
     // Runtime state (managed by LocalProvider)
     public bool IsUnlocked { get; set; }
     public DateTime? UnlockedAt { get; set; }
     public float Progress { get; set; }                        // 0.0 to 1.0
+
+    // Helper methods for custom platforms
+    public string GetPlatformId(string platform)
+    {
+        if (string.IsNullOrEmpty(CustomPlatformIds))
+            return null;
+
+        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+        return dict.TryGetValue(platform, out var id) ? id : null;
+    }
+
+    public void SetPlatformId(string platform, string id)
+    {
+        var dict = string.IsNullOrEmpty(CustomPlatformIds)
+            ? new Dictionary<string, string>()
+            : JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+
+        dict[platform] = id;
+        CustomPlatformIds = JsonSerializer.Serialize(dict);
+    }
 }
 ```
 
@@ -738,6 +761,398 @@ public override void _Input(InputEvent @event)
     #endif
 }
 ```
+
+## 🔌 Creating Custom Achievement Providers
+
+The plugin architecture allows third-party developers to create custom achievement platform providers. This enables support for platforms like Epic Games Store, GOG Galaxy, Discord, or any custom backend.
+
+### Custom Provider Interface
+
+All providers implement the same interface:
+
+```csharp
+public interface IAchievementProvider
+{
+    string ProviderName { get; }
+    bool IsAvailable { get; }
+
+    Task<AchievementUnlockResult> UnlockAchievement(string achievementId);
+    Task<Achievement?> GetAchievement(string achievementId);
+    Task<Achievement[]> GetAllAchievements();
+    Task<float> GetProgress(string achievementId);
+    Task SetProgress(string achievementId, float progress);
+}
+```
+
+### Example: Epic Games Store Provider
+
+```csharp
+// In Godot.Achievements.Epic NuGet package
+
+#if GODOT_PC || GODOT_WINDOWS || GODOT_LINUX || GODOT_MACOS
+using Epic.OnlineServices;
+using Epic.OnlineServices.Achievements;
+
+namespace Godot.Achievements.Epic;
+
+public class EpicAchievementProvider : IAchievementProvider
+{
+    private readonly AchievementDatabase _database;
+    private readonly AchievementsInterface _epicAchievements;
+
+    public string ProviderName => "Epic Games Store";
+
+    public bool IsAvailable
+    {
+        get
+        {
+            // Check if EOS is initialized and user is logged in
+            return PlatformInterface.GetPlatformInterface() != null
+                && EOS_Platform_GetLoginStatus() == LoginStatus.LoggedIn;
+        }
+    }
+
+    public EpicAchievementProvider(AchievementDatabase database)
+    {
+        _database = database;
+        var platform = PlatformInterface.GetPlatformInterface();
+        _epicAchievements = platform.GetAchievementsInterface();
+    }
+
+    public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
+    {
+        var achievement = _database.GetById(achievementId);
+        var epicId = achievement?.GetPlatformId("Epic"); // Custom metadata
+
+        if (string.IsNullOrEmpty(epicId))
+        {
+            return new AchievementUnlockResult
+            {
+                Success = false,
+                Error = "No Epic achievement ID mapping found"
+            };
+        }
+
+        // Check current state
+        var queryOptions = new QueryPlayerAchievementsOptions
+        {
+            TargetUserId = GetLocalUserId(),
+            LocalUserId = GetLocalUserId()
+        };
+
+        var tcs = new TaskCompletionSource<bool>();
+
+        _epicAchievements.QueryPlayerAchievements(queryOptions, null, (ref QueryPlayerAchievementsCallbackInfo data) =>
+        {
+            if (data.ResultCode == Result.Success)
+            {
+                tcs.SetResult(true);
+            }
+            else
+            {
+                tcs.SetResult(false);
+            }
+        });
+
+        await tcs.Task;
+
+        // Unlock the achievement
+        var unlockOptions = new UnlockAchievementsOptions
+        {
+            UserId = GetLocalUserId(),
+            AchievementIds = new[] { epicId }
+        };
+
+        var unlockTcs = new TaskCompletionSource<AchievementUnlockResult>();
+
+        _epicAchievements.UnlockAchievements(unlockOptions, null, (ref UnlockAchievementsCallbackInfo data) =>
+        {
+            unlockTcs.SetResult(new AchievementUnlockResult
+            {
+                Success = data.ResultCode == Result.Success,
+                Error = data.ResultCode != Result.Success ? data.ResultCode.ToString() : null
+            });
+        });
+
+        return await unlockTcs.Task;
+    }
+
+    public async Task<Achievement?> GetAchievement(string achievementId)
+    {
+        // Implementation...
+        await Task.CompletedTask;
+        return _database.GetById(achievementId);
+    }
+
+    public async Task<Achievement[]> GetAllAchievements()
+    {
+        // Implementation...
+        await Task.CompletedTask;
+        return _database.Achievements.ToArray();
+    }
+
+    public async Task<float> GetProgress(string achievementId)
+    {
+        // Query progress from Epic
+        await Task.CompletedTask;
+        return 0f;
+    }
+
+    public async Task SetProgress(string achievementId, float progress)
+    {
+        // Set progress on Epic (for stat-based achievements)
+        await Task.CompletedTask;
+    }
+
+    private ProductUserId GetLocalUserId()
+    {
+        // Get Epic user ID
+        return null; // Placeholder
+    }
+}
+#endif
+```
+
+### Autoload Registration Pattern
+
+```csharp
+// In Godot.Achievements.Epic package
+// File: EpicAchievementAutoload.cs
+
+#if GODOT_PC || GODOT_WINDOWS || GODOT_LINUX || GODOT_MACOS
+namespace Godot.Achievements.Epic;
+
+public partial class EpicAchievementAutoload : Node
+{
+    public override void _Ready()
+    {
+        var manager = GetNode<AchievementManager>("/root/Achievements");
+        var database = manager.Database;
+
+        var epicProvider = new EpicAchievementProvider(database);
+        manager.RegisterProvider(epicProvider);
+
+        GD.Print("[Epic] Achievement provider registered");
+    }
+}
+#endif
+```
+
+### Extended Achievement Model for Custom Platforms
+
+To support custom platform IDs, extend the Achievement resource with metadata:
+
+```csharp
+[GlobalClass]
+public partial class Achievement : Resource
+{
+    // Standard fields
+    [Export] public string Id { get; set; }
+    [Export] public string DisplayName { get; set; }
+    [Export] public string Description { get; set; }
+    [Export] public Texture2D Icon { get; set; }
+    [Export] public bool Hidden { get; set; }
+
+    // Built-in platform IDs
+    [Export] public string SteamId { get; set; }
+    [Export] public string GameCenterId { get; set; }
+    [Export] public string GooglePlayId { get; set; }
+
+    // Custom platform metadata (JSON dictionary)
+    [Export] public string CustomPlatformIds { get; set; } // JSON: {"Epic": "ACH_001", "GOG": "gog_achievement_1"}
+
+    // Runtime state
+    public bool IsUnlocked { get; set; }
+    public DateTime? UnlockedAt { get; set; }
+    public float Progress { get; set; }
+
+    // Helper to get custom platform IDs
+    public string GetPlatformId(string platform)
+    {
+        if (string.IsNullOrEmpty(CustomPlatformIds))
+            return null;
+
+        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+        return dict.TryGetValue(platform, out var id) ? id : null;
+    }
+
+    public void SetPlatformId(string platform, string id)
+    {
+        var dict = string.IsNullOrEmpty(CustomPlatformIds)
+            ? new Dictionary<string, string>()
+            : JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+
+        dict[platform] = id;
+        CustomPlatformIds = JsonSerializer.Serialize(dict);
+    }
+}
+```
+
+### Editor Extension for Custom Platforms
+
+Custom providers can extend the editor to add their platform ID fields:
+
+```csharp
+// In Godot.Achievements.Epic package
+#if TOOLS
+public partial class EpicEditorExtension : EditorPlugin
+{
+    public override void _EnterTree()
+    {
+        // Hook into achievement editor to add Epic ID field
+        var achievementEditor = GetNode<AchievementEditorDock>("/root/EditorNode/AchievementEditor");
+        achievementEditor?.RegisterPlatformField("Epic", "Epic Games ID");
+    }
+}
+#endif
+```
+
+### NuGet Package Structure for Custom Providers
+
+```
+Godot.Achievements.Epic/
+├── lib/
+│   └── netstandard2.1/
+│       ├── Godot.Achievements.Epic.dll
+│       └── EOS-SDK.dll (Epic dependency)
+├── content/
+│   └── addons/godot_achievements_epic/
+│       ├── EpicAutoload.tscn
+│       └── plugin.cfg (optional editor extension)
+├── build/
+│   └── Godot.Achievements.Epic.props (MSBuild props)
+└── Godot.Achievements.Epic.nuspec
+```
+
+### NuGet .nuspec Example
+
+```xml
+<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>Godot.Achievements.Epic</id>
+    <version>1.0.0</version>
+    <authors>YourName</authors>
+    <description>Epic Games Store achievement provider for Godot.Achievements.NET</description>
+    <dependencies>
+      <dependency id="Godot.Achievements.Core" version="1.0.0" />
+      <dependency id="EOS-SDK" version="1.15.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin/Release/netstandard2.1/Godot.Achievements.Epic.dll" target="lib/netstandard2.1" />
+    <file src="content/**" target="content" />
+  </files>
+</package>
+```
+
+### User Installation
+
+```xml
+<!-- User's .csproj -->
+<ItemGroup>
+  <PackageReference Include="Godot.Achievements.Core" Version="1.0.0" />
+  <PackageReference Include="Godot.Achievements.Steam" Version="1.0.0" Condition="'$(GodotTargetPlatform)' == 'windows'" />
+
+  <!-- Custom third-party provider -->
+  <PackageReference Include="Godot.Achievements.Epic" Version="1.0.0" Condition="'$(GodotTargetPlatform)' == 'windows'" />
+</ItemGroup>
+```
+
+### Provider Discovery API
+
+```csharp
+// In AchievementManager
+public partial class AchievementManager : Node
+{
+    public IReadOnlyList<IAchievementProvider> GetRegisteredProviders()
+    {
+        var all = new List<IAchievementProvider> { _localProvider };
+        all.AddRange(_platformProviders);
+        return all.AsReadOnly();
+    }
+
+    public IAchievementProvider GetProvider(string providerName)
+    {
+        return GetRegisteredProviders()
+            .FirstOrDefault(p => p.ProviderName.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Event for when providers are registered
+    [Signal]
+    public delegate void ProviderRegisteredEventHandler(string providerName);
+}
+```
+
+### Testing Custom Providers
+
+```csharp
+// In your game's debug menu
+public void ListRegisteredProviders()
+{
+    var providers = AchievementManager.Instance.GetRegisteredProviders();
+
+    GD.Print("=== Registered Achievement Providers ===");
+    foreach (var provider in providers)
+    {
+        GD.Print($"- {provider.ProviderName} (Available: {provider.IsAvailable})");
+    }
+}
+
+// Test custom provider
+public async void TestEpicProvider()
+{
+    var epicProvider = AchievementManager.Instance.GetProvider("Epic Games Store");
+    if (epicProvider != null && epicProvider.IsAvailable)
+    {
+        var result = await epicProvider.UnlockAchievement("first_kill");
+        GD.Print($"Epic unlock result: {result.Success}");
+    }
+}
+```
+
+### Custom Provider Checklist
+
+When creating a custom achievement provider:
+
+- [ ] Implement `IAchievementProvider` interface
+- [ ] Handle platform-specific authentication/initialization
+- [ ] Map local achievement IDs to platform IDs (via Achievement.GetPlatformId())
+- [ ] Implement async unlock/progress methods
+- [ ] Add `IsAvailable` check (SDK initialized, user logged in, etc.)
+- [ ] Create autoload node for registration
+- [ ] Use conditional compilation for platform-specific code
+- [ ] Add NuGet package dependencies
+- [ ] Document platform ID format for users
+- [ ] (Optional) Create editor extension for platform ID fields
+- [ ] Test with debug panel
+- [ ] Document installation in README
+
+### Example Custom Providers
+
+**Potential community providers:**
+- `Godot.Achievements.Epic` - Epic Games Store
+- `Godot.Achievements.GOG` - GOG Galaxy
+- `Godot.Achievements.Discord` - Discord Rich Presence activities
+- `Godot.Achievements.Xbox` - Xbox Live (via GDK)
+- `Godot.Achievements.PlayStation` - PlayStation Network
+- `Godot.Achievements.Nintendo` - Nintendo Switch
+- `Godot.Achievements.ItchIO` - Itch.io achievements
+- `Godot.Achievements.Firebase` - Custom backend via Firebase
+- `Godot.Achievements.PlayFab` - Azure PlayFab
+
+### Publishing Guidelines
+
+**For community providers:**
+
+1. **Naming Convention**: `Godot.Achievements.[Platform]`
+2. **Namespace**: Match package name (e.g., `Godot.Achievements.Epic`)
+3. **Dependencies**: Reference `Godot.Achievements.Core` only
+4. **Documentation**: Include setup guide with platform API key instructions
+5. **Samples**: Provide example achievement setup
+6. **License**: Use MIT or compatible open-source license
+7. **Repository**: Link to source code in NuGet description
+8. **Testing**: Include unit tests for provider logic
 
 ## 📋 Implementation Checklist
 

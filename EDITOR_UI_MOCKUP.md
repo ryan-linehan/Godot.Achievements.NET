@@ -60,6 +60,21 @@
 │ │                         │ │ └─────────────────────────────────────┘ │ │  │
 │ │                         │ │ Status: ⨯ Empty                        │ │  │
 │ │                         │ │                                         │ │  │
+│ │                         │ │ ──── Custom Platforms ─────────────────  │ │  │
+│ │                         │ │                                         │ │  │
+│ │                         │ │ Epic Games Store:                      │ │  │
+│ │                         │ │ ┌─────────────────────────────────────┐ │ │  │
+│ │                         │ │ │ epic_first_kill                     │ │ │  │
+│ │                         │ │ └─────────────────────────────────────┘ │ │  │
+│ │                         │ │ Status: ⚠ Not configured               │ │  │
+│ │                         │ │                                         │ │  │
+│ │                         │ │ GOG Galaxy:                            │ │  │
+│ │                         │ │ ┌─────────────────────────────────────┐ │ │  │
+│ │                         │ │ │ gog_achievement_first_kill          │ │ │  │
+│ │                         │ │ └─────────────────────────────────────┘ │ │  │
+│ │                         │ │ Status: ⚠ Not configured               │ │  │
+│ │                         │ │                                         │ │  │
+│ │                         │ │   [+ Add Custom Platform]               │ │  │
 │ │                         │ │          [Copy Local ID to All]         │ │  │
 │ │                         │ └─────────────────────────────────────────┘ │  │
 │ │                         │                                             │  │
@@ -254,6 +269,69 @@
 - **Background**: Editor theme background
 - **Text**: Editor theme foreground
 - **Borders**: Editor theme border color with subtle contrast
+
+## Custom Platform Support
+
+### Dynamic Platform Field Registration
+
+When third-party achievement provider packages are installed (e.g., `Godot.Achievements.Epic`), they can register their platform fields in the editor:
+
+```csharp
+// In Epic provider's EditorPlugin
+public override void _EnterTree()
+{
+    var achievementEditor = GetNode<AchievementEditorDock>("/root/.../AchievementEditor");
+    achievementEditor?.RegisterPlatformField("Epic", "Epic Games Store ID");
+}
+```
+
+**UI Behavior:**
+- Custom platform fields appear in "Custom Platforms" section
+- Automatically shown/hidden based on installed packages
+- Saved to `Achievement.CustomPlatformIds` as JSON
+- "[+ Add Custom Platform]" button allows manual entry for platforms without editor extensions
+
+### Add Custom Platform Dialog
+
+```
+┌─────────────────────────────────────────────┐
+│ Add Custom Platform                    [X]  │
+├─────────────────────────────────────────────┤
+│                                             │
+│ Platform Name:                              │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Epic Games Store                        │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ Achievement ID for this platform:           │
+│ ┌─────────────────────────────────────────┐ │
+│ │ epic_first_kill                         │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│              [Cancel] [Add Platform]        │
+└─────────────────────────────────────────────┘
+```
+
+### Platform Status Indicators
+
+The editor shows which providers are installed and available:
+
+```
+┌───────────────────────────────────────────┐
+│ Installed Platform Providers         [i]  │
+├───────────────────────────────────────────┤
+│ ✓ Local (Core)                            │
+│ ✓ Steam (Godot.Achievements.Steam)        │
+│ ✓ Epic Games (Godot.Achievements.Epic)    │
+│ ⚠ GOG Galaxy (installed but not logged in)│
+│ ⨯ Game Center (package not installed)     │
+└───────────────────────────────────────────┘
+```
+
+**Click [i] to see:**
+- Package name and version
+- Provider status (available/unavailable)
+- Installation instructions for missing packages
 
 ## Interactions
 
