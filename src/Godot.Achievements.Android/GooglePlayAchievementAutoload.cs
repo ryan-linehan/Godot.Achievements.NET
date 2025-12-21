@@ -1,4 +1,3 @@
-#if GODOT_ANDROID
 using Godot;
 using Godot.Achievements.Core;
 
@@ -33,4 +32,3 @@ public partial class GooglePlayAchievementAutoload : Node
         GD.Print("[GooglePlay] GooglePlayAchievementProvider registered");
     }
 }
-#endif

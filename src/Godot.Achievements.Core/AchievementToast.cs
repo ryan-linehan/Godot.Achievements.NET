@@ -5,9 +5,11 @@ namespace Godot.Achievements.Core;
 /// <summary>
 /// Default toast notification system for achievement unlocks
 /// Automatically displays achievement notifications in the top-right corner
+/// Add as an autoload to enable toast notifications
 /// </summary>
 public partial class AchievementToast : CanvasLayer
 {
+    [Export] public bool Enabled { get; set; } = true;
     [Export] public float DisplayDuration { get; set; } = 5.0f;
     [Export] public Vector2 ToastSize { get; set; } = new Vector2(400, 100);
     [Export] public Color BackgroundColor { get; set; } = new Color(0.1f, 0.1f, 0.1f, 0.9f);
@@ -24,6 +26,17 @@ public partial class AchievementToast : CanvasLayer
     public override void _Ready()
     {
         Layer = 100; // Draw on top of everything
+
+        // Connect to achievement unlocked signal
+        var manager = GetNodeOrNull<AchievementManager>("/root/Achievements");
+        if (manager != null)
+        {
+            manager.AchievementUnlocked += OnAchievementUnlocked;
+        }
+        else
+        {
+            GD.PushWarning("[AchievementToast] AchievementManager not found. Toasts will not be displayed.");
+        }
 
         // Create toast UI
         _toastPanel = new PanelContainer();
@@ -81,10 +94,24 @@ public partial class AchievementToast : CanvasLayer
     }
 
     /// <summary>
+    /// Handler for achievement unlocked signal
+    /// </summary>
+    private void OnAchievementUnlocked(string achievementId, Achievement achievement)
+    {
+        if (!Enabled)
+            return;
+
+        ShowToast(achievement);
+    }
+
+    /// <summary>
     /// Show a toast notification for an achievement
     /// </summary>
     public void ShowToast(Achievement achievement)
     {
+        if (!Enabled)
+            return;
+
         if (_isShowing)
         {
             // Queue the toast if one is already showing

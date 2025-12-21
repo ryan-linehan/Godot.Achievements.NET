@@ -1,4 +1,3 @@
-#if GODOT_PC || GODOT_WINDOWS || GODOT_LINUX || GODOT_MACOS
 using Godot;
 using Godot.Achievements.Core;
 
@@ -40,4 +39,3 @@ public partial class SteamAchievementAutoload : Node
         // SteamAPI.Shutdown();
     }
 }
-#endif

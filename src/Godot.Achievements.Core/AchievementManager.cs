@@ -14,7 +14,6 @@ public partial class AchievementManager : Node
     public static AchievementManager? Instance { get; private set; }
 
     [Export] public AchievementDatabase? Database { get; set; }
-    [Export] public bool ShowToasts { get; set; } = true;
     [Export] public float SyncRetryInterval { get; set; } = 30f; // seconds
 
     private LocalAchievementProvider? _localProvider;
@@ -145,12 +144,6 @@ public partial class AchievementManager : Node
         if (achievement != null)
         {
             EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
-
-            // Show toast
-            if (ShowToasts)
-            {
-                ShowAchievementToast(achievement);
-            }
         }
 
         // Sync to platform providers
@@ -180,11 +173,6 @@ public partial class AchievementManager : Node
         if (achievement != null && achievement.IsUnlocked && oldProgress < 1.0f)
         {
             EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
-
-            if (ShowToasts)
-            {
-                ShowAchievementToast(achievement);
-            }
         }
 
         // Sync to platform providers
@@ -424,38 +412,4 @@ public partial class AchievementManager : Node
         GD.Print($"[Achievements] Sync complete: {successCount} succeeded, {failCount} failed (queue size: {_syncQueue.Count})");
     }
 
-    /// <summary>
-    /// Show achievement unlock toast notification
-    /// </summary>
-    private void ShowAchievementToast(Achievement achievement)
-    {
-        // Find or create toast manager
-        var toastManager = GetNodeOrNull<AchievementToast>("/root/AchievementToast");
-        if (toastManager == null)
-        {
-            // Create toast manager if it doesn't exist
-            toastManager = new AchievementToast();
-            toastManager.Name = "AchievementToast";
-            GetTree().Root.AddChild(toastManager);
-        }
-
-        toastManager.ShowToast(achievement);
-    }
-}
-
-/// <summary>
-/// Represents a pending sync operation to be retried
-/// </summary>
-internal class PendingSync
-{
-    public required string AchievementId { get; init; }
-    public required IAchievementProvider Provider { get; init; }
-    public required SyncType Type { get; init; }
-    public float Progress { get; init; }
-}
-
-internal enum SyncType
-{
-    Unlock,
-    Progress
 }

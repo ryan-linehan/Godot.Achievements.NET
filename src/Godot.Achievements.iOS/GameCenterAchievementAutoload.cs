@@ -1,4 +1,3 @@
-#if GODOT_IOS
 using Godot;
 using Godot.Achievements.Core;
 
@@ -33,4 +32,3 @@ public partial class GameCenterAchievementAutoload : Node
         GD.Print("[GameCenter] GameCenterAchievementProvider registered");
     }
 }
-#endif

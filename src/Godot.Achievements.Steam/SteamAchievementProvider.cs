@@ -1,4 +1,3 @@
-#if GODOT_PC || GODOT_WINDOWS || GODOT_LINUX || GODOT_MACOS
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -248,4 +247,3 @@ public class SteamAchievementProvider : IAchievementProvider
         }
     }
 }
-#endif

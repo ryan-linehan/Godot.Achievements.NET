@@ -1,4 +1,3 @@
-#if GODOT_IOS
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -273,4 +272,3 @@ public class GameCenterAchievementProvider : IAchievementProvider
         }
     }
 }
-#endif
