@@ -8,5 +8,5 @@ internal class PendingSync
     public required string AchievementId { get; init; }
     public required IAchievementProvider Provider { get; init; }
     public required SyncType Type { get; init; }
-    public float Progress { get; init; }
+    public int CurrentProgress { get; init; }
 }

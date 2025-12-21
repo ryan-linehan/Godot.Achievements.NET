@@ -47,14 +47,14 @@ public interface IAchievementProvider
     Task<Achievement[]> GetAllAchievements();
 
     /// <summary>
-    /// Get progress for a progressive achievement (0.0 to 1.0)
+    /// Get current progress for a progressive achievement
     /// </summary>
-    Task<float> GetProgress(string achievementId);
+    Task<int> GetProgress(string achievementId);
 
     /// <summary>
-    /// Set progress for a progressive achievement (0.0 to 1.0)
+    /// Set current progress for a progressive achievement
     /// </summary>
-    Task SetProgress(string achievementId, float progress);
+    Task SetProgress(string achievementId, int currentProgress);
 
     /// <summary>
     /// Reset a specific achievement (for testing)

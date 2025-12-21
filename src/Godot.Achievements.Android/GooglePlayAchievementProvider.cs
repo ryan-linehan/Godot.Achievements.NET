@@ -178,31 +178,33 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
-    public async Task<float> GetProgress(string achievementId)
+    public async Task<int> GetProgress(string achievementId)
     {
         if (!IsAvailable)
-            return 0f;
+            return 0;
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null || string.IsNullOrEmpty(achievement.GooglePlayId))
-            return 0f;
+            return 0;
 
         try
         {
             // Real implementation with Play Games Services:
-            // Load achievement and return percentCompleted / 100.0
+            // Load achievement and calculate current progress
+            // int currentProgress = (int)(playAchievement.percentCompleted / 100.0 * achievement.MaxProgress);
+            // return currentProgress;
 
             await Task.CompletedTask;
-            return 0f;
+            return 0;
         }
         catch (Exception ex)
         {
             GD.PushError($"[GooglePlay] Error getting progress: {ex.Message}");
-            return 0f;
+            return 0;
         }
     }
 
-    public async Task SetProgress(string achievementId, float progress)
+    public async Task SetProgress(string achievementId, int currentProgress)
     {
         if (!IsAvailable)
             return;
@@ -214,12 +216,12 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         try
         {
             // Real implementation with Play Games Services:
-            // For incremental achievements, use SetSteps:
-            // var steps = (int)(progress * 100); // If achievement has 100 steps
-            // PlayGamesPlatform.Instance.IncrementAchievement(achievement.GooglePlayId, steps, null);
+            // For incremental achievements, set steps directly:
+            // PlayGamesPlatform.Instance.SetStepsAtLeast(achievement.GooglePlayId, currentProgress, null);
             //
-            // For standard achievements, report progress:
-            // Social.ReportProgress(achievement.GooglePlayId, progress * 100.0, (success) =>
+            // For standard achievements, report progress as percentage:
+            // double percentComplete = achievement.MaxProgress > 0 ? (double)currentProgress / achievement.MaxProgress * 100.0 : 0.0;
+            // Social.ReportProgress(achievement.GooglePlayId, percentComplete, (success) =>
             // {
             //     if (!success)
             //     {
@@ -227,7 +229,8 @@ public class GooglePlayAchievementProvider : IAchievementProvider
             //     }
             // });
 
-            GD.Print($"[GooglePlay] Would set progress for {achievement.GooglePlayId}: {progress * 100:F1}%");
+            float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
+            GD.Print($"[GooglePlay] Would set progress for {achievement.GooglePlayId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
             await Task.CompletedTask;
         }
         catch (Exception ex)

@@ -23,7 +23,7 @@ public partial class AchievementManager : Node
 
     // Signals
     [Signal] public delegate void AchievementUnlockedEventHandler(string achievementId, Achievement achievement);
-    [Signal] public delegate void AchievementProgressChangedEventHandler(string achievementId, float progress);
+    [Signal] public delegate void AchievementProgressChangedEventHandler(string achievementId, int currentProgress, int maxProgress);
     [Signal] public delegate void ProviderRegisteredEventHandler(string providerName);
 
     public override void _EnterTree()
@@ -153,7 +153,7 @@ public partial class AchievementManager : Node
     /// <summary>
     /// Set progress for a progressive achievement
     /// </summary>
-    public async Task SetProgress(string achievementId, float progress)
+    public async Task SetProgress(string achievementId, int currentProgress)
     {
         if (_localProvider == null)
         {
@@ -162,21 +162,24 @@ public partial class AchievementManager : Node
         }
 
         var oldProgress = await _localProvider.GetProgress(achievementId);
-        await _localProvider.SetProgress(achievementId, progress);
+        await _localProvider.SetProgress(achievementId, currentProgress);
 
         var achievement = await _localProvider.GetAchievement(achievementId);
 
         // Emit progress changed signal
-        EmitSignal(SignalName.AchievementProgressChanged, achievementId, progress);
+        if (achievement != null)
+        {
+            EmitSignal(SignalName.AchievementProgressChanged, achievementId, currentProgress, achievement.MaxProgress);
+        }
 
-        // Check if achievement was unlocked by progress reaching 100%
-        if (achievement != null && achievement.IsUnlocked && oldProgress < 1.0f)
+        // Check if achievement was unlocked by progress reaching max
+        if (achievement != null && achievement.IsUnlocked && oldProgress < achievement.MaxProgress)
         {
             EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
         }
 
         // Sync to platform providers
-        await SyncProgressToPlatforms(achievementId, progress);
+        await SyncProgressToPlatforms(achievementId, currentProgress);
     }
 
     /// <summary>
@@ -315,7 +318,7 @@ public partial class AchievementManager : Node
     /// <summary>
     /// Sync progress to all platform providers
     /// </summary>
-    private async Task SyncProgressToPlatforms(string achievementId, float progress)
+    private async Task SyncProgressToPlatforms(string achievementId, int currentProgress)
     {
         var tasks = new List<Task>();
 
@@ -324,7 +327,7 @@ public partial class AchievementManager : Node
             if (!provider.IsAvailable)
                 continue;
 
-            tasks.Add(SyncProgressToProvider(achievementId, progress, provider));
+            tasks.Add(SyncProgressToProvider(achievementId, currentProgress, provider));
         }
 
         await Task.WhenAll(tasks);
@@ -364,11 +367,11 @@ public partial class AchievementManager : Node
     /// <summary>
     /// Sync progress to a specific provider with retry on failure
     /// </summary>
-    private async Task SyncProgressToProvider(string achievementId, float progress, IAchievementProvider provider)
+    private async Task SyncProgressToProvider(string achievementId, int currentProgress, IAchievementProvider provider)
     {
         try
         {
-            await provider.SetProgress(achievementId, progress);
+            await provider.SetProgress(achievementId, currentProgress);
         }
         catch (Exception ex)
         {
@@ -378,7 +381,7 @@ public partial class AchievementManager : Node
                 AchievementId = achievementId,
                 Provider = provider,
                 Type = SyncType.Progress,
-                Progress = progress
+                CurrentProgress = currentProgress
             });
         }
     }
@@ -403,9 +406,9 @@ public partial class AchievementManager : Node
         {
             await SyncAchievementToPlatforms(achievement.Id);
 
-            if (achievement.Progress > 0 && achievement.Progress < 1.0f)
+            if (achievement.CurrentProgress > 0 && achievement.CurrentProgress < achievement.MaxProgress)
             {
-                await SyncProgressToPlatforms(achievement.Id, achievement.Progress);
+                await SyncProgressToPlatforms(achievement.Id, achievement.CurrentProgress);
             }
         }
     }
@@ -468,7 +471,7 @@ public partial class AchievementManager : Node
                 }
                 else if (sync.Type == SyncType.Progress)
                 {
-                    await sync.Provider.SetProgress(sync.AchievementId, sync.Progress);
+                    await sync.Provider.SetProgress(sync.AchievementId, sync.CurrentProgress);
                     successCount++;
                 }
             }

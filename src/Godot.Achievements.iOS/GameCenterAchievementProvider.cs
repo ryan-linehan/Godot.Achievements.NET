@@ -198,31 +198,33 @@ public class GameCenterAchievementProvider : IAchievementProvider
         }
     }
 
-    public async Task<float> GetProgress(string achievementId)
+    public async Task<int> GetProgress(string achievementId)
     {
         if (!IsAvailable)
-            return 0f;
+            return 0;
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null || string.IsNullOrEmpty(achievement.GameCenterId))
-            return 0f;
+            return 0;
 
         try
         {
             // Real implementation with iOS bindings:
-            // Load achievement and return PercentComplete / 100.0
+            // Load achievement and calculate current progress from PercentComplete
+            // int currentProgress = (int)(gcAchievement.PercentComplete / 100.0 * achievement.MaxProgress);
+            // return currentProgress;
 
             await Task.CompletedTask;
-            return 0f;
+            return 0;
         }
         catch (Exception ex)
         {
             GD.PushError($"[GameCenter] Error getting progress: {ex.Message}");
-            return 0f;
+            return 0;
         }
     }
 
-    public async Task SetProgress(string achievementId, float progress)
+    public async Task SetProgress(string achievementId, int currentProgress)
     {
         if (!IsAvailable)
             return;
@@ -234,10 +236,11 @@ public class GameCenterAchievementProvider : IAchievementProvider
         try
         {
             // Real implementation with iOS bindings:
+            // double percentComplete = achievement.MaxProgress > 0 ? (double)currentProgress / achievement.MaxProgress * 100.0 : 0.0;
             // var gcAchievement = new GKAchievement(achievement.GameCenterId)
             // {
-            //     PercentComplete = progress * 100.0,
-            //     ShowsCompletionBanner = progress >= 1.0
+            //     PercentComplete = percentComplete,
+            //     ShowsCompletionBanner = currentProgress >= achievement.MaxProgress
             // };
             //
             // GKAchievement.ReportAchievements(new[] { gcAchievement }, (error) =>
@@ -248,7 +251,8 @@ public class GameCenterAchievementProvider : IAchievementProvider
             //     }
             // });
 
-            GD.Print($"[GameCenter] Would set progress for {achievement.GameCenterId}: {progress * 100:F1}%");
+            float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
+            GD.Print($"[GameCenter] Would set progress for {achievement.GameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
             await Task.CompletedTask;
         }
         catch (Exception ex)

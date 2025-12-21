@@ -175,14 +175,14 @@ public class SteamAchievementProvider : IAchievementProvider
         }
     }
 
-    public async Task<float> GetProgress(string achievementId)
+    public async Task<int> GetProgress(string achievementId)
     {
         if (!IsAvailable)
-            return 0f;
+            return 0;
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null || string.IsNullOrEmpty(achievement.SteamId))
-            return 0f;
+            return 0;
 
         try
         {
@@ -191,21 +191,20 @@ public class SteamAchievementProvider : IAchievementProvider
             // int statValue;
             // if (SteamUserStats.GetStat($"{achievement.SteamId}_STAT", out statValue))
             // {
-            //     int maxValue = 100; // Get from achievement config
-            //     return (float)statValue / maxValue;
+            //     return statValue; // Return current progress value
             // }
 
             await Task.CompletedTask;
-            return 0f;
+            return 0;
         }
         catch (Exception ex)
         {
             GD.PushError($"[Steam] Error getting progress: {ex.Message}");
-            return 0f;
+            return 0;
         }
     }
 
-    public async Task SetProgress(string achievementId, float progress)
+    public async Task SetProgress(string achievementId, int currentProgress)
     {
         if (!IsAvailable)
             return;
@@ -218,12 +217,11 @@ public class SteamAchievementProvider : IAchievementProvider
         {
             // Real implementation with Steamworks.NET:
             // For progressive achievements, update the stat
-            // int maxValue = 100; // Get from achievement config
-            // int statValue = (int)(progress * maxValue);
-            // SteamUserStats.SetStat($"{achievement.SteamId}_STAT", statValue);
+            // SteamUserStats.SetStat($"{achievement.SteamId}_STAT", currentProgress);
             // SteamUserStats.StoreStats();
 
-            GD.Print($"[Steam] Would set progress for {achievement.SteamId}: {progress * 100:F1}%");
+            float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
+            GD.Print($"[Steam] Would set progress for {achievement.SteamId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
 
             await Task.CompletedTask;
         }

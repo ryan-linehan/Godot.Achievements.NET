@@ -23,10 +23,18 @@ public partial class Achievement : Resource
     // Custom platform metadata (for third-party providers)
     [Export] public Godot.Collections.Dictionary<string, string> CustomPlatformIds { get; set; } = new();
 
+    // Progressive achievement settings (exported)
+    [Export] public int MaxProgress { get; set; } = 1;
+
     // Runtime state (managed by LocalProvider, not exported)
     public bool IsUnlocked { get; set; }
     public DateTime? UnlockedAt { get; set; }
-    public float Progress { get; set; } // 0.0 to 1.0
+    public int CurrentProgress { get; set; }
+
+    /// <summary>
+    /// Get progress as a percentage (0.0 to 1.0)
+    /// </summary>
+    public float ProgressPercentage => MaxProgress > 0 ? (float)CurrentProgress / MaxProgress : 0f;
 
     /// <summary>
     /// Get a platform-specific ID from the CustomPlatformIds dictionary

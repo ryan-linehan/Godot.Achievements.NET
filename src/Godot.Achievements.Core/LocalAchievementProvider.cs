@@ -36,7 +36,7 @@ public class LocalAchievementProvider : IAchievementProvider
         {
             achievement.IsUnlocked = true;
             achievement.UnlockedAt = state.UnlockedAt;
-            achievement.Progress = 1.0f;
+            achievement.CurrentProgress = achievement.MaxProgress;
             return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true));
         }
 
@@ -45,13 +45,13 @@ public class LocalAchievementProvider : IAchievementProvider
         {
             IsUnlocked = true,
             UnlockedAt = DateTime.UtcNow,
-            Progress = 1.0f
+            CurrentProgress = achievement.MaxProgress
         };
 
         _achievementStates[achievementId] = newState;
         achievement.IsUnlocked = true;
         achievement.UnlockedAt = newState.UnlockedAt;
-        achievement.Progress = 1.0f;
+        achievement.CurrentProgress = achievement.MaxProgress;
 
         SaveToDisk();
 
@@ -69,7 +69,7 @@ public class LocalAchievementProvider : IAchievementProvider
         {
             achievement.IsUnlocked = state.IsUnlocked;
             achievement.UnlockedAt = state.UnlockedAt;
-            achievement.Progress = state.Progress;
+            achievement.CurrentProgress = state.CurrentProgress;
         }
 
         return Task.FromResult<Achievement?>(achievement);
@@ -84,24 +84,24 @@ public class LocalAchievementProvider : IAchievementProvider
             {
                 achievement.IsUnlocked = state.IsUnlocked;
                 achievement.UnlockedAt = state.UnlockedAt;
-                achievement.Progress = state.Progress;
+                achievement.CurrentProgress = state.CurrentProgress;
             }
         }
 
         return Task.FromResult(_database.Achievements.ToArray());
     }
 
-    public Task<float> GetProgress(string achievementId)
+    public Task<int> GetProgress(string achievementId)
     {
         if (_achievementStates.TryGetValue(achievementId, out var state))
         {
-            return Task.FromResult(state.Progress);
+            return Task.FromResult(state.CurrentProgress);
         }
 
-        return Task.FromResult(0f);
+        return Task.FromResult(0);
     }
 
-    public Task SetProgress(string achievementId, float progress)
+    public Task SetProgress(string achievementId, int currentProgress)
     {
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
@@ -110,8 +110,8 @@ public class LocalAchievementProvider : IAchievementProvider
             return Task.CompletedTask;
         }
 
-        // Clamp progress to 0.0 - 1.0
-        progress = Mathf.Clamp(progress, 0f, 1f);
+        // Clamp progress to 0 - MaxProgress
+        currentProgress = Mathf.Clamp(currentProgress, 0, achievement.MaxProgress);
 
         // Get or create state
         if (!_achievementStates.TryGetValue(achievementId, out var state))
@@ -120,11 +120,11 @@ public class LocalAchievementProvider : IAchievementProvider
             _achievementStates[achievementId] = state;
         }
 
-        state.Progress = progress;
-        achievement.Progress = progress;
+        state.CurrentProgress = currentProgress;
+        achievement.CurrentProgress = currentProgress;
 
-        // Auto-unlock if progress reaches 100%
-        if (progress >= 1.0f && !state.IsUnlocked)
+        // Auto-unlock if progress reaches max
+        if (currentProgress >= achievement.MaxProgress && !state.IsUnlocked)
         {
             state.IsUnlocked = true;
             state.UnlockedAt = DateTime.UtcNow;
@@ -152,7 +152,7 @@ public class LocalAchievementProvider : IAchievementProvider
             // Reset runtime state
             achievement.IsUnlocked = false;
             achievement.UnlockedAt = null;
-            achievement.Progress = 0f;
+            achievement.CurrentProgress = 0;
 
             SaveToDisk();
             GD.Print($"[Local] Reset achievement: {achievementId}");
@@ -172,7 +172,7 @@ public class LocalAchievementProvider : IAchievementProvider
         {
             achievement.IsUnlocked = false;
             achievement.UnlockedAt = null;
-            achievement.Progress = 0f;
+            achievement.CurrentProgress = 0;
         }
 
         SaveToDisk();
@@ -220,7 +220,7 @@ public class LocalAchievementProvider : IAchievementProvider
             var state = new AchievementState
             {
                 IsUnlocked = stateDict.TryGetValue("IsUnlocked", out var unlocked) && (bool)unlocked,
-                Progress = stateDict.TryGetValue("Progress", out var progress) ? Convert.ToSingle(progress) : 0f
+                CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? Convert.ToInt32(progress) : 0
             };
 
             if (stateDict.TryGetValue("UnlockedAt", out var unlockedAt) && unlockedAt is string dateStr)
@@ -249,7 +249,7 @@ public class LocalAchievementProvider : IAchievementProvider
             var stateDict = new Godot.Collections.Dictionary
             {
                 ["IsUnlocked"] = kvp.Value.IsUnlocked,
-                ["Progress"] = kvp.Value.Progress
+                ["CurrentProgress"] = kvp.Value.CurrentProgress
             };
 
             if (kvp.Value.UnlockedAt.HasValue)
@@ -283,5 +283,5 @@ internal class AchievementState
 {
     public bool IsUnlocked { get; set; }
     public DateTime? UnlockedAt { get; set; }
-    public float Progress { get; set; }
+    public int CurrentProgress { get; set; }
 }
