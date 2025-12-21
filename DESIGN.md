@@ -62,6 +62,8 @@ A C#-focused achievements plugin for Godot 4+ that provides:
 - Conditional compilation symbols
 - Static interface implementations
 - Concrete types (no dynamic invocation)
+- **Godot's `Json` class** instead of `System.Text.Json.JsonSerializer` for full AOT compatibility
+- **Godot.Collections.Dictionary** instead of C# POCO classes for serialization
 
 ### Core Interface
 
@@ -216,18 +218,35 @@ public partial class Achievement : Resource
         if (string.IsNullOrEmpty(CustomPlatformIds))
             return null;
 
-        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+        var json = new Json();
+        var error = json.Parse(CustomPlatformIds);
+        if (error != Error.Ok)
+            return null;
+
+        var dict = json.Data.AsGodotDictionary<string, string>();
         return dict.TryGetValue(platform, out var id) ? id : null;
     }
 
     public void SetPlatformId(string platform, string id)
     {
-        var dict = string.IsNullOrEmpty(CustomPlatformIds)
-            ? new Dictionary<string, string>()
-            : JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+        Godot.Collections.Dictionary<string, string> dict;
+
+        if (string.IsNullOrEmpty(CustomPlatformIds))
+        {
+            dict = new Godot.Collections.Dictionary<string, string>();
+        }
+        else
+        {
+            var json = new Json();
+            var error = json.Parse(CustomPlatformIds);
+            if (error != Error.Ok)
+                dict = new Godot.Collections.Dictionary<string, string>();
+            else
+                dict = json.Data.AsGodotDictionary<string, string>();
+        }
 
         dict[platform] = id;
-        CustomPlatformIds = JsonSerializer.Serialize(dict);
+        CustomPlatformIds = Json.Stringify(dict);
     }
 }
 ```
@@ -249,17 +268,24 @@ Saved as: `res://achievements.tres` (version controlled)
 
 ### Local Save Data
 
-```csharp
-public class AchievementSaveData
-{
-    public bool IsUnlocked { get; set; }
-    public DateTime UnlockedAt { get; set; }
-    public float Progress { get; set; }
-}
-
-// Dictionary<string, AchievementSaveData>
+```json
 // Saved to: user://achievements.json
+// Uses Godot.Collections.Dictionary for AOT compatibility
+{
+    "first_kill": {
+        "IsUnlocked": true,
+        "UnlockedAt": "2025-12-21T15:30:00.0000000Z",
+        "Progress": 1.0
+    },
+    "kill_100_enemies": {
+        "IsUnlocked": false,
+        "UnlockedAt": "",
+        "Progress": 0.65
+    }
+}
 ```
+
+**Note:** Uses `Godot.Collections.Dictionary` instead of C# POCO classes for full AOT compatibility.
 
 ## 🎮 User API
 
@@ -461,21 +487,26 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 public class LocalAchievementProvider : IAchievementProvider
 {
     private const string SavePath = "user://achievements.json";
-    private Dictionary<string, AchievementSaveData> _savedData;
+    private Godot.Collections.Dictionary<string, Godot.Collections.Dictionary> _savedData;
 
     public string ProviderName => "Local";
     public bool IsAvailable => true; // Always available
 
+    public LocalAchievementProvider()
+    {
+        LoadFromDisk();
+    }
+
     public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
     {
         bool wasUnlocked = _savedData.ContainsKey(achievementId)
-            && _savedData[achievementId].IsUnlocked;
+            && (bool)_savedData[achievementId]["IsUnlocked"];
 
-        _savedData[achievementId] = new()
+        _savedData[achievementId] = new Godot.Collections.Dictionary
         {
-            IsUnlocked = true,
-            UnlockedAt = DateTime.UtcNow,
-            Progress = 1.0f
+            { "IsUnlocked", true },
+            { "UnlockedAt", DateTime.UtcNow.ToString("O") }, // ISO 8601 format
+            { "Progress", 1.0f }
         };
 
         SaveToDisk();
@@ -485,9 +516,33 @@ public class LocalAchievementProvider : IAchievementProvider
 
     private void SaveToDisk()
     {
-        var json = JsonSerializer.Serialize(_savedData);
+        var jsonString = Json.Stringify(_savedData, "\t"); // Pretty print with tabs
         using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
-        file.StoreString(json);
+        file.StoreString(jsonString);
+    }
+
+    private void LoadFromDisk()
+    {
+        if (!FileAccess.FileExists(SavePath))
+        {
+            _savedData = new Godot.Collections.Dictionary<string, Godot.Collections.Dictionary>();
+            return;
+        }
+
+        using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
+        var jsonString = file.GetAsText();
+
+        var json = new Json();
+        var error = json.Parse(jsonString);
+
+        if (error != Error.Ok)
+        {
+            GD.PushError($"Failed to parse achievements JSON: {json.GetErrorMessage()}");
+            _savedData = new Godot.Collections.Dictionary<string, Godot.Collections.Dictionary>();
+            return;
+        }
+
+        _savedData = json.Data.AsGodotDictionary<string, Godot.Collections.Dictionary>();
     }
 }
 ```
@@ -972,18 +1027,35 @@ public partial class Achievement : Resource
         if (string.IsNullOrEmpty(CustomPlatformIds))
             return null;
 
-        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+        var json = new Json();
+        var error = json.Parse(CustomPlatformIds);
+        if (error != Error.Ok)
+            return null;
+
+        var dict = json.Data.AsGodotDictionary<string, string>();
         return dict.TryGetValue(platform, out var id) ? id : null;
     }
 
     public void SetPlatformId(string platform, string id)
     {
-        var dict = string.IsNullOrEmpty(CustomPlatformIds)
-            ? new Dictionary<string, string>()
-            : JsonSerializer.Deserialize<Dictionary<string, string>>(CustomPlatformIds);
+        Godot.Collections.Dictionary<string, string> dict;
+
+        if (string.IsNullOrEmpty(CustomPlatformIds))
+        {
+            dict = new Godot.Collections.Dictionary<string, string>();
+        }
+        else
+        {
+            var json = new Json();
+            var error = json.Parse(CustomPlatformIds);
+            if (error != Error.Ok)
+                dict = new Godot.Collections.Dictionary<string, string>();
+            else
+                dict = json.Data.AsGodotDictionary<string, string>();
+        }
 
         dict[platform] = id;
-        CustomPlatformIds = JsonSerializer.Serialize(dict);
+        CustomPlatformIds = Json.Stringify(dict);
     }
 }
 ```
