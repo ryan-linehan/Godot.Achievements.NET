@@ -294,3 +294,138 @@ When dock is in bottom panel mode, layout switches to horizontal:
 │ [☐ Hidden] [☐ Incremental]  [Preview] [Test Unlock]   │
 └─────────────────────────────────────────────────────────┘
 ```
+
+## Runtime Debug Panel (In-Game)
+
+Panel that can be instanced during development for testing achievements while the game runs:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🐛 Achievement Debugger                                [X]  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ [Reset All] [Refresh] ☑ Show Toasts                       │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐│
+│ │ ┌────┐                                                  ││
+│ │ │🗡️ │ First Blood                      [Unlock] [Reset]││
+│ │ └────┘ ✓ Unlocked 12/21/2025 3:45 PM                   ││
+│ │ ───────────────────────────────────────────────────────  ││
+│ │ ┌────┐                                                  ││
+│ │ │🏹 │ Sharpshooter                     [Unlock] [Reset]││
+│ │ └────┘ Locked                                           ││
+│ │ ───────────────────────────────────────────────────────  ││
+│ │ ┌────┐                                                  ││
+│ │ │💀 │ Kill 100 Enemies                 [Unlock] [Reset]││
+│ │ └────┘ Progress: ████████████░░░░░░░░ 65%             ││
+│ │ ───────────────────────────────────────────────────────  ││
+│ │ ┌────┐                                                  ││
+│ │ │🐉 │ Dragon Slayer                    [Unlock] [Reset]││
+│ │ └────┘ Locked                                           ││
+│ │ ───────────────────────────────────────────────────────  ││
+│ │ ┌────┐                                                  ││
+│ │ │⚡ │ Speedrun Master                  [Unlock] [Reset]││
+│ │ └────┘ Locked                                           ││
+│ │ ───────────────────────────────────────────────────────  ││
+│ │ ┌────┐                                                  ││
+│ │ │🔒 │ ????                             [Unlock] [Reset]││
+│ │ └────┘ Hidden achievement - Locked                      ││
+│ └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│ Providers: Local, Steam, Game Center            [Sync All]│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Debug Panel Features
+
+**Controls:**
+- **Reset All**: Clears all achievement progress (local only)
+- **Refresh**: Updates the list with current state
+- **Show Toasts**: Toggle whether unlocking shows toast notifications
+- **Sync All**: Force sync local achievements to all platforms
+
+**Per-Achievement:**
+- **Icon Preview**: Shows achievement icon
+- **Status Display**:
+  - ✓ Green text = Unlocked with timestamp
+  - Gray text = Locked
+  - Progress bar = Incremental achievement progress
+  - 🔒 Hidden = Shows as "????" when locked
+- **Unlock Button**:
+  - Unlocks the achievement
+  - Shows toast if "Show Toasts" is enabled
+  - Works even if already unlocked (for testing)
+- **Reset Button**: Resets individual achievement to locked state
+
+**Usage Patterns:**
+
+1. **Add to Debug Menu:**
+```csharp
+// In your debug menu scene
+var debugPanel = new AchievementDebugPanel();
+debugPanel.Visible = false; // Hidden by default
+AddChild(debugPanel);
+
+// Toggle with F3 or debug menu button
+public override void _Input(InputEvent @event)
+{
+    if (@event.IsActionPressed("ui_debug"))
+        debugPanel.Visible = !debugPanel.Visible;
+}
+```
+
+2. **Keyboard Shortcut (Ctrl+Shift+A):**
+```csharp
+// Auto-toggle anywhere in game
+if (keyEvent.Keycode == Key.A && keyEvent.CtrlPressed && keyEvent.ShiftPressed)
+{
+    var existing = GetNodeOrNull<AchievementDebugPanel>("AchievementDebugPanel");
+    if (existing != null)
+        existing.QueueFree();
+    else
+        AddChild(new AchievementDebugPanel { Name = "AchievementDebugPanel" });
+}
+```
+
+3. **Instance from Scene:**
+```csharp
+// If using the pre-built scene
+var debugPanel = GD.Load<PackedScene>("res://addons/godot_achievements/DebugPanel.tscn").Instantiate();
+GetTree().Root.AddChild(debugPanel);
+```
+
+### Debug Panel States
+
+**When Testing Unlock:**
+```
+┌────┐
+│🗡️ │ First Blood                      [Unlocking...] [Reset]
+└────┘ ✓ Unlocked just now
+
+   🎊 [Toast slides in showing "First Blood" unlocked]
+```
+
+**When Syncing:**
+```
+Providers: Local ✓, Steam ⏳, Game Center ✓     [Syncing...]
+```
+
+**Offline Mode:**
+```
+Providers: Local ✓, Steam ⚠ Offline (2 queued), Game Center ⨯
+```
+
+### Conditional Compilation
+
+The debug panel only compiles in debug builds:
+
+```csharp
+#if DEBUG || TOOLS
+public partial class AchievementDebugPanel : PanelContainer
+{
+    // ... implementation
+}
+#endif
+```
+
+This ensures it's automatically excluded from release builds.

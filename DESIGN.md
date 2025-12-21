@@ -515,11 +515,228 @@ StatsManager.Instance.OnStatChanged += (stat, value) =>
 };
 ```
 
-### Debug Reset
+### Debug Tools & Runtime Testing
+
+#### Debug Node (Runtime Achievement Tester)
+
+A Control node that can be instanced during development for easy achievement testing:
+
 ```csharp
-#if DEBUG
-AchievementManager.Instance.ResetAllAchievements();
-#endif
+[Tool]
+public partial class AchievementDebugPanel : PanelContainer
+{
+    private VBoxContainer _achievementList;
+    private Button _resetAllButton;
+    private CheckBox _showToastsCheckbox;
+
+    public override void _Ready()
+    {
+        BuildUI();
+        RefreshAchievements();
+    }
+
+    private void BuildUI()
+    {
+        var vbox = new VBoxContainer();
+        AddChild(vbox);
+
+        // Header
+        var title = new Label { Text = "🐛 Achievement Debugger",
+            HorizontalAlignment = HorizontalAlignment.Center };
+        vbox.AddChild(title);
+
+        // Controls
+        var controls = new HBoxContainer();
+        vbox.AddChild(controls);
+
+        _resetAllButton = new Button { Text = "Reset All" };
+        _resetAllButton.Pressed += OnResetAll;
+        controls.AddChild(_resetAllButton);
+
+        var refreshButton = new Button { Text = "Refresh" };
+        refreshButton.Pressed += RefreshAchievements;
+        controls.AddChild(refreshButton);
+
+        _showToastsCheckbox = new CheckBox { Text = "Show Toasts", ButtonPressed = true };
+        controls.AddChild(_showToastsCheckbox);
+
+        // Achievement list with unlock buttons
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 300) };
+        vbox.AddChild(scroll);
+
+        _achievementList = new VBoxContainer();
+        scroll.AddChild(_achievementList);
+    }
+
+    private void RefreshAchievements()
+    {
+        // Clear existing
+        foreach (var child in _achievementList.GetChildren())
+            child.QueueFree();
+
+        // Add achievement rows
+        var achievements = AchievementManager.Instance.GetAllAchievements();
+        foreach (var achievement in achievements)
+        {
+            var row = new HBoxContainer();
+            _achievementList.AddChild(row);
+
+            // Icon
+            var icon = new TextureRect
+            {
+                Texture = achievement.Icon,
+                CustomMinimumSize = new Vector2(32, 32),
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
+            };
+            row.AddChild(icon);
+
+            // Info
+            var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            row.AddChild(info);
+
+            var nameLabel = new Label
+            {
+                Text = achievement.DisplayName,
+                Theme = new Theme() // Bold
+            };
+            info.AddChild(nameLabel);
+
+            var statusLabel = new Label
+            {
+                Text = achievement.IsUnlocked
+                    ? $"✓ Unlocked {achievement.UnlockedAt:g}"
+                    : "Locked",
+                Modulate = achievement.IsUnlocked ? Colors.Green : Colors.Gray
+            };
+            info.AddChild(statusLabel);
+
+            // Progress bar for incremental achievements
+            if (achievement.Progress > 0 && achievement.Progress < 1)
+            {
+                var progressBar = new ProgressBar
+                {
+                    Value = achievement.Progress * 100,
+                    ShowPercentage = true
+                };
+                info.AddChild(progressBar);
+            }
+
+            // Unlock button
+            var unlockBtn = new Button
+            {
+                Text = achievement.IsUnlocked ? "Unlock Again" : "Unlock",
+                Disabled = false
+            };
+            unlockBtn.Pressed += () => OnUnlockAchievement(achievement.Id);
+            row.AddChild(unlockBtn);
+
+            // Reset individual button
+            var resetBtn = new Button { Text = "Reset" };
+            resetBtn.Pressed += () => OnResetAchievement(achievement.Id);
+            row.AddChild(resetBtn);
+        }
+    }
+
+    private async void OnUnlockAchievement(string id)
+    {
+        var prevState = AchievementManager.Instance.ShowToasts;
+        AchievementManager.Instance.ShowToasts = _showToastsCheckbox.ButtonPressed;
+
+        await AchievementManager.Instance.Unlock(id);
+
+        AchievementManager.Instance.ShowToasts = prevState;
+        RefreshAchievements();
+    }
+
+    private void OnResetAchievement(string id)
+    {
+        AchievementManager.Instance.ResetAchievement(id);
+        RefreshAchievements();
+    }
+
+    private void OnResetAll()
+    {
+        AchievementManager.Instance.ResetAllAchievements();
+        RefreshAchievements();
+    }
+}
+```
+
+**Usage:**
+```csharp
+// Add to debug menu scene
+var debugPanel = new AchievementDebugPanel();
+debugMenu.AddChild(debugPanel);
+
+// Or instance the shipped scene
+var debugPanel = GD.Load<PackedScene>("res://addons/godot_achievements/DebugPanel.tscn").Instantiate();
+AddChild(debugPanel);
+```
+
+**Features:**
+- ✅ List all achievements with current state
+- ✅ Unlock/Reset individual achievements
+- ✅ Reset all achievements at once
+- ✅ Show progress bars for incremental achievements
+- ✅ Toggle toast preview on/off
+- ✅ Real-time refresh of achievement state
+- ✅ Visual status indicators (locked/unlocked)
+
+#### AchievementManager Debug API
+
+```csharp
+public partial class AchievementManager : Node
+{
+    #if DEBUG || TOOLS
+
+    /// <summary>
+    /// Reset a specific achievement (local only, doesn't affect platforms)
+    /// </summary>
+    public void ResetAchievement(string achievementId)
+    {
+        _localProvider.Reset(achievementId);
+        EmitSignal(SignalName.AchievementReset, achievementId);
+    }
+
+    /// <summary>
+    /// Reset all achievements (local only)
+    /// </summary>
+    public void ResetAllAchievements()
+    {
+        _localProvider.ResetAll();
+        EmitSignal(SignalName.AllAchievementsReset);
+    }
+
+    /// <summary>
+    /// Simulate platform sync for testing (doesn't actually call platform APIs)
+    /// </summary>
+    public async Task TestPlatformSync(string achievementId)
+    {
+        await Task.Delay(1000); // Simulate network delay
+        GD.Print($"[TEST] Would sync '{achievementId}' to {_platformProviders.Count} platforms");
+    }
+
+    #endif
+}
+```
+
+#### Keyboard Shortcut for Debug Panel
+
+```csharp
+// In game's main script
+public override void _Input(InputEvent @event)
+{
+    #if DEBUG
+    if (@event is InputEventKey keyEvent && keyEvent.Pressed)
+    {
+        // Ctrl+Shift+A to toggle achievement debug panel
+        if (keyEvent.Keycode == Key.A && keyEvent.CtrlPressed && keyEvent.ShiftPressed)
+        {
+            ToggleAchievementDebugPanel();
+        }
+    }
+    #endif
+}
 ```
 
 ## 📋 Implementation Checklist
@@ -533,6 +750,7 @@ AchievementManager.Instance.ResetAllAchievements();
 - [ ] JSON save/load for local data
 - [ ] Default toast system
 - [ ] Editor plugin infrastructure
+- [ ] `AchievementDebugPanel` runtime debug node
 
 ### Phase 2: Editor Integration
 - [ ] Achievement editor dock UI
