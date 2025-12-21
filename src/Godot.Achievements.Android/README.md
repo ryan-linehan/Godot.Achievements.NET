@@ -5,23 +5,47 @@ Google Play Games achievement provider for Godot.Achievements.NET.
 ## Requirements
 
 - Godot.Achievements.Core
-- Android platform target
+- **godot-play-game-services** plugin - https://github.com/godot-sdk-integrations/godot-play-game-services
+- Android platform target (Godot 4.2+)
 - Google Play Console account
 - Google Play Games Services configured
 
 ## Installation
 
-### 1. Add to your project
+### 1. Install godot-play-game-services Plugin
+
+First, install the official Google Play Games Services plugin for Godot:
+
+```bash
+# Clone the repository
+git clone https://github.com/godot-sdk-integrations/godot-play-game-services.git
+
+# Follow the installation instructions in the repository
+# This provides Google Play Games integration for Godot 4
+```
+
+**Installation steps:**
+1. Download the latest release from the [releases page](https://github.com/godot-sdk-integrations/godot-play-game-services/releases)
+2. Extract to your Godot project's `addons/` folder
+3. Enable the plugin in **Project → Project Settings → Plugins**
+4. Configure your Google Play Console application (see below)
+
+For detailed setup, see: https://github.com/godot-sdk-integrations/godot-play-game-services#installation
+
+### 2. Add Achievements packages to your project
 
 ```xml
 <ItemGroup>
+  <!-- Core achievement system -->
   <PackageReference Include="Godot.Achievements.Core" Version="1.0.0" />
+
+  <!-- Android Google Play provider (Android only) -->
   <PackageReference Include="Godot.Achievements.Android" Version="1.0.0"
                     Condition="'$(GodotTargetPlatform)' == 'android'" />
 </ItemGroup>
 ```
 
-### 2. Configure Google Play Games Services
+### 3. Configure Google Play Games Services
 
 1. Go to https://play.google.com/console
 2. Select your app (or create one)

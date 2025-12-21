@@ -19,4 +19,8 @@
   <ItemGroup>
     <ProjectReference Include="../Godot.Achievements.Core/Godot.Achievements.Core.csproj" />
   </ItemGroup>
+
+  <!-- Note: Users must install GodotApplePlugins separately -->
+  <!-- This package is designed to work with: https://github.com/migueldeicaza/GodotApplePlugins -->
+  <!-- The GameKit plugin provides Game Center functionality -->
 </Project>

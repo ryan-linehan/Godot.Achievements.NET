@@ -1,29 +1,46 @@
 # Godot.Achievements.Steam
 
-Steam achievement provider for Godot.Achievements.NET using Steamworks.NET.
+Steam achievement provider for Godot.Achievements.NET using Godot.Steamworks.NET.
 
 ## Requirements
 
 - Godot.Achievements.Core
-- Steamworks.NET (install separately)
+- **Godot.Steamworks.NET** - https://github.com/ryan-linehan/Godot.Steamworks.NET
 - Steam account with valid App ID
 - `steam_appid.txt` in your project root
 
 ## Installation
 
-### 1. Install Steamworks.NET
+### 1. Install Godot.Steamworks.NET
 
-Follow the Steamworks.NET installation guide for Godot 4:
-- https://github.com/rlabrecque/Steamworks.NET
+First, set up the Steamworks integration:
 
-### 2. Add to your project
+```bash
+# Clone the Godot.Steamworks.NET repository
+git clone https://github.com/ryan-linehan/Godot.Steamworks.NET.git
+
+# Follow the setup instructions in that repository's README
+# This will install Steamworks.NET bindings for Godot 4
+```
+
+**Or** add as a Git submodule to your project:
+```bash
+git submodule add https://github.com/ryan-linehan/Godot.Steamworks.NET.git addons/steamworks
+```
+
+### 2. Add Achievements packages to your project
 
 ```xml
 <ItemGroup>
+  <!-- Core achievement system -->
   <PackageReference Include="Godot.Achievements.Core" Version="1.0.0" />
+
+  <!-- Steam provider (PC platforms only) -->
   <PackageReference Include="Godot.Achievements.Steam" Version="1.0.0"
                     Condition="'$(GodotTargetPlatform)' == 'windows' OR '$(Configuration)' == 'Debug'" />
-  <PackageReference Include="Steamworks.NET" Version="20.2.0" />
+
+  <!-- Godot.Steamworks.NET reference (once available as package) -->
+  <!-- <PackageReference Include="Godot.Steamworks.NET" Version="1.0.0" /> -->
 </ItemGroup>
 ```
 

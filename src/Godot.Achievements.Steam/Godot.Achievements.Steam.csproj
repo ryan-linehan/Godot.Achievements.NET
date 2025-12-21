@@ -20,8 +20,10 @@
     <ProjectReference Include="../Godot.Achievements.Core/Godot.Achievements.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Steamworks.NET dependency - users need to install this separately -->
-    <!-- <PackageReference Include="Steamworks.NET" Version="20.2.0" /> -->
-  </ItemGroup>
+  <!-- Note: Users must install Godot.Steamworks.NET separately -->
+  <!-- This package is designed to work with: https://github.com/ryan-linehan/Godot.Steamworks.NET -->
+  <!-- Uncomment when Godot.Steamworks.NET is available as a package: -->
+  <!-- <ItemGroup>
+    <PackageReference Include="Godot.Steamworks.NET" Version="1.0.0" />
+  </ItemGroup> -->
 </Project>

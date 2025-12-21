@@ -32,8 +32,22 @@ A C#-focused achievements plugin for Godot 4+ that provides editor-based achieve
   <PackageReference Include="Godot.Achievements.Core" Version="1.0.0" />
   <!-- Platform-specific packages -->
   <PackageReference Include="Godot.Achievements.Steam" Version="1.0.0" Condition="'$(GodotTargetPlatform)' == 'windows'" />
+  <PackageReference Include="Godot.Achievements.iOS" Version="1.0.0" Condition="'$(GodotTargetPlatform)' == 'ios'" />
+  <PackageReference Include="Godot.Achievements.Android" Version="1.0.0" Condition="'$(GodotTargetPlatform)' == 'android'" />
 </ItemGroup>
 ```
+
+## Platform SDK Integration
+
+This package works with official platform SDKs:
+
+| Platform | SDK Required | Repository |
+|----------|-------------|------------|
+| **Steam** | Godot.Steamworks.NET | https://github.com/ryan-linehan/Godot.Steamworks.NET |
+| **iOS** | GodotApplePlugins (GameKit) | https://github.com/migueldeicaza/GodotApplePlugins |
+| **Android** | godot-play-game-services | https://github.com/godot-sdk-integrations/godot-play-game-services |
+
+**See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) for complete setup instructions.**
 
 ## Quick Start
 

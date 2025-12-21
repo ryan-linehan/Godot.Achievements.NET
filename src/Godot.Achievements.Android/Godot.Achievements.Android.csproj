@@ -19,4 +19,8 @@
   <ItemGroup>
     <ProjectReference Include="../Godot.Achievements.Core/Godot.Achievements.Core.csproj" />
   </ItemGroup>
+
+  <!-- Note: Users must install godot-play-game-services separately -->
+  <!-- This package is designed to work with: https://github.com/godot-sdk-integrations/godot-play-game-services -->
+  <!-- The plugin provides Google Play Games Services integration for Godot 4 -->
 </Project>

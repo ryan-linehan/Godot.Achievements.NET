@@ -5,23 +5,46 @@ iOS Game Center achievement provider for Godot.Achievements.NET.
 ## Requirements
 
 - Godot.Achievements.Core
-- iOS platform target
+- **GodotApplePlugins** (GameKit plugin) - https://github.com/migueldeicaza/GodotApplePlugins
+- iOS platform target (Godot 4.3+)
 - Apple Developer account
 - Game Center entitlements configured
 
 ## Installation
 
-### 1. Add to your project
+### 1. Install GodotApplePlugins (GameKit)
+
+First, install Miguel de Icaza's GodotApplePlugins to enable Game Center support:
+
+```bash
+# Clone the repository
+git clone https://github.com/migueldeicaza/GodotApplePlugins.git
+
+# Follow the installation instructions for the GameKit plugin
+# This provides Game Center integration for Godot 4
+```
+
+**Installation steps:**
+1. Copy the GameKit plugin to your Godot project's `addons/` folder
+2. Enable the plugin in **Project → Project Settings → Plugins**
+3. Configure Game Center entitlements (see below)
+
+For detailed setup, see: https://github.com/migueldeicaza/GodotApplePlugins/tree/main/GameKit
+
+### 2. Add Achievements packages to your project
 
 ```xml
 <ItemGroup>
+  <!-- Core achievement system -->
   <PackageReference Include="Godot.Achievements.Core" Version="1.0.0" />
+
+  <!-- iOS Game Center provider (iOS only) -->
   <PackageReference Include="Godot.Achievements.iOS" Version="1.0.0"
                     Condition="'$(GodotTargetPlatform)' == 'ios'" />
 </ItemGroup>
 ```
 
-### 2. Configure Game Center in App Store Connect
+### 3. Configure Game Center in App Store Connect
 
 1. Go to https://appstoreconnect.apple.com
 2. Select your app
