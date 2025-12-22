@@ -114,6 +114,8 @@ public partial class AchievementEditorDock : Control
         _contextMenu = new PopupMenu();
         _contextMenu.AddItem("Move Up", 0);
         _contextMenu.AddItem("Move Down", 1);
+        _contextMenu.AddSeparator();
+        _contextMenu.AddItem("Show in File", 2);
         _contextMenu.IdPressed += OnContextMenuItemPressed;
         AddChild(_contextMenu);
 
@@ -1002,6 +1004,47 @@ public partial class AchievementEditorDock : Control
             case 1: // Move Down
                 MoveAchievementDown(achievement);
                 break;
+            case 2: // Show in File
+                ShowInFile(achievement);
+                break;
+        }
+    }
+
+    private void ShowInFile(Achievement achievement)
+    {
+        var editorInterface = EditorInterface.Singleton;
+        if (editorInterface == null)
+        {
+            GD.PushError("[Achievements:Editor] EditorInterface not available");
+            return;
+        }
+
+        // Check if the achievement has its own resource path (saved as external file)
+        var achievementPath = achievement.ResourcePath;
+        var isExternalResource = !string.IsNullOrEmpty(achievementPath)
+            && FileAccess.FileExists(achievementPath)
+            && achievementPath != _currentDatabasePath;
+
+        if (isExternalResource)
+        {
+            // Achievement is saved as its own file - navigate to it
+            editorInterface.GetFileSystemDock().NavigateToPath(achievementPath);
+            editorInterface.SelectFile(achievementPath);
+            GD.Print($"[Achievements:Editor] Showing achievement file: {achievementPath}");
+        }
+        else
+        {
+            // Achievement is internal to the database - show the database file
+            if (!string.IsNullOrEmpty(_currentDatabasePath) && FileAccess.FileExists(_currentDatabasePath))
+            {
+                editorInterface.GetFileSystemDock().NavigateToPath(_currentDatabasePath);
+                editorInterface.SelectFile(_currentDatabasePath);
+                GD.Print($"[Achievements:Editor] Achievement is internal - showing database file: {_currentDatabasePath}");
+            }
+            else
+            {
+                GD.PushWarning("[Achievements:Editor] No database path available to show");
+            }
         }
     }
 
