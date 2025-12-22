@@ -9,7 +9,13 @@ namespace Godot.Achievements.Core.Editor;
 /// </summary>
 [Tool]
 public partial class AchievementEditorDock : Control
-{
-    
+{    
+    [Export]
+    private Button AddButton = null!;
+    [Export]
+    private Button RemoveButton = null!;
+    [Export]
+    private Button DuplicateButton = null!;
+
 }
 #endif
