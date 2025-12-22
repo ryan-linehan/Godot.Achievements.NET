@@ -14,32 +14,37 @@ public partial class AchievementPlugin : EditorPlugin
 
     private Editor.AchievementEditorDock? _dock;
 
-    public override void _EnablePlugin()
+    public override void _EnterTree()
     {
-        // Add autoload singleton
-        AddAutoloadSingleton(AutoloadName, AutoloadPath);
-
         // Create and add the achievement editor dock
+        // This runs on every project load to ensure the dock is always available
         _dock = new Editor.AchievementEditorDock();
         _dock.Name = "Achievements";
         AddControlToBottomPanel(_dock, "Achievements");
-
-        GD.Print("[Achievements] Plugin enabled, autoload registered");
     }
 
-    public override void _DisablePlugin()
+    public override void _ExitTree()
     {
-        // Remove autoload singleton
-        RemoveAutoloadSingleton(AutoloadName);
-
-        // Remove and cleanup dock
+        // Remove and cleanup dock when editor closes
         if (_dock != null)
         {
             RemoveControlFromBottomPanel(_dock);
             _dock.QueueFree();
             _dock = null;
         }
+    }
 
+    public override void _EnablePlugin()
+    {
+        // Add autoload singleton (only runs once when plugin is first enabled)
+        AddAutoloadSingleton(AutoloadName, AutoloadPath);
+        GD.Print("[Achievements] Plugin enabled, autoload registered");
+    }
+
+    public override void _DisablePlugin()
+    {
+        // Remove autoload singleton (only runs when plugin is disabled)
+        RemoveAutoloadSingleton(AutoloadName);
         GD.Print("[Achievements] Plugin disabled, autoload removed");
     }
 }
