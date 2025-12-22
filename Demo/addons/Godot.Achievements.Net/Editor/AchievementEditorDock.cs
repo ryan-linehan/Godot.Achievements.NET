@@ -58,6 +58,10 @@ public partial class AchievementEditorDock : Control
     private EditorFileDialog? _databaseFileDialog;
     private ConfirmationDialog? _removeConfirmDialog;
     private AcceptDialog? _unsavedChangesDialog;
+    private PopupMenu? _contextMenu;
+    private LineEdit? _renameLineEdit;
+    private int _contextMenuTargetIndex = -1;
+    private int _renameTargetIndex = -1;
     private bool _hasUnsavedChanges = false;
     private Action? _pendingAction;
 
@@ -92,6 +96,25 @@ public partial class AchievementEditorDock : Control
         _unsavedChangesDialog.AddCancelButton("Cancel");
         AddChild(_unsavedChangesDialog);
 
+        // Create context menu for list items
+        _contextMenu = new PopupMenu();
+        _contextMenu.AddItem("Rename", 0);
+        _contextMenu.AddSeparator();
+        _contextMenu.AddItem("Move Up", 1);
+        _contextMenu.AddItem("Move Down", 2);
+        _contextMenu.IdPressed += OnContextMenuItemPressed;
+        AddChild(_contextMenu);
+
+        // Create inline rename LineEdit (hidden by default, shown over list item when renaming)
+        _renameLineEdit = new LineEdit();
+        _renameLineEdit.Visible = false;
+        _renameLineEdit.TextSubmitted += OnRenameTextSubmitted;
+        _renameLineEdit.FocusExited += OnRenameFocusExited;
+        if (ItemListScrollContainer != null)
+        {
+            ItemListScrollContainer.AddChild(_renameLineEdit);
+        }
+
         // Connect UI signals
         ChangeDatabaseButton.Pressed += OnChangeDatabasePressed;
         AddAchievementButton.Pressed += OnAddAchievementPressed;
@@ -99,6 +122,8 @@ public partial class AchievementEditorDock : Control
         DuplicateButton.Pressed += OnDuplicatePressed;
         SearchLineEdit.TextChanged += OnSearchTextChanged;
         ItemList.ItemSelected += OnItemSelected;
+        ItemList.ItemClicked += OnItemListClicked;
+        ItemList.ItemActivated += OnItemListActivated;
 
         // Connect platform checkboxes
         if (SteamCheckbox != null)
@@ -184,6 +209,19 @@ public partial class AchievementEditorDock : Control
             _unsavedChangesDialog.QueueFree();
         }
 
+        if (_contextMenu != null)
+        {
+            _contextMenu.IdPressed -= OnContextMenuItemPressed;
+            _contextMenu.QueueFree();
+        }
+
+        if (_renameLineEdit != null)
+        {
+            _renameLineEdit.TextSubmitted -= OnRenameTextSubmitted;
+            _renameLineEdit.FocusExited -= OnRenameFocusExited;
+            _renameLineEdit.QueueFree();
+        }
+
         if (ChangeDatabaseButton != null)
             ChangeDatabaseButton.Pressed -= OnChangeDatabasePressed;
         if (AddAchievementButton != null)
@@ -195,7 +233,11 @@ public partial class AchievementEditorDock : Control
         if (SearchLineEdit != null)
             SearchLineEdit.TextChanged -= OnSearchTextChanged;
         if (ItemList != null)
+        {
             ItemList.ItemSelected -= OnItemSelected;
+            ItemList.ItemClicked -= OnItemListClicked;
+            ItemList.ItemActivated -= OnItemListActivated;
+        }
         if (SteamCheckbox != null)
             SteamCheckbox.Toggled -= OnSteamCheckboxToggled;
         if (GameCenterCheckbox != null)
@@ -608,6 +650,9 @@ public partial class AchievementEditorDock : Control
 
         GD.Print($"[Achievements:Editor] Created new achievement: {uniqueId}");
 
+        // Auto-save after add
+        SaveDatabase();
+
         // Refresh and auto-select new achievement
         RefreshAchievementList();
 
@@ -650,14 +695,17 @@ public partial class AchievementEditorDock : Control
         _currentDatabase.RemoveAchievement(achievementToRemove.Id);
         MarkDirty();
 
+        GD.Print($"[Achievements:Editor] Removed achievement: {achievementToRemove.Id}");
+
+        // Auto-save after remove
+        SaveDatabase();
+
         // Clear selection
         _selectedAchievement = null;
         _selectedIndex = -1;
 
         // Refresh list
         RefreshAchievementList();
-
-        GD.Print($"[Achievements:Editor] Removed achievement: {achievementToRemove.Id}");
     }
 
     private void OnDuplicatePressed()
@@ -683,6 +731,9 @@ public partial class AchievementEditorDock : Control
         MarkDirty();
 
         GD.Print($"[Achievements:Editor] Duplicated achievement: {_selectedAchievement.Id} -> {duplicate.Id}");
+
+        // Auto-save after duplicate
+        SaveDatabase();
 
         // Refresh and auto-select duplicate
         RefreshAchievementList();
@@ -737,6 +788,184 @@ public partial class AchievementEditorDock : Control
             }
         } while (_currentDatabase.GetById(id) != null);
         return id;
+    }
+
+    #endregion
+
+    #region Context Menu Operations
+
+    private void OnItemListClicked(long index, Vector2 atPosition, long mouseButtonIndex)
+    {
+        // Right-click to show context menu
+        if (mouseButtonIndex == (long)MouseButton.Right)
+        {
+            _contextMenuTargetIndex = (int)index;
+
+            if (_contextMenu != null && _currentDatabase != null && _contextMenuTargetIndex >= 0)
+            {
+                var achievement = ItemList.GetItemMetadata(_contextMenuTargetIndex).As<Achievement>();
+                var databaseIndex = _currentDatabase.Achievements.IndexOf(achievement);
+
+                // Check if filtering is active
+                var isFiltered = !string.IsNullOrEmpty(SearchLineEdit.Text);
+
+                if (isFiltered)
+                {
+                    // Disable move operations when filtered
+                    _contextMenu.SetItemDisabled(1, true); // Move Up
+                    _contextMenu.SetItemDisabled(2, true); // Move Down
+                }
+                else
+                {
+                    // Enable/disable based on actual position in database
+                    var totalCount = _currentDatabase.Achievements.Count;
+                    _contextMenu.SetItemDisabled(1, databaseIndex <= 0); // Move Up
+                    _contextMenu.SetItemDisabled(2, databaseIndex >= totalCount - 1); // Move Down
+                }
+
+                _contextMenu.Position = (Vector2I)(GetGlobalMousePosition());
+                _contextMenu.Popup();
+            }
+        }
+    }
+
+    private void OnItemListActivated(long index)
+    {
+        // Double-click to rename
+        StartInlineRename((int)index);
+    }
+
+    private void OnContextMenuItemPressed(long id)
+    {
+        if (_contextMenuTargetIndex < 0 || _contextMenuTargetIndex >= ItemList.ItemCount)
+            return;
+
+        var achievement = ItemList.GetItemMetadata(_contextMenuTargetIndex).As<Achievement>();
+        if (achievement == null)
+            return;
+
+        switch (id)
+        {
+            case 0: // Rename
+                StartInlineRename(_contextMenuTargetIndex);
+                break;
+            case 1: // Move Up
+                MoveAchievementUp(achievement);
+                break;
+            case 2: // Move Down
+                MoveAchievementDown(achievement);
+                break;
+        }
+    }
+
+    private void StartInlineRename(int index)
+    {
+        if (_renameLineEdit == null || ItemList == null || index < 0 || index >= ItemList.ItemCount)
+            return;
+
+        var achievement = ItemList.GetItemMetadata(index).As<Achievement>();
+        if (achievement == null)
+            return;
+
+        _renameTargetIndex = index;
+
+        // Calculate position of the item in the list
+        var itemRect = ItemList.GetItemRect(index);
+        var iconSize = ItemList.IconScale * 16; // Approximate icon size
+
+        // Position the LineEdit over the text part of the item (after the icon)
+        _renameLineEdit.Position = new Vector2(itemRect.Position.X + iconSize + 8, itemRect.Position.Y);
+        _renameLineEdit.Size = new Vector2(itemRect.Size.X - iconSize - 8, itemRect.Size.Y);
+        _renameLineEdit.Text = achievement.DisplayName;
+        _renameLineEdit.Visible = true;
+        _renameLineEdit.SelectAll();
+        _renameLineEdit.GrabFocus();
+    }
+
+    private void OnRenameTextSubmitted(string newText)
+    {
+        FinishInlineRename(newText);
+    }
+
+    private void OnRenameFocusExited()
+    {
+        if (_renameLineEdit != null && _renameLineEdit.Visible)
+        {
+            FinishInlineRename(_renameLineEdit.Text);
+        }
+    }
+
+    private void FinishInlineRename(string newName)
+    {
+        if (_renameLineEdit == null || _renameTargetIndex < 0 || _renameTargetIndex >= ItemList.ItemCount)
+        {
+            if (_renameLineEdit != null)
+                _renameLineEdit.Visible = false;
+            return;
+        }
+
+        var achievement = ItemList.GetItemMetadata(_renameTargetIndex).As<Achievement>();
+        if (achievement == null)
+        {
+            _renameLineEdit.Visible = false;
+            return;
+        }
+
+        newName = newName.Trim();
+        if (!string.IsNullOrEmpty(newName) && newName != achievement.DisplayName)
+        {
+            achievement.DisplayName = newName;
+            UpdateListItemForAchievement(achievement);
+            MarkDirty();
+
+            // Update details panel if this achievement is currently selected
+            if (_selectedAchievement == achievement && DetailsPanel != null)
+            {
+                DetailsPanel.CurrentAchievement = achievement;
+            }
+
+            GD.Print($"[Achievements:Editor] Renamed achievement to: {newName}");
+
+            // Auto-save after rename
+            SaveDatabase();
+        }
+
+        _renameLineEdit.Visible = false;
+        _renameTargetIndex = -1;
+    }
+
+    private void MoveAchievementUp(Achievement achievement)
+    {
+        if (_currentDatabase == null)
+            return;
+
+        var currentIndex = _currentDatabase.Achievements.IndexOf(achievement);
+        if (currentIndex <= 0)
+            return;
+
+        _currentDatabase.Achievements.RemoveAt(currentIndex);
+        _currentDatabase.Achievements.Insert(currentIndex - 1, achievement);
+        MarkDirty();
+
+        RefreshAchievementList(preserveSelection: true);
+        GD.Print($"[Achievements:Editor] Moved achievement up: {achievement.DisplayName}");
+    }
+
+    private void MoveAchievementDown(Achievement achievement)
+    {
+        if (_currentDatabase == null)
+            return;
+
+        var currentIndex = _currentDatabase.Achievements.IndexOf(achievement);
+        if (currentIndex < 0 || currentIndex >= _currentDatabase.Achievements.Count - 1)
+            return;
+
+        _currentDatabase.Achievements.RemoveAt(currentIndex);
+        _currentDatabase.Achievements.Insert(currentIndex + 1, achievement);
+        MarkDirty();
+
+        RefreshAchievementList(preserveSelection: true);
+        GD.Print($"[Achievements:Editor] Moved achievement down: {achievement.DisplayName}");
     }
 
     #endregion

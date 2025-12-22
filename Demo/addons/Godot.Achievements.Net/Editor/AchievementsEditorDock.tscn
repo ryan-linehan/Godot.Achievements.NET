@@ -182,6 +182,7 @@ custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
 [node name="NoItemsControl" type="Panel" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -204,15 +205,16 @@ vertical_alignment = 1
 autowrap_mode = 2
 
 [node name="ItemListScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
 [node name="ItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ItemListScrollContainer"]
-visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+item_count = 2
+item_0/text = "lets go!"
+item_1/text = "okay?"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
