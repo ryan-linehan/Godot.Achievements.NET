@@ -1,6 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://uqr6iihjft3j"]
+[gd_scene load_steps=5 format=3 uid="uid://uqr6iihjft3j"]
 
 [ext_resource type="Script" uid="uid://da1r4drkeycjw" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.cs" id="1_hvk53"]
+[ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_1wofd"]
 [ext_resource type="PackedScene" uid="uid://cjc02uatgibsf" path="res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDetailsPanel.tscn" id="2_ova2g"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jyate"]
@@ -213,8 +214,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 item_count = 2
-item_0/text = "lets go!"
-item_1/text = "okay?"
+item_0/text = "testing"
+item_0/icon = ExtResource("2_1wofd")
+item_1/text = "wooo!"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
