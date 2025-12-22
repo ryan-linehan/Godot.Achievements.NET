@@ -132,19 +132,21 @@ public partial class AchievementEditorDock : Control
         var savedPath = LoadDatabasePath();
         LoadDatabase(savedPath);
 
-        // Enable input for Ctrl+S shortcut
-        SetProcessUnhandledKeyInput(true);
+        // Enable shortcut input processing for Ctrl+S
+        SetProcessShortcutInput(true);
     }
 
-    public override void _UnhandledKeyInput(InputEvent @event)
+    public override void _ShortcutInput(InputEvent @event)
     {
+        // Only process when dock is visible
+        if (!Visible) return;
+
         if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo)
         {
-            // Ctrl+S or Cmd+S to save (without blocking other handlers)
+            // Ctrl+S or Cmd+S to save (don't consume the event - let editor also save)
             if (keyEvent.Keycode == Key.S && (keyEvent.CtrlPressed || keyEvent.MetaPressed) && _hasUnsavedChanges)
             {
                 SaveDatabase();
-                // Don't mark as handled so other systems can still respond to Ctrl+S
             }
         }
     }

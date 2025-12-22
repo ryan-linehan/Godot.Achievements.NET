@@ -13,7 +13,13 @@ public partial class AchievementManager : Node
 {
     public static AchievementManager? Instance { get; private set; }
 
-    [Export] public AchievementDatabase? Database { get; set; }
+    private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
+    private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
+
+    /// <summary>
+    /// The achievement database. Loaded automatically from project settings, or can be set at runtime using SetDatabase().
+    /// </summary>
+    [Export] public AchievementDatabase? Database { get; private set; }
     [Export] public float SyncRetryInterval { get; set; } = 30f; // seconds
 
     private LocalAchievementProvider? _localProvider;
@@ -25,6 +31,7 @@ public partial class AchievementManager : Node
     [Signal] public delegate void AchievementUnlockedEventHandler(string achievementId, Achievement achievement);
     [Signal] public delegate void AchievementProgressChangedEventHandler(string achievementId, int currentProgress, int maxProgress);
     [Signal] public delegate void ProviderRegisteredEventHandler(string providerName);
+    [Signal] public delegate void DatabaseChangedEventHandler(AchievementDatabase database);
 
     public override void _EnterTree()
     {
@@ -40,10 +47,60 @@ public partial class AchievementManager : Node
 
     public override void _Ready()
     {
+        // If no database was set via Export, load from project settings or use default
         if (Database == null)
         {
-            GD.PushError("[Achievements] No AchievementDatabase assigned to AchievementManager!");
+            Database = LoadDatabaseFromSettings();
+        }
+
+        if (Database == null)
+        {
+            GD.PushError("[Achievements] No AchievementDatabase found! Set one via the editor or call SetDatabase() at runtime.");
             return;
+        }
+
+        InitializeWithDatabase();
+    }
+
+    /// <summary>
+    /// Load the database from project settings, falling back to the default path
+    /// </summary>
+    private AchievementDatabase? LoadDatabaseFromSettings()
+    {
+        var path = DEFAULT_DATABASE_PATH;
+
+        if (ProjectSettings.HasSetting(DATABASE_PATH_SETTING))
+        {
+            var settingPath = ProjectSettings.GetSetting(DATABASE_PATH_SETTING).AsString();
+            if (!string.IsNullOrEmpty(settingPath))
+            {
+                path = settingPath;
+            }
+        }
+
+        if (!ResourceLoader.Exists(path))
+        {
+            GD.PushWarning($"[Achievements] Database not found at: {path}");
+            return null;
+        }
+
+        var database = GD.Load<AchievementDatabase>(path);
+        if (database != null)
+        {
+            GD.Print($"[Achievements] Loaded database from: {path}");
+        }
+
+        return database;
+    }
+
+    /// <summary>
+    /// Initialize the manager with the current database
+    /// </summary>
+    private bool InitializeWithDatabase()
+    {
+        if (Database == null)
+        {
+            return false;
         }
 
         // Validate database
@@ -55,7 +112,7 @@ public partial class AchievementManager : Node
             {
                 GD.PushError($"  - {error}");
             }
-            return;
+            return false;
         }
 
         // Initialize local provider
@@ -64,6 +121,35 @@ public partial class AchievementManager : Node
 
         // Sync local achievements to platforms on startup
         CallDeferred(nameof(SyncLocalToPlatforms));
+
+        return true;
+    }
+
+    /// <summary>
+    /// Set or swap the achievement database at runtime.
+    /// This reinitializes the local provider and syncs to platforms.
+    /// </summary>
+    /// <param name="database">The new database to use</param>
+    /// <returns>True if the database was set successfully</returns>
+    public bool SetDatabase(AchievementDatabase database)
+    {
+        if (database == null)
+        {
+            GD.PushError("[Achievements] Cannot set null database");
+            return false;
+        }
+
+        Database = database;
+
+        if (!InitializeWithDatabase())
+        {
+            return false;
+        }
+
+        EmitSignal(SignalName.DatabaseChanged, database);
+        GD.Print("[Achievements] Database changed at runtime");
+
+        return true;
     }
 
     public override void _Process(double delta)
