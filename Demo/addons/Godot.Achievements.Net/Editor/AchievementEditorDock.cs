@@ -56,6 +56,8 @@ public partial class AchievementEditorDock : Control
     private Achievement? _selectedAchievement;
     private int _selectedIndex = -1;
     private EditorFileDialog? _databaseFileDialog;
+    private EditorFileDialog? _importCSVFileDialog;
+    private EditorFileDialog? _exportCSVFileDialog;
     private ConfirmationDialog? _removeConfirmDialog;
     private AcceptDialog? _unsavedChangesDialog;
     private PopupMenu? _contextMenu;
@@ -115,6 +117,24 @@ public partial class AchievementEditorDock : Control
         _contextMenu.IdPressed += OnContextMenuItemPressed;
         AddChild(_contextMenu);
 
+        // Create import CSV file dialog
+        _importCSVFileDialog = new EditorFileDialog();
+        _importCSVFileDialog.FileMode = EditorFileDialog.FileModeEnum.OpenFile;
+        _importCSVFileDialog.AddFilter("*.csv", "CSV Files");
+        _importCSVFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
+        _importCSVFileDialog.Title = "Import Achievements from CSV";
+        _importCSVFileDialog.FileSelected += OnImportCSVFileSelected;
+        AddChild(_importCSVFileDialog);
+
+        // Create export CSV file dialog
+        _exportCSVFileDialog = new EditorFileDialog();
+        _exportCSVFileDialog.FileMode = EditorFileDialog.FileModeEnum.SaveFile;
+        _exportCSVFileDialog.AddFilter("*.csv", "CSV Files");
+        _exportCSVFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
+        _exportCSVFileDialog.Title = "Export Achievements to CSV";
+        _exportCSVFileDialog.FileSelected += OnExportCSVFileSelected;
+        AddChild(_exportCSVFileDialog);
+
         // Connect UI signals
         ChangeDatabaseButton.Pressed += OnChangeDatabasePressed;
         AddAchievementButton.Pressed += OnAddAchievementPressed;
@@ -123,6 +143,8 @@ public partial class AchievementEditorDock : Control
         SearchLineEdit.TextChanged += OnSearchTextChanged;
         ItemList.ItemSelected += OnItemSelected;
         ItemList.ItemClicked += OnItemListClicked;
+        ImportCSVButton.Pressed += OnImportCSVPressed;
+        ExportCSVButton.Pressed += OnExportCSVPressed;
 
         // Connect platform checkboxes
         if (SteamCheckbox != null)
@@ -198,6 +220,18 @@ public partial class AchievementEditorDock : Control
             _databaseFileDialog.QueueFree();
         }
 
+        if (_importCSVFileDialog != null)
+        {
+            _importCSVFileDialog.FileSelected -= OnImportCSVFileSelected;
+            _importCSVFileDialog.QueueFree();
+        }
+
+        if (_exportCSVFileDialog != null)
+        {
+            _exportCSVFileDialog.FileSelected -= OnExportCSVFileSelected;
+            _exportCSVFileDialog.QueueFree();
+        }
+
         if (_removeConfirmDialog != null)
         {
             _removeConfirmDialog.Confirmed -= ConfirmRemoveAchievement;
@@ -238,6 +272,10 @@ public partial class AchievementEditorDock : Control
             GameCenterCheckbox.Toggled -= OnGameCenterCheckboxToggled;
         if (GooglePlayCheckbox != null)
             GooglePlayCheckbox.Toggled -= OnGooglePlayCheckboxToggled;
+        if (ImportCSVButton != null)
+            ImportCSVButton.Pressed -= OnImportCSVPressed;
+        if (ExportCSVButton != null)
+            ExportCSVButton.Pressed -= OnExportCSVPressed;
     }
 
     private void OnVisibilityChanged()
@@ -1001,6 +1039,223 @@ public partial class AchievementEditorDock : Control
         SaveDatabase();
         RefreshAchievementList(preserveSelection: true);
         GD.Print($"[Achievements:Editor] Moved achievement down: {achievement.DisplayName}");
+    }
+
+    #endregion
+
+    #region CSV Import/Export
+
+    private void OnImportCSVPressed()
+    {
+        if (_currentDatabase == null)
+        {
+            var dialog = new AcceptDialog();
+            dialog.DialogText = "Please load a database first before importing achievements.";
+            AddChild(dialog);
+            dialog.PopupCentered();
+            return;
+        }
+
+        if (_importCSVFileDialog != null)
+        {
+            _importCSVFileDialog.CurrentPath = "achievements.csv";
+            _importCSVFileDialog.PopupCentered(new Vector2I(800, 600));
+        }
+    }
+
+    private void OnExportCSVPressed()
+    {
+        if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
+        {
+            var dialog = new AcceptDialog();
+            dialog.DialogText = "No achievements to export. Please load a database with achievements first.";
+            AddChild(dialog);
+            dialog.PopupCentered();
+            return;
+        }
+
+        if (_exportCSVFileDialog != null)
+        {
+            _exportCSVFileDialog.CurrentPath = "achievements.csv";
+            _exportCSVFileDialog.PopupCentered(new Vector2I(800, 600));
+        }
+    }
+
+    private void OnImportCSVFileSelected(string path)
+    {
+        if (_currentDatabase == null)
+            return;
+
+        try
+        {
+            var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+            if (file == null)
+            {
+                ShowErrorDialog($"Failed to open file: {FileAccess.GetOpenError()}");
+                return;
+            }
+
+            // Use Godot's built-in CSV parsing
+            var header = file.GetCsvLine();
+            if (header.Length == 0)
+            {
+                file.Close();
+                ShowErrorDialog("CSV file is empty.");
+                return;
+            }
+
+            // Build column index map from header
+            var columnMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < header.Length; i++)
+            {
+                columnMap[header[i].Trim()] = i;
+            }
+
+            // Validate required columns
+            if (!columnMap.ContainsKey("Id"))
+            {
+                file.Close();
+                ShowErrorDialog("CSV must contain an 'Id' column.");
+                return;
+            }
+
+            int importedCount = 0;
+            int updatedCount = 0;
+
+            // Process data rows using Godot's GetCsvLine()
+            while (!file.EofReached())
+            {
+                var values = file.GetCsvLine();
+                if (values.Length == 0 || (values.Length == 1 && string.IsNullOrWhiteSpace(values[0])))
+                    continue;
+
+                var id = GetCSVValue(values, columnMap, "Id");
+                if (string.IsNullOrWhiteSpace(id))
+                    continue;
+
+                // Check if achievement already exists
+                var existing = _currentDatabase.GetById(id);
+                bool isNew = existing == null;
+
+                var achievement = existing ?? new Achievement { Id = id };
+
+                // Update fields from CSV
+                if (columnMap.ContainsKey("DisplayName"))
+                    achievement.DisplayName = GetCSVValue(values, columnMap, "DisplayName") ?? achievement.DisplayName;
+                if (columnMap.ContainsKey("Description"))
+                    achievement.Description = GetCSVValue(values, columnMap, "Description") ?? achievement.Description;
+                if (columnMap.ContainsKey("SteamId"))
+                    achievement.SteamId = GetCSVValue(values, columnMap, "SteamId") ?? achievement.SteamId;
+                if (columnMap.ContainsKey("GameCenterId"))
+                    achievement.GameCenterId = GetCSVValue(values, columnMap, "GameCenterId") ?? achievement.GameCenterId;
+                if (columnMap.ContainsKey("GooglePlayId"))
+                    achievement.GooglePlayId = GetCSVValue(values, columnMap, "GooglePlayId") ?? achievement.GooglePlayId;
+                if (columnMap.ContainsKey("IsIncremental"))
+                    achievement.IsIncremental = GetCSVValue(values, columnMap, "IsIncremental")?.ToLower() == "true";
+                if (columnMap.ContainsKey("MaxProgress"))
+                {
+                    if (int.TryParse(GetCSVValue(values, columnMap, "MaxProgress"), out int maxProgress))
+                        achievement.MaxProgress = maxProgress;
+                }
+
+                if (isNew)
+                {
+                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
+                    achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
+                    _currentDatabase.AddAchievement(achievement);
+                    importedCount++;
+                }
+                else
+                {
+                    updatedCount++;
+                }
+            }
+
+            file.Close();
+
+            MarkDirty();
+            SaveDatabase();
+            RefreshAchievementList(preserveSelection: true);
+
+            var resultDialog = new AcceptDialog();
+            resultDialog.DialogText = $"CSV Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}";
+            resultDialog.Title = "Import Successful";
+            AddChild(resultDialog);
+            resultDialog.PopupCentered();
+
+            GD.Print($"[Achievements:Editor] Imported CSV from {path}: {importedCount} new, {updatedCount} updated");
+        }
+        catch (Exception ex)
+        {
+            ShowErrorDialog($"Failed to import CSV: {ex.Message}");
+            GD.PushError($"[Achievements:Editor] CSV import error: {ex}");
+        }
+    }
+
+    private void OnExportCSVFileSelected(string path)
+    {
+        if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
+            return;
+
+        try
+        {
+            var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
+            if (file == null)
+            {
+                ShowErrorDialog($"Failed to create file: {FileAccess.GetOpenError()}");
+                return;
+            }
+
+            // Write header using Godot's StoreCsvLine
+            file.StoreCsvLine(new string[] { "Id", "DisplayName", "Description", "SteamId", "GameCenterId", "GooglePlayId", "IsIncremental", "MaxProgress" });
+
+            // Write achievement rows using Godot's StoreCsvLine (handles escaping automatically)
+            foreach (var achievement in _currentDatabase.Achievements)
+            {
+                file.StoreCsvLine(new string[]
+                {
+                    achievement.Id ?? "",
+                    achievement.DisplayName ?? "",
+                    achievement.Description ?? "",
+                    achievement.SteamId ?? "",
+                    achievement.GameCenterId ?? "",
+                    achievement.GooglePlayId ?? "",
+                    achievement.IsIncremental.ToString().ToLower(),
+                    achievement.MaxProgress.ToString()
+                });
+            }
+
+            file.Close();
+
+            var resultDialog = new AcceptDialog();
+            resultDialog.DialogText = $"Successfully exported {_currentDatabase.Achievements.Count} achievements to:\n\n{path}";
+            resultDialog.Title = "Export Successful";
+            AddChild(resultDialog);
+            resultDialog.PopupCentered();
+
+            GD.Print($"[Achievements:Editor] Exported {_currentDatabase.Achievements.Count} achievements to {path}");
+        }
+        catch (Exception ex)
+        {
+            ShowErrorDialog($"Failed to export CSV: {ex.Message}");
+            GD.PushError($"[Achievements:Editor] CSV export error: {ex}");
+        }
+    }
+
+    private static string? GetCSVValue(string[] values, System.Collections.Generic.Dictionary<string, int> columnMap, string columnName)
+    {
+        if (!columnMap.TryGetValue(columnName, out int index) || index >= values.Length)
+            return null;
+        return values[index].Trim();
+    }
+
+    private void ShowErrorDialog(string message)
+    {
+        var dialog = new AcceptDialog();
+        dialog.DialogText = message;
+        dialog.Title = "Error";
+        AddChild(dialog);
+        dialog.PopupCentered();
     }
 
     #endregion
