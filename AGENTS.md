@@ -4,6 +4,7 @@ This document provides comprehensive guidelines for AI agents implementing the G
 
 ## 📋 Table of Contents
 
+- [Build Verification](#build-verification)
 - [Naming Conventions](#naming-conventions)
 - [Godot-Specific Patterns](#godot-specific-patterns)
 - [Memory Management](#memory-management)
@@ -14,6 +15,45 @@ This document provides comprehensive guidelines for AI agents implementing the G
 - [Error Handling](#error-handling)
 - [Performance Considerations](#performance-considerations)
 - [Testing Guidelines](#testing-guidelines)
+
+---
+
+## 🔨 Build Verification
+
+**CRITICAL:** Before marking any task as complete or concluding that work is done:
+
+1. **Always run `dotnet build` in the Demo folder**
+2. **Verify that the build succeeds with zero errors**
+3. **If there are build errors, fix them before proceeding**
+4. **Warnings are acceptable, but errors must be resolved**
+
+This ensures that all code changes are valid and the project remains in a buildable state.
+
+### Workflow
+
+When making changes to C# code:
+
+1. Make your code changes
+2. Run `dotnet build` from the Demo directory to verify the build succeeds
+3. If errors occur, diagnose and fix them
+4. Re-run `dotnet build` to confirm the fixes
+5. Only mark tasks as complete when the build is successful
+
+### Example
+
+```bash
+cd Demo
+dotnet build
+```
+
+Expected output for a successful build:
+```
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+```
+
+**Never** commit or claim completion if the build has errors.
 
 ---
 

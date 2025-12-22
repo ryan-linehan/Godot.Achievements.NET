@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+
 namespace Godot.Achievements.Core;
 
 /// <summary>

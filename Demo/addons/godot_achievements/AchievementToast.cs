@@ -164,8 +164,8 @@ public partial class AchievementToast : CanvasLayer
 
         // Wait, then slide out
         _currentTween.Chain()
-            .TweenInterval(DisplayDuration)
-            .TweenProperty(_toastPanel, "modulate:a", 0.0f, 0.3f)
+            .TweenInterval(DisplayDuration);
+        _currentTween.TweenProperty(_toastPanel, "modulate:a", 0.0f, 0.3f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.In);
 

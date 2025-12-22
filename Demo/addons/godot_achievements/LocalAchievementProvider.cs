@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,7 +13,7 @@ public class LocalAchievementProvider : IAchievementProvider
 {
     private const string SavePath = "user://achievements.json";
     private readonly AchievementDatabase _database;
-    private Godot.Collections.Dictionary<string, AchievementState> _achievementStates = new();
+    private Dictionary<string, AchievementState> _achievementStates = new();
 
     public string ProviderName => "Local";
     public bool IsAvailable => true;
@@ -187,7 +188,7 @@ public class LocalAchievementProvider : IAchievementProvider
     {
         if (!FileAccess.FileExists(SavePath))
         {
-            _achievementStates = new Godot.Collections.Dictionary<string, AchievementState>();
+            _achievementStates = new Dictionary<string, AchievementState>();
             return;
         }
 
@@ -195,7 +196,7 @@ public class LocalAchievementProvider : IAchievementProvider
         if (file == null)
         {
             GD.PushError($"Failed to open achievement save file: {FileAccess.GetOpenError()}");
-            _achievementStates = new Godot.Collections.Dictionary<string, AchievementState>();
+            _achievementStates = new Dictionary<string, AchievementState>();
             return;
         }
 
@@ -207,12 +208,12 @@ public class LocalAchievementProvider : IAchievementProvider
         if (error != Error.Ok)
         {
             GD.PushError($"Failed to parse achievement save file: {json.GetErrorMessage()}");
-            _achievementStates = new Godot.Collections.Dictionary<string, AchievementState>();
+            _achievementStates = new Dictionary<string, AchievementState>();
             return;
         }
 
         var data = json.Data.AsGodotDictionary<string, Godot.Collections.Dictionary>();
-        _achievementStates = new Godot.Collections.Dictionary<string, AchievementState>();
+        _achievementStates = new Dictionary<string, AchievementState>();
 
         foreach (var kvp in data)
         {
@@ -223,9 +224,10 @@ public class LocalAchievementProvider : IAchievementProvider
                 CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? Convert.ToInt32(progress) : 0
             };
 
-            if (stateDict.TryGetValue("UnlockedAt", out var unlockedAt) && unlockedAt is string dateStr)
+            if (stateDict.TryGetValue("UnlockedAt", out var unlockedAt))
             {
-                if (DateTime.TryParse(dateStr, out var date))
+                var dateStr = unlockedAt.AsString();
+                if (!string.IsNullOrEmpty(dateStr) && DateTime.TryParse(dateStr, out var date))
                 {
                     state.UnlockedAt = date;
                 }
