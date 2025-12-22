@@ -8,7 +8,17 @@ namespace Godot.Achievements.Android;
 
 /// <summary>
 /// Google Play Games achievement provider for Android
-/// Note: This requires Google Play Games Services plugin and configuration
+///
+/// INTEGRATION REQUIRED:
+/// This is a template showing how to integrate Google Play Games Services.
+/// Commented sections show real Play Games API calls that need to be uncommented.
+///
+/// Setup Steps:
+/// 1. Install Google Play Games Services plugin for Godot
+/// 2. Configure your Google Play Console with achievement IDs
+/// 3. Uncomment Play Games API calls in this file
+/// 4. Handle authentication callbacks properly
+/// 5. Map Google Play achievement IDs in your AchievementDatabase
 /// </summary>
 public class GooglePlayAchievementProvider : IAchievementProvider
 {
@@ -17,6 +27,8 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
     public string ProviderName => "Google Play Games";
 
+    // Provider is available only when user is authenticated with Google Play
+    // This ensures achievements only sync when connected to Play Games Services
     public bool IsAvailable => _isSignedIn && IsPlayGamesAvailable();
 
     public GooglePlayAchievementProvider(AchievementDatabase database)
@@ -25,13 +37,20 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         InitializePlayGames();
     }
 
+    /// <summary>
+    /// Initializes Google Play Games Services and authenticates user
+    /// TEMPLATE: Uncomment Play Games API calls after installing the plugin
+    /// </summary>
     private void InitializePlayGames()
     {
         try
         {
-            // Real implementation would use Play Games Services:
+            // UNCOMMENT when Google Play Games Services plugin is installed:
+            //
+            // Activate Play Games platform
             // PlayGamesPlatform.Activate();
             //
+            // Authenticate user (required for achievements to work)
             // Social.localUser.Authenticate((bool success) =>
             // {
             //     _isSignedIn = success;

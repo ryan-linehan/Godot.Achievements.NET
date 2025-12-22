@@ -183,9 +183,12 @@ public class LocalAchievementProvider : IAchievementProvider
 
     /// <summary>
     /// Load achievement states from disk
+    /// Deserializes JSON save file and reconstructs achievement state objects
+    /// Gracefully handles missing files or corrupted data by initializing empty state
     /// </summary>
     private void LoadFromDisk()
     {
+        // Initialize with empty state if save file doesn't exist (first run)
         if (!FileAccess.FileExists(SavePath))
         {
             _achievementStates = new Dictionary<string, AchievementState>();
@@ -203,6 +206,7 @@ public class LocalAchievementProvider : IAchievementProvider
         var jsonText = file.GetAsText();
         file.Close();
 
+        // Parse JSON using Godot's Json class (AOT-compatible)
         var json = new Json();
         var error = json.Parse(jsonText);
         if (error != Error.Ok)
@@ -212,6 +216,7 @@ public class LocalAchievementProvider : IAchievementProvider
             return;
         }
 
+        // Deserialize from Godot dictionary format to our internal C# Dictionary
         var data = json.Data.AsGodotDictionary<string, Godot.Collections.Dictionary>();
         _achievementStates = new Dictionary<string, AchievementState>();
 
@@ -220,13 +225,16 @@ public class LocalAchievementProvider : IAchievementProvider
             var stateDict = kvp.Value;
             var state = new AchievementState
             {
+                // Use TryGetValue with fallback defaults for missing/malformed fields
                 IsUnlocked = stateDict.TryGetValue("IsUnlocked", out var unlocked) && (bool)unlocked,
                 CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? Convert.ToInt32(progress) : 0
             };
 
+            // Parse optional UnlockedAt field (stored as ISO 8601 string)
             if (stateDict.TryGetValue("UnlockedAt", out var unlockedAt))
             {
                 var dateStr = unlockedAt.AsString();
+                // Gracefully handle null/empty dates or invalid formats
                 if (!string.IsNullOrEmpty(dateStr) && DateTime.TryParse(dateStr, out var date))
                 {
                     state.UnlockedAt = date;
@@ -241,9 +249,12 @@ public class LocalAchievementProvider : IAchievementProvider
 
     /// <summary>
     /// Save achievement states to disk
+    /// Serializes state to JSON using Godot's Json.Stringify (AOT-compatible)
+    /// Dates are stored in ISO 8601 format for portability across platforms
     /// </summary>
     private void SaveToDisk()
     {
+        // Convert internal C# Dictionary to Godot.Collections.Dictionary for serialization
         var data = new Godot.Collections.Dictionary<string, Godot.Collections.Dictionary>();
 
         foreach (var kvp in _achievementStates)
@@ -254,14 +265,17 @@ public class LocalAchievementProvider : IAchievementProvider
                 ["CurrentProgress"] = kvp.Value.CurrentProgress
             };
 
+            // Only include UnlockedAt if it has a value (reduces file size for locked achievements)
             if (kvp.Value.UnlockedAt.HasValue)
             {
-                stateDict["UnlockedAt"] = kvp.Value.UnlockedAt.Value.ToString("O"); // ISO 8601 format
+                // ISO 8601 "O" format ensures proper round-trip parsing and timezone handling
+                stateDict["UnlockedAt"] = kvp.Value.UnlockedAt.Value.ToString("O");
             }
 
             data[kvp.Key] = stateDict;
         }
 
+        // Pretty-print JSON with tabs for human readability
         var jsonText = Json.Stringify(data, "\t");
 
         var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);

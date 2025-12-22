@@ -8,7 +8,17 @@ namespace Godot.Achievements.iOS;
 
 /// <summary>
 /// iOS Game Center achievement provider
-/// Note: This requires iOS platform bindings and Game Center entitlements
+///
+/// INTEGRATION REQUIRED:
+/// This is a template showing how to integrate iOS Game Center.
+/// Commented sections show real Game Center API calls that need to be uncommented.
+///
+/// Setup Steps:
+/// 1. Add Game Center capability in Xcode project
+/// 2. Configure achievements in App Store Connect
+/// 3. Set up iOS platform bindings for Godot
+/// 4. Uncomment Game Center API calls in this file
+/// 5. Map Game Center achievement IDs in your AchievementDatabase
 /// </summary>
 public class GameCenterAchievementProvider : IAchievementProvider
 {
@@ -17,6 +27,8 @@ public class GameCenterAchievementProvider : IAchievementProvider
 
     public string ProviderName => "Game Center";
 
+    // Provider is available only when user is authenticated with Game Center
+    // This ensures achievements only sync when connected to Game Center
     public bool IsAvailable => _isAuthenticated && IsGameCenterAvailable();
 
     public GameCenterAchievementProvider(AchievementDatabase database)
@@ -25,11 +37,17 @@ public class GameCenterAchievementProvider : IAchievementProvider
         InitializeGameCenter();
     }
 
+    /// <summary>
+    /// Initializes Game Center and authenticates local player
+    /// TEMPLATE: Uncomment Game Center API calls after setting up iOS bindings
+    /// </summary>
     private void InitializeGameCenter()
     {
         try
         {
-            // Real implementation would use iOS bindings:
+            // UNCOMMENT when iOS Game Center bindings are set up:
+            //
+            // Authenticate local player (required for Game Center to work)
             // GKLocalPlayer.LocalPlayer.Authenticate((viewController, error) =>
             // {
             //     if (error != null)

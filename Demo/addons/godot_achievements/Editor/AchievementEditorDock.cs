@@ -25,6 +25,9 @@ public partial class AchievementEditorDock : Control
     private Label? _statusLabel;
     private int _selectedIndex = -1;
 
+    /// <summary>
+    /// Initializes the editor dock UI with a two-panel layout (list + details)
+    /// </summary>
     public override void _Ready()
     {
         CustomMinimumSize = new Vector2(0, 300);
@@ -34,21 +37,25 @@ public partial class AchievementEditorDock : Control
         hbox.SizeFlagsVertical = SizeFlags.ExpandFill;
         AddChild(hbox);
 
-        // Left panel: Achievement list
+        // Left panel: Achievement list with add/remove buttons
         var leftPanel = CreateLeftPanel();
         leftPanel.SizeFlagsHorizontal = SizeFlags.Fill;
         leftPanel.CustomMinimumSize = new Vector2(250, 0);
         hbox.AddChild(leftPanel);
 
-        // Right panel: Achievement details
+        // Right panel: Achievement details editor (hidden until selection)
         _detailsPanel = CreateRightPanel();
         _detailsPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         hbox.AddChild(_detailsPanel);
 
-        // Try to load existing database
+        // Attempt to automatically load database from default path
         LoadDatabase();
     }
 
+    /// <summary>
+    /// Creates the left panel containing the achievement list and action buttons
+    /// </summary>
+    /// <returns>VBoxContainer with list UI and add/remove buttons</returns>
     private VBoxContainer CreateLeftPanel()
     {
         var vbox = new VBoxContainer();
@@ -98,6 +105,10 @@ public partial class AchievementEditorDock : Control
         return vbox;
     }
 
+    /// <summary>
+    /// Creates the right panel containing achievement detail editors and save button
+    /// </summary>
+    /// <returns>VBoxContainer with form fields for editing achievement properties</returns>
     private VBoxContainer CreateRightPanel()
     {
         var vbox = new VBoxContainer();
@@ -175,6 +186,12 @@ public partial class AchievementEditorDock : Control
         return vbox;
     }
 
+    /// <summary>
+    /// Helper method to create a labeled line edit control
+    /// </summary>
+    /// <param name="parent">Parent container to add the label and line edit to</param>
+    /// <param name="labelText">Text to display in the label</param>
+    /// <returns>The created LineEdit control</returns>
     private LineEdit CreateLabeledLineEdit(VBoxContainer parent, string labelText)
     {
         var label = new Label();
@@ -187,6 +204,9 @@ public partial class AchievementEditorDock : Control
         return lineEdit;
     }
 
+    /// <summary>
+    /// Attempts to load the achievement database from the default path (res://achievements.tres)
+    /// </summary>
     private void LoadDatabase()
     {
         // Try to find achievement database in project
@@ -206,6 +226,9 @@ public partial class AchievementEditorDock : Control
         ShowStatus("No database loaded. Create or select an achievement database.", true);
     }
 
+    /// <summary>
+    /// Refreshes the achievement list UI with current database contents
+    /// </summary>
     private void RefreshAchievementList()
     {
         if (_achievementList == null || _database == null)
@@ -219,12 +242,20 @@ public partial class AchievementEditorDock : Control
         }
     }
 
+    /// <summary>
+    /// Handler for the "Select Database" button press
+    /// </summary>
     private void OnSelectDatabasePressed()
     {
         // TODO: Implement file dialog for selecting database
         ShowStatus("Database selection not yet implemented", true);
     }
 
+    /// <summary>
+    /// Handler for when an achievement is selected in the list
+    /// Shows the details panel and enables the remove button
+    /// </summary>
+    /// <param name="index">Index of the selected achievement</param>
     private void OnAchievementSelected(long index)
     {
         _selectedIndex = (int)index;
@@ -237,6 +268,10 @@ public partial class AchievementEditorDock : Control
             _detailsPanel.Visible = true;
     }
 
+    /// <summary>
+    /// Loads achievement data into the detail editor form
+    /// </summary>
+    /// <param name="index">Index of the achievement to load</param>
     private void LoadAchievementDetails(int index)
     {
         if (_database == null || index < 0 || index >= _database.Achievements.Count)
@@ -252,6 +287,10 @@ public partial class AchievementEditorDock : Control
         if (_googlePlayIdEdit != null) _googlePlayIdEdit.Text = achievement.GooglePlayId;
     }
 
+    /// <summary>
+    /// Handler for the "Add" button press
+    /// Creates a new achievement with default values and adds it to the database
+    /// </summary>
     private void OnAddPressed()
     {
         if (_database == null)
@@ -272,6 +311,10 @@ public partial class AchievementEditorDock : Control
         ShowStatus("Achievement added", false);
     }
 
+    /// <summary>
+    /// Handler for the "Remove" button press
+    /// Removes the selected achievement from the database
+    /// </summary>
     private void OnRemovePressed()
     {
         if (_database == null || _selectedIndex < 0 || _selectedIndex >= _database.Achievements.Count)
@@ -291,6 +334,10 @@ public partial class AchievementEditorDock : Control
         ShowStatus("Achievement removed", false);
     }
 
+    /// <summary>
+    /// Handler for the "Save Changes" button press
+    /// Validates and saves the current achievement's modified data to the database resource file
+    /// </summary>
     private void OnSavePressed()
     {
         if (_database == null || _selectedIndex < 0 || _selectedIndex >= _database.Achievements.Count)
@@ -326,6 +373,12 @@ public partial class AchievementEditorDock : Control
         }
     }
 
+    /// <summary>
+    /// Displays a status message to the user with color coding
+    /// Message automatically clears after 3 seconds
+    /// </summary>
+    /// <param name="message">Status message to display</param>
+    /// <param name="isError">Whether this is an error (red) or success (green) message</param>
     private void ShowStatus(string message, bool isError)
     {
         if (_statusLabel == null)

@@ -8,7 +8,18 @@ namespace Godot.Achievements.Steam;
 
 /// <summary>
 /// Steam achievement provider using Steamworks.NET
-/// Note: This requires Steamworks.NET to be installed and steam_appid.txt configured
+///
+/// INTEGRATION REQUIRED:
+/// This is a template implementation showing how to integrate Steamworks.NET.
+/// Commented sections show real Steamworks API calls that need to be uncommented
+/// after adding Steamworks.NET to your project.
+///
+/// Setup Steps:
+/// 1. Install Steamworks.NET NuGet package
+/// 2. Create steam_appid.txt in project root with your Steam App ID
+/// 3. Uncomment Steamworks API calls in this file
+/// 4. Set _isInitialized check to return true in InitializeSteamworks()
+/// 5. Configure Steam IDs for each achievement in your AchievementDatabase
 /// </summary>
 public class SteamAchievementProvider : IAchievementProvider
 {
@@ -21,8 +32,9 @@ public class SteamAchievementProvider : IAchievementProvider
     {
         get
         {
-            // Check if Steamworks is initialized via reflection to avoid hard dependency
-            // In a real implementation, you would check: return SteamAPI.IsSteamRunning();
+            // Check if Steamworks is initialized and Steam client is running
+            // Uses reflection-based availability check to avoid hard dependency on Steamworks.NET
+            // When properly integrated, this ensures provider only syncs when Steam is actually running
             return _isInitialized && IsSteamworksAvailable();
         }
     }
@@ -33,26 +45,36 @@ public class SteamAchievementProvider : IAchievementProvider
         _isInitialized = InitializeSteamworks();
     }
 
+    /// <summary>
+    /// Initializes Steamworks API
+    /// TEMPLATE: Uncomment the Steamworks API calls after installing Steamworks.NET
+    /// </summary>
+    /// <returns>True if initialization succeeded, false otherwise</returns>
     private bool InitializeSteamworks()
     {
         try
         {
-            // In a real implementation with Steamworks.NET:
+            // UNCOMMENT when Steamworks.NET is installed:
+            //
+            // Check if app needs to be restarted through Steam client
             // if (SteamAPI.RestartAppIfNecessary(new AppId_t(YOUR_APP_ID)))
             // {
-            //     // App restarting through Steam
+            //     // Steam will restart the app - exit this instance
             //     return false;
             // }
             //
+            // Initialize Steamworks API
             // if (!SteamAPI.Init())
             // {
-            //     GD.PushError("[Steam] SteamAPI.Init() failed");
+            //     GD.PushError("[Steam] SteamAPI.Init() failed - is Steam running?");
             //     return false;
             // }
+            //
+            // return true;
 
-            // For now, we'll just log that we would initialize here
+            // PLACEHOLDER: Remove this when implementing real Steamworks integration
             GD.Print("[Steam] SteamAchievementProvider initialized (Steamworks.NET integration required)");
-            return false; // Set to true when Steamworks.NET is properly integrated
+            return false; // Change to true when Steamworks.NET is properly integrated
         }
         catch (Exception ex)
         {

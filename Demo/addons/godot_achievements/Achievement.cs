@@ -1,5 +1,5 @@
 using System;
-
+using Godot.Collections;
 namespace Godot.Achievements.Core;
 
 /// <summary>
@@ -8,29 +8,66 @@ namespace Godot.Achievements.Core;
 [GlobalClass]
 public partial class Achievement : Resource
 {
-    // Display info
-    [Export] public string Id { get; set; } = string.Empty;
-    [Export] public string DisplayName { get; set; } = string.Empty;
-    [Export(PropertyHint.MultilineText)] public string Description { get; set; } = string.Empty;
+    /// <summary>
+    /// Unique identifier for the achievement
+    /// </summary>
+    [Export]
+    public string Id { get; set; } = string.Empty;
+    /// <summary>
+    /// Display name of the achievement
+    /// </summary>
+    [Export]
+    public string DisplayName { get; set; } = string.Empty;
+    /// <summary>
+    /// Description of the achievement
+    /// </summary>
+    [Export(PropertyHint.MultilineText)]
+    public string Description { get; set; } = string.Empty;
+    /// <summary>
+    /// Icon representing the achievement
+    /// </summary>
     [Export] public Texture2D? Icon { get; set; }
-    [Export] public bool Hidden { get; set; }
-
-    // Platform ID mappings (built-in)
-    [Export] public string SteamId { get; set; } = string.Empty;
-    [Export] public string GameCenterId { get; set; } = string.Empty;
-    [Export] public string GooglePlayId { get; set; } = string.Empty;
-
+    /// <summary>
+    /// Platform-specific ID for steam
+    /// </summary>
+    [Export]
+    public string SteamId { get; set; } = string.Empty;
+    /// <summary>
+    /// Platform-specific ID for Game Center (iOS/macOS)
+    /// </summary>
+    [Export]
+    public string GameCenterId { get; set; } = string.Empty;
+    /// <summary>
+    /// Platform-specific ID for Google Play (Android)
+    /// </summary>
+    [Export]
+    public string GooglePlayId { get; set; } = string.Empty;
     // Custom platform metadata (for third-party providers)
-    [Export] public Godot.Collections.Dictionary<string, string> CustomPlatformIds { get; set; } = new();
+    [Export]
+    public Dictionary<string, string> CustomPlatformIds { get; set; } = new();
+    /// <summary>
+    /// Extra properties for extensibility
+    /// </summary>
+    [Export]
+    public Dictionary<string, Variant> ExtraProperties { get; set; } = new();
 
-    // Progressive achievement settings (exported)
+    /// <summary>
+    /// Maximum progress value for incremental achievements
+    /// </summary>
     [Export] public int MaxProgress { get; set; } = 1;
 
-    // Runtime state (managed by LocalProvider, not exported)
+    /// <summary>
+    /// Whether the achievement is unlocked (managed at runtime thus not exported)
+    /// </summary>
     public bool IsUnlocked { get; set; }
+    /// <summary>
+    /// Timestamp when the achievement was unlocked (managed at runtime thus not exported)
+    /// </summary>
     public DateTime? UnlockedAt { get; set; }
+    /// <summary>
+    /// Current progress value for incremental achievements (managed at runtime thus not exported)
+    /// </summary>
     public int CurrentProgress { get; set; }
-
     /// <summary>
     /// Get progress as a percentage (0.0 to 1.0)
     /// </summary>

@@ -134,7 +134,8 @@ public partial class AchievementManager : Node
 
         var achievement = await _localProvider.GetAchievement(achievementId);
 
-        // Don't show toast or emit signal if already unlocked
+        // Suppress signals and UI notifications for achievements that were already unlocked
+        // This prevents duplicate toasts when syncing across platforms or reloading state
         if (localResult.WasAlreadyUnlocked)
         {
             return;
@@ -172,7 +173,8 @@ public partial class AchievementManager : Node
             EmitSignal(SignalName.AchievementProgressChanged, achievementId, currentProgress, achievement.MaxProgress);
         }
 
-        // Check if achievement was unlocked by progress reaching max
+        // Check if this progress update caused the achievement to auto-unlock
+        // Only emit unlock signal if progress just reached max (prevents duplicate signals)
         if (achievement != null && achievement.IsUnlocked && oldProgress < achievement.MaxProgress)
         {
             EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
@@ -415,10 +417,12 @@ public partial class AchievementManager : Node
 
     /// <summary>
     /// Add a failed sync to the retry queue
+    /// Prevents duplicate queue entries for the same achievement+provider+action combination
     /// </summary>
     private void QueueSync(PendingSync sync)
     {
-        // Don't queue duplicates
+        // Prevent queue bloat by deduplicating identical pending syncs
+        // This avoids repeatedly retrying the same operation multiple times
         if (_syncQueue.Any(s => s.AchievementId == sync.AchievementId && s.Provider == sync.Provider && s.Type == sync.Type))
             return;
 
@@ -428,6 +432,8 @@ public partial class AchievementManager : Node
 
     /// <summary>
     /// Process pending syncs in the retry queue
+    /// Uses a batch processing strategy to avoid modifying the queue while iterating
+    /// Failed syncs are automatically re-queued for retry on the next interval
     /// </summary>
     private async void ProcessSyncQueue()
     {
@@ -440,7 +446,8 @@ public partial class AchievementManager : Node
         var failCount = 0;
         var batch = new List<PendingSync>();
 
-        // Dequeue all current items (process as a batch)
+        // Dequeue all items into a batch to avoid collection modification during iteration
+        // This allows us to safely re-queue failures without concurrent modification issues
         while (_syncQueue.Count > 0)
         {
             batch.Add(_syncQueue.Dequeue());
@@ -448,9 +455,10 @@ public partial class AchievementManager : Node
 
         foreach (var sync in batch)
         {
+            // Skip unavailable providers (e.g., Steam not running) and re-queue for later
             if (!sync.Provider.IsAvailable)
             {
-                _syncQueue.Enqueue(sync); // Re-queue if provider not available
+                _syncQueue.Enqueue(sync);
                 continue;
             }
 
@@ -459,14 +467,17 @@ public partial class AchievementManager : Node
                 if (sync.Type == SyncType.Unlock)
                 {
                     var result = await sync.Provider.UnlockAchievement(sync.AchievementId);
+
+                    // Consider both Success and WasAlreadyUnlocked as successful syncs
                     if (result.Success || result.WasAlreadyUnlocked)
                     {
                         successCount++;
                     }
                     else
                     {
+                        // Re-queue on failure to retry later
                         failCount++;
-                        _syncQueue.Enqueue(sync); // Re-queue on failure
+                        _syncQueue.Enqueue(sync);
                     }
                 }
                 else if (sync.Type == SyncType.Progress)
@@ -477,8 +488,9 @@ public partial class AchievementManager : Node
             }
             catch
             {
+                // Re-queue on exception (network error, API error, etc.) for retry
                 failCount++;
-                _syncQueue.Enqueue(sync); // Re-queue on exception
+                _syncQueue.Enqueue(sync);
             }
         }
 

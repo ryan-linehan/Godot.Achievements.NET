@@ -144,25 +144,26 @@ public partial class AchievementToast : CanvasLayer
             _iconRect.Visible = false;
         }
 
-        // Cancel any existing tween
+        // Cancel any existing tween to prevent animation conflicts
         _currentTween?.Kill();
 
-        // Create slide-in animation
+        // Create a parallel tween to animate fade and slide simultaneously
         _currentTween = CreateTween();
         _currentTween.SetParallel(true);
 
-        // Fade in
+        // Fade in animation: alpha 0 -> 1 over 0.3s
         _currentTween.TweenProperty(_toastPanel, "modulate:a", 1.0f, 0.3f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
-        // Slide in from right
-        UpdatePosition(false);
+        // Slide in animation: offscreen (right) -> visible position over 0.3s
+        UpdatePosition(false); // Set initial offscreen position
         _currentTween.TweenMethod(Callable.From<bool>(UpdatePosition), false, true, 0.3f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
-        // Wait, then slide out
+        // Wait for DisplayDuration, then fade out
+        // Chain() creates a sequential animation after the parallel animations complete
         _currentTween.Chain()
             .TweenInterval(DisplayDuration);
         _currentTween.TweenProperty(_toastPanel, "modulate:a", 0.0f, 0.3f)
@@ -172,6 +173,11 @@ public partial class AchievementToast : CanvasLayer
         _currentTween.Finished += OnToastFinished;
     }
 
+    /// <summary>
+    /// Updates the toast panel position based on visibility state
+    /// Called by tween animation to smoothly slide toast in from right edge
+    /// </summary>
+    /// <param name="visible">If true, positions at visible location; if false, positions off-screen to the right</param>
     private void UpdatePosition(bool visible)
     {
         if (_toastPanel == null)
@@ -202,6 +208,10 @@ public partial class AchievementToast : CanvasLayer
         }
     }
 
+    /// <summary>
+    /// Handler called when toast animation completes
+    /// Resets the showing flag to allow next toast to display
+    /// </summary>
     private void OnToastFinished()
     {
         _isShowing = false;
