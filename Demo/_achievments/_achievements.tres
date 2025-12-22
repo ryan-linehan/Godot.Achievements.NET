@@ -1,8 +1,0 @@
-[gd_resource type="Resource" script_class="AchievementDatabase" load_steps=3 format=3 uid="uid://b7uqxw06h12xe"]
-
-[ext_resource type="Script" uid="uid://dsqo75ulogvcd" path="res://addons/godot_achievements/Achievement.cs" id="1_u6cic"]
-[ext_resource type="Script" uid="uid://b5jk8htcq1rfi" path="res://addons/godot_achievements/AchievementDatabase.cs" id="2_xwse6"]
-
-[resource]
-script = ExtResource("2_xwse6")
-metadata/_custom_type_script = "uid://b5jk8htcq1rfi"

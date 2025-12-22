@@ -50,7 +50,11 @@ public partial class Achievement : Resource
     /// </summary>
     [Export]
     public Dictionary<string, Variant> ExtraProperties { get; set; } = new();
-
+    /// <summary>
+    /// Whether the achievement is incremental (a counting achievement)
+    /// </summary>
+    [Export]
+    public bool IsIncremental { get; set; } = false;
     /// <summary>
     /// Maximum progress value for incremental achievements
     /// </summary>

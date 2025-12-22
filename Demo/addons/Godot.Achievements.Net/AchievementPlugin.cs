@@ -7,10 +7,9 @@ namespace Godot.Achievements.Core;
 [Tool]
 public partial class AchievementPlugin : EditorPlugin
 {
-    [Export]
-    public PackedScene AchievementEditorDockScene = GD.Load<PackedScene>("res://addons/godot_achievements/Editor/AchievementEditorDock.tscn");
+    public PackedScene AchievementEditorDockScene = GD.Load<PackedScene>("res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDock.tscn");
     private const string AutoloadName = "Achievements";
-    private const string AutoloadPath = "res://addons/godot_achievements/AchievementManager.cs";
+    private const string AutoloadPath = "res://addons/Godot.Achievements.Net/AchievementManager.cs";
 
     private Editor.AchievementEditorDock? _dock;
 
@@ -18,7 +17,7 @@ public partial class AchievementPlugin : EditorPlugin
     {
         // Create and add the achievement editor dock
         // This runs on every project load to ensure the dock is always available
-        _dock = new Editor.AchievementEditorDock();
+        _dock = AchievementEditorDockScene.Instantiate<Editor.AchievementEditorDock>();
         _dock.Name = "Achievements";
         AddControlToBottomPanel(_dock, "Achievements");
     }

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Achievement" load_steps=3 format=3 uid="uid://bby6v6e8jsyuc"]
+
+[ext_resource type="Texture2D" uid="uid://ch0aljsxfwrd6" path="res://icon.svg" id="1_i86ey"]
+[ext_resource type="Script" uid="uid://dsqo75ulogvcd" path="res://addons/Godot.Achievements.Net/Achievement.cs" id="2_mnlci"]
+
+[resource]
+script = ExtResource("2_mnlci")
+Id = "01_test"
+DisplayName = "Test Achievement"
+Description = "A test achievement to do things and stuff"
+Icon = ExtResource("1_i86ey")
+metadata/_custom_type_script = "uid://dsqo75ulogvcd"

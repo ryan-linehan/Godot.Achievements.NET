@@ -1,0 +1,109 @@
+[gd_scene load_steps=2 format=3 uid="uid://uqr6iihjft3j"]
+
+[ext_resource type="Script" uid="uid://da1r4drkeycjw" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.cs" id="1_hvk53"]
+
+[node name="AchievementsEditorDock" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_hvk53")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TopBar" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TopBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AchievementsLabel" type="Label" parent="VBoxContainer/TopBar/VBoxContainer"]
+layout_mode = 2
+text = "Achievements"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/TopBar/VBoxContainer"]
+layout_mode = 2
+
+[node name="DatabaseLabel" type="Label" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Database: "
+
+[node name="ChangeDatabaseButton" type="Button" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Select..."
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+
+[node name="SteamCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Steam"
+
+[node name="GameCenterCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Game Center"
+
+[node name="GooglePlayCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Google Play"
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
+layout_mode = 2
+split_offset = 320
+
+[node name="List" type="VBoxContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/List"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/HSplitContainer/List/VBox"]
+layout_mode = 2
+text = "Achievement List"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/List/VBox"]
+layout_mode = 2
+
+[node name="AddAchievementButton" type="Button" parent="VBoxContainer/HSplitContainer/List/VBox/HBoxContainer"]
+layout_mode = 2
+text = "Add"
+
+[node name="Remove" type="Button" parent="VBoxContainer/HSplitContainer/List/VBox/HBoxContainer"]
+layout_mode = 2
+text = "Remove"
+
+[node name="Remove2" type="Button" parent="VBoxContainer/HSplitContainer/List/VBox/HBoxContainer"]
+layout_mode = 2
+text = "Duplicate"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/List"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/List/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Details" type="Control" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2

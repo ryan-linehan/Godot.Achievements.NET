@@ -17,7 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-Achievements="*res://addons/godot_achievements/AchievementManager.cs"
+Achievements="*res://addons/Godot.Achievements.Net/AchievementManager.cs"
 
 [dotnet]
 
@@ -25,7 +25,7 @@ project/assembly_name="demo"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_achievements/plugin.cfg")
+enabled=PackedStringArray("res://addons/Godot.Achievements.Net/plugin.cfg")
 
 [rendering]
 

@@ -10,5 +10,6 @@ namespace Godot.Achievements.Core.Editor;
 [Tool]
 public partial class AchievementEditorDock : Control
 {
+    
 }
 #endif
