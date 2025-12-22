@@ -1,11 +1,44 @@
-[gd_scene load_steps=4 format=3 uid="uid://uqr6iihjft3j"]
+[gd_scene load_steps=6 format=3 uid="uid://uqr6iihjft3j"]
 
 [ext_resource type="Script" uid="uid://da1r4drkeycjw" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.cs" id="1_hvk53"]
 [ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_ova2g"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jyate"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foldable"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.15, 0.15, 0.15, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.3, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_customprops"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.15, 0.15, 0.15, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.3, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
 [node name="AchievementsEditorDock" type="Control"]
+custom_minimum_size = Vector2(0, 500)
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -21,318 +54,380 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="TopBar" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/TopBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TopBar/MarginContainer"]
+layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Control" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 8)
+[node name="AchievementsLabel" type="RichTextLabel" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(160, 28)
 layout_mode = 2
-
-[node name="TopBar" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 64)
-layout_mode = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TopBar"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="AchievementsLabel" type="RichTextLabel" parent="VBoxContainer/TopBar/VBoxContainer"]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
+theme_override_font_sizes/normal_font_size = 18
 theme_override_styles/normal = SubResource("StyleBoxEmpty_jyate")
 bbcode_enabled = true
 text = "[b]Achievements[/b]"
+fit_content = true
 scroll_active = false
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/TopBar/VBoxContainer"]
+[node name="HeaderHBox" type="HBoxContainer" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer"]
 layout_mode = 2
 
-[node name="DatabaseLabel" type="Label" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer"]
+[node name="DatabaseHBox" type="HBoxContainer" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
 layout_mode = 2
-text = "Database: "
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
-[node name="ChangeDatabaseButton" type="Button" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer"]
+[node name="DatabaseLabel" type="Label" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/DatabaseHBox"]
+layout_mode = 2
+text = "Database:"
+
+[node name="ChangeDatabaseButton" type="Button" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/DatabaseHBox"]
 layout_mode = 2
 text = "Select..."
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer"]
+[node name="Spacer" type="Control" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
+custom_minimum_size = Vector2(16, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-alignment = 2
 
-[node name="SteamCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer/HBoxContainer"]
+[node name="PlatformFiltersLabel" type="Label" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
 layout_mode = 2
+text = "Enabled Platforms:"
+
+[node name="PlatformFiltersHBox" type="HBoxContainer" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SteamCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox"]
+layout_mode = 2
+tooltip_text = "Show Steam platform fields"
 text = "Steam"
 
-[node name="GameCenterCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer/HBoxContainer"]
+[node name="GameCenterCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox"]
 layout_mode = 2
+tooltip_text = "Show Game Center platform fields"
 text = "Game Center"
 
-[node name="GooglePlayCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/VBoxContainer/HBoxContainer/HBoxContainer"]
+[node name="GooglePlayCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox"]
 layout_mode = 2
+tooltip_text = "Show Google Play platform fields"
 text = "Google Play"
 
 [node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 
 [node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-split_offset = 320
+split_offset = 340
 
-[node name="List" type="VBoxContainer" parent="VBoxContainer/HSplitContainer"]
+[node name="ListPanel" type="PanelContainer" parent="VBoxContainer/HSplitContainer"]
 layout_mode = 2
 
-[node name="VBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/List"]
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/HSplitContainer/ListPanel"]
 layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
 
-[node name="AchievementsListLabel" type="Label" parent="VBoxContainer/HSplitContainer/List/VBox"]
+[node name="List" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ListHeader" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AchievementsListLabel" type="Label" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
 layout_mode = 2
 text = "Achievement List"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/List/VBox"]
+[node name="SearchHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SearchIcon" type="Label" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox"]
+layout_mode = 2
+text = "🔍"
+
+[node name="SearchLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Search achievements..."
+clear_button_enabled = true
+
+[node name="Spacer" type="Control" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
+custom_minimum_size = Vector2(0, 4)
 layout_mode = 2
 
-[node name="AddAchievementButton" type="Button" parent="VBoxContainer/HSplitContainer/List/VBox/HBoxContainer"]
+[node name="ActionButtons" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
 layout_mode = 2
-text = "Add"
+theme_override_constants/separation = 6
 
-[node name="Remove" type="Button" parent="VBoxContainer/HSplitContainer/List/VBox/HBoxContainer"]
+[node name="AddAchievementButton" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
 layout_mode = 2
+size_flags_horizontal = 3
+text = "+ Add"
+
+[node name="Remove" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
 text = "Remove"
 
-[node name="Remove2" type="Button" parent="VBoxContainer/HSplitContainer/List/VBox/HBoxContainer"]
+[node name="Remove2" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Duplicate"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/List"]
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="NoItemsControl" type="Panel" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/HSplitContainer/List/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-
-[node name="ItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/List/ScrollContainer/MarginContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/HSplitContainer"]
-custom_minimum_size = Vector2(320, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Details" type="Panel" parent="VBoxContainer/HSplitContainer/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details"]
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/NoItemsControl"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 4
-theme_override_constants/margin_bottom = 4
 
-[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer"]
+[node name="NoItemsLabel" type="Label" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/NoItemsControl/ScrollContainer"]
+custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 6
+text = "No achievements available. Add one above!"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 0
-text = "Achievement - "
-
-[node name="HSeparator" type="HSeparator" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer"]
+[node name="ItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailsPanel" type="PanelContainer" parent="VBoxContainer/HSplitContainer"]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="GeneralContainer" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 240)
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Achievement Details"
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer"]
+[node name="ContentVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer"]
 layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
 
-[node name="AchievementIconButton" type="TextureButton" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/VBoxContainer"]
+[node name="BasicInfoSection" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="GeneralContainer" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ImageSection" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AchievementIconButton" type="TextureButton" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
 custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
+tooltip_text = "Click to change achievement icon"
 texture_normal = ExtResource("2_ova2g")
+stretch_mode = 5
 
-[node name="SelectIconButton" type="Button" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/VBoxContainer"]
+[node name="SelectIconButton" type="Button" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
 layout_mode = 2
-size_flags_horizontal = 4
-text = "Select Image"
+text = "Change Image"
 
-[node name="GeneralDetails" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails"]
-layout_mode = 2
-
-[node name="NameHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/HBoxContainer"]
+[node name="FieldsSection" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 12
 
-[node name="NameLabel" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/HBoxContainer/NameHBox"]
+[node name="NameVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
 layout_mode = 2
-text = "Name: "
+theme_override_constants/separation = 4
 
-[node name="NameLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/HBoxContainer/NameHBox"]
-modulate = Color(2.501, 2.501, 2.501, 1)
-custom_minimum_size = Vector2(128, 0)
+[node name="NameLabel" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox"]
 layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-placeholder_text = "Name..."
+text = "Display Name"
 
-[node name="InternalIDHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/HBoxContainer"]
+[node name="NameLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox"]
 layout_mode = 2
-size_flags_horizontal = 3
+placeholder_text = "Enter achievement name..."
 
-[node name="InternalIDLabel" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/HBoxContainer/InternalIDHBox"]
+[node name="InternalIDVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
 layout_mode = 2
-tooltip_text = "The ID that will be used when unlocking achievements"
+theme_override_constants/separation = 4
+
+[node name="InternalIDLabel" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox"]
+layout_mode = 2
+tooltip_text = "The unique identifier used when unlocking this achievement in code"
 mouse_filter = 1
-text = "Internal ID: "
+text = "Internal ID"
 
-[node name="InternalIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/HBoxContainer/InternalIDHBox"]
-modulate = Color(2.454227, 2.454227, 2.454227, 1)
-custom_minimum_size = Vector2(160, 0)
+[node name="InternalIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox"]
 layout_mode = 2
-placeholder_text = "Internal id..."
+placeholder_text = "unique_achievement_id"
 
-[node name="DescriptionHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails"]
+[node name="DescriptionVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/separation = 4
 
-[node name="DescriptionLabel" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/DescriptionHBox"]
+[node name="DescriptionLabel" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox"]
 layout_mode = 2
-size_flags_vertical = 0
-text = "Description: "
+text = "Description"
 
-[node name="DescriptionTextBox" type="TextEdit" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/GeneralContainer/GeneralDetails/DescriptionHBox"]
-custom_minimum_size = Vector2(320, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-placeholder_text = "Description text..."
-
-[node name="PlatformsContainer" type="FoldableContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
+[node name="DescriptionTextBox" type="TextEdit" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox"]
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_vertical = 3
-folded = true
-title = "Platforms"
+placeholder_text = "Describe how players can unlock this achievement..."
+wrap_mode = 1
 
-[node name="PlatformsHBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer"]
-visible = false
-layout_mode = 2
-
-[node name="SteamIDHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox"]
-layout_mode = 2
-
-[node name="SteamIDLabel" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox/SteamIDHBox"]
-layout_mode = 2
-text = "Steam ID: "
-
-[node name="SteamIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox/SteamIDHBox"]
-modulate = Color(2.454227, 2.454227, 2.454227, 1)
-custom_minimum_size = Vector2(128, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-placeholder_text = "Steam id here..."
-
-[node name="GooglePlayIDHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox"]
-layout_mode = 2
-
-[node name="GooglePlayIDLabel" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox/GooglePlayIDHBox"]
-layout_mode = 2
-text = "Google Play ID: "
-
-[node name="GooglePlayIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox/GooglePlayIDHBox"]
-modulate = Color(2.454227, 2.454227, 2.454227, 1)
-custom_minimum_size = Vector2(128, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-placeholder_text = "Google play id..."
-
-[node name="GameCenterIDHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox"]
-layout_mode = 2
-
-[node name="GameCenterLabel" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox/GameCenterIDHBox"]
-layout_mode = 2
-text = "Game Center ID: "
-
-[node name="GameCenterIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/PlatformsContainer/PlatformsHBox/GameCenterIDHBox"]
-modulate = Color(2.454227, 2.454227, 2.454227, 1)
-custom_minimum_size = Vector2(128, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-placeholder_text = "Game center id..."
-
-[node name="CustomProperties" type="FoldableContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
+[node name="PlatformsContainer" type="FoldableContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_foldable")
+title = "Platform Identifiers"
+
+[node name="PlatformsHBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PlatformNote" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Enter the platform-specific achievement IDs. Use the checkboxes above to filter which platforms you're working with."
+autowrap_mode = 3
+
+[node name="SteamVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SteamIDLabel" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+text = "Steam Achievement ID"
+
+[node name="SteamIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+placeholder_text = "steam_achievement_api_name"
+
+[node name="GooglePlayVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GooglePlayIDLabel" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox"]
+layout_mode = 2
+text = "Google Play Achievement ID"
+
+[node name="GooglePlayIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox"]
+layout_mode = 2
+placeholder_text = "CgkI... (Google Play achievement ID)"
+
+[node name="GameCenterVBox" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GameCenterLabel" type="Label" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox"]
+layout_mode = 2
+text = "Game Center Achievement ID"
+
+[node name="GameCenterIDLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox"]
+layout_mode = 2
+placeholder_text = "com.yourcompany.achievement_id"
+
+[node name="CustomProperties" type="FoldableContainer" parent="VBoxContainer/HSplitContainer/DetailsPanel/MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_customprops")
 folded = true
 title = "Custom Properties"
 
-[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/CustomProperties"]
-visible = false
-layout_mode = 2
-
-[node name="Label" type="Label" parent="VBoxContainer/HSplitContainer/HBoxContainer/Details/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/CustomProperties/VBoxContainer"]
-layout_mode = 2
-text = "TODO: Add UI for custom properties"
-
 [node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="BottomBar" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 
-[node name="DatabaseLabel" type="Label" parent="VBoxContainer/HBoxContainer"]
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/BottomBar"]
 layout_mode = 2
-text = "Database: "
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
 
-[node name="ChangeDatabaseButton" type="Label" parent="VBoxContainer/HBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer"]
 layout_mode = 2
-text = "res://addons/Godot.Achievements.Net/_achievements"
 
-[node name="BottomRightActions" type="HBoxContainer" parent="VBoxContainer/HBoxContainer"]
+[node name="DatabaseInfo" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-alignment = 2
+theme_override_constants/separation = 8
 
-[node name="ImportCSVButton" type="Button" parent="VBoxContainer/HBoxContainer/BottomRightActions"]
+[node name="DatabaseLabel" type="Label" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo"]
 layout_mode = 2
-text = "Import CSV"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Database:"
 
-[node name="ExportCSVButton" type="Button" parent="VBoxContainer/HBoxContainer/BottomRightActions"]
+[node name="DatabasePath" type="Label" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo"]
 layout_mode = 2
-text = "Export CSV"
+theme_override_colors/font_color = Color(0.5, 0.7, 1, 1)
+text = "res://addons/Godot.Achievements.Net/_achievements"
+
+[node name="Actions" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ImportCSVButton" type="Button" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
+layout_mode = 2
+text = "📥 Import CSV"
+
+[node name="ExportCSVButton" type="Button" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
+layout_mode = 2
+text = "📤 Export CSV"
