@@ -5,7 +5,7 @@
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jyate"]
 
-[node name="AchievementsEditorDock" type="Control"]
+[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("ChangeDatabaseButton", "SteamCheckbox", "GameCenterCheckbox", "GooglePlayCheckbox", "SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportCSVButton", "ExportCSVButton")]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 3
 anchors_preset = 15
@@ -14,6 +14,21 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_hvk53")
+ChangeDatabaseButton = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/DatabaseHBox/ChangeDatabaseButton")
+SteamCheckbox = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox/SteamCheckbox")
+GameCenterCheckbox = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox/GameCenterCheckbox")
+GooglePlayCheckbox = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox/GooglePlayCheckbox")
+SearchLineEdit = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox/SearchLineEdit")
+AddAchievementButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/AddAchievementButton")
+RemoveButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/RemoveButton")
+DuplicateButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/DuplicateButton")
+NoItemsControl = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/NoItemsControl")
+ItemList = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ScrollContainer/ItemList")
+DetailsPanel = NodePath("VBoxContainer/HSplitContainer/DetailsPanel")
+NoItemSelectedScroll = NodePath("VBoxContainer/HSplitContainer/NoItemSelectedScroll")
+DatabasePathLabel = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo/DatabasePath")
+ImportCSVButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ImportCSVButton")
+ExportCSVButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ExportCSVButton")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -149,14 +164,16 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "+ Add"
 
-[node name="Remove" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
+[node name="RemoveButton" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
 layout_mode = 2
 size_flags_horizontal = 3
+disabled = true
 text = "Remove"
 
-[node name="Remove2" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
+[node name="DuplicateButton" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
 layout_mode = 2
 size_flags_horizontal = 3
+disabled = true
 text = "Duplicate"
 
 [node name="HSeparator" type="HSeparator" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
@@ -194,6 +211,10 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+item_count = 3
+item_0/text = "My Achievement"
+item_1/text = "My Achievement (Copy)"
+item_2/text = "My Achievement (Copy) (Copy)"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
@@ -245,7 +266,7 @@ text = "Database:"
 [node name="DatabasePath" type="Label" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.7, 1, 1)
-text = "res://addons/Godot.Achievements.Net/_achievements"
+text = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres"
 
 [node name="Actions" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer"]
 layout_mode = 2

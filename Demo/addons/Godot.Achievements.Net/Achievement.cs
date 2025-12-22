@@ -5,6 +5,7 @@ namespace Godot.Achievements.Core;
 /// <summary>
 /// Achievement definition resource that can be edited in the Godot editor
 /// </summary>
+[Tool]
 [GlobalClass]
 public partial class Achievement : Resource
 {

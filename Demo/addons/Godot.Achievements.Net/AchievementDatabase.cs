@@ -6,6 +6,7 @@ namespace Godot.Achievements.Core;
 /// <summary>
 /// Database of achievements - configured in the editor and saved as a resource file
 /// </summary>
+[Tool]
 [GlobalClass]
 public partial class AchievementDatabase : Resource
 {

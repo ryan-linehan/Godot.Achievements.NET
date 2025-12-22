@@ -8,6 +8,10 @@
 
 config_version=5
 
+[addons]
+
+achievements/database_path="res://addons/Godot.Achievements.Net/_achievements/_achievements.tres"
+
 [application]
 
 config/name="demo"

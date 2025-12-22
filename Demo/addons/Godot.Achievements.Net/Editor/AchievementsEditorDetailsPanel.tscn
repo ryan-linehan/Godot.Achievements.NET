@@ -35,7 +35,7 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="DetailsPanel" type="PanelContainer"]
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("AchievementIconButton", "IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer")]
 custom_minimum_size = Vector2(400, 0)
 anchors_preset = 15
 anchor_right = 1.0
@@ -44,6 +44,19 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 script = ExtResource("1_ilrbq")
+AchievementIconButton = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection/AchievementIconButton")
+IconPickerContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection/IconPickerContainer")
+NameLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox/NameLineEdit")
+InternalIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox/InternalIDLineEdit")
+DescriptionTextBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox/DescriptionTextBox")
+PlatformsContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer")
+SteamVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox")
+SteamIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamIDLineEdit")
+GooglePlayVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox")
+GooglePlayIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox/GooglePlayIDLineEdit")
+GameCenterVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox")
+GameCenterIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterIDLineEdit")
+CustomPropertiesContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/CustomProperties")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
@@ -91,9 +104,8 @@ tooltip_text = "Click to change achievement icon"
 texture_normal = ExtResource("1_hdmle")
 stretch_mode = 5
 
-[node name="SelectIconButton" type="Button" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
+[node name="IconPickerContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
 layout_mode = 2
-text = "Change Image"
 
 [node name="FieldsSection" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer"]
 layout_mode = 2
