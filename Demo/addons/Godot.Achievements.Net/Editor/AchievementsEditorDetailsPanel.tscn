@@ -1,6 +1,5 @@
-[gd_scene load_steps=5 format=3 uid="uid://cjc02uatgibsf"]
+[gd_scene load_steps=4 format=3 uid="uid://cjc02uatgibsf"]
 
-[ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="1_hdmle"]
 [ext_resource type="Script" uid="uid://cy8i5orrm878e" path="res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDetailsPanel.cs" id="1_ilrbq"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foldable"]
@@ -35,7 +34,7 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("AchievementIconButton", "IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer")]
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer")]
 custom_minimum_size = Vector2(400, 0)
 anchors_preset = 15
 anchor_right = 1.0
@@ -44,11 +43,12 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 script = ExtResource("1_ilrbq")
-AchievementIconButton = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection/AchievementIconButton")
 IconPickerContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection/IconPickerContainer")
 NameLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox/NameLineEdit")
 InternalIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox/InternalIDLineEdit")
 DescriptionTextBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox/DescriptionTextBox")
+TrackProgressCheckBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox/TrackProgressCheckbox")
+TargetValueSpinBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox/TargetValueSpinbox")
 PlatformsContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer")
 SteamVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox")
 SteamIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamIDLineEdit")
@@ -97,15 +97,10 @@ theme_override_constants/separation = 16
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="AchievementIconButton" type="TextureButton" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
-custom_minimum_size = Vector2(128, 128)
-layout_mode = 2
-tooltip_text = "Click to change achievement icon"
-texture_normal = ExtResource("1_hdmle")
-stretch_mode = 5
-
 [node name="IconPickerContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
+custom_minimum_size = Vector2(128, 0)
 layout_mode = 2
+size_flags_vertical = 8
 
 [node name="FieldsSection" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer"]
 layout_mode = 2
@@ -153,6 +148,37 @@ layout_mode = 2
 size_flags_vertical = 3
 placeholder_text = "Describe how players can unlock this achievement..."
 wrap_mode = 1
+
+[node name="IncrementalProgressVBox" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TrackProgressCheckbox" type="CheckBox" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Track Progress?"
+
+[node name="Spacer" type="Control" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+
+[node name="TargetValueLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+text = "Target Value"
+vertical_alignment = 1
+
+[node name="TargetValueSpinbox" type="SpinBox" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+custom_minimum_size = Vector2(128, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+min_value = 1.0
+max_value = 999999.0
+value = 1.0
+rounded = true
+editable = false
 
 [node name="PlatformsContainer" type="FoldableContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
 layout_mode = 2

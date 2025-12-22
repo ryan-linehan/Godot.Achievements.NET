@@ -11,6 +11,9 @@ config_version=5
 [addons]
 
 achievements/database_path="res://addons/Godot.Achievements.Net/_achievements/_achievements.tres"
+achievements/platforms/steam_enabled=false
+achievements/platforms/gamecenter_enabled=false
+achievements/platforms/googleplay_enabled=false
 
 [application]
 

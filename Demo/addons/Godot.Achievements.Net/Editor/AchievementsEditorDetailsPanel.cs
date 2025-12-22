@@ -22,6 +22,12 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     [Export]
     private TextEdit DescriptionTextBox = null!;
 
+    // Progress Tracking
+    [Export]
+    private CheckBox TrackProgressCheckBox = null!;
+    [Export]
+    private SpinBox TargetValueSpinBox = null!;
+
     // Platform Identifiers
     [Export]
     private FoldableContainer PlatformsContainer = null!;
@@ -94,6 +100,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         }
         if (DescriptionTextBox != null)
             DescriptionTextBox.TextChanged += OnDescriptionChanged;
+        if (TrackProgressCheckBox != null)
+            TrackProgressCheckBox.Toggled += OnTrackProgressToggled;
+        if (TargetValueSpinBox != null)
+            TargetValueSpinBox.ValueChanged += OnTargetValueChanged;
         if (SteamIDLineEdit != null)
             SteamIDLineEdit.TextChanged += OnSteamIdChanged;
         if (GooglePlayIDLineEdit != null)
@@ -175,6 +185,26 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         EmitSignal(SignalName.AchievementChanged);
     }
 
+    private void OnTrackProgressToggled(bool enabled)
+    {
+        if (_isUpdating || _currentAchievement == null) return;
+
+        _currentAchievement.IsIncremental = enabled;
+        if (TargetValueSpinBox != null)
+            TargetValueSpinBox.Editable = enabled;
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    private void OnTargetValueChanged(double value)
+    {
+        if (_isUpdating || _currentAchievement == null) return;
+
+        _currentAchievement.MaxProgress = (int)value;
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
     public override void _ExitTree()
     {
         if (_iconPicker != null)
@@ -194,6 +224,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         }
         if (DescriptionTextBox != null)
             DescriptionTextBox.TextChanged -= OnDescriptionChanged;
+        if (TrackProgressCheckBox != null)
+            TrackProgressCheckBox.Toggled -= OnTrackProgressToggled;
+        if (TargetValueSpinBox != null)
+            TargetValueSpinBox.ValueChanged -= OnTargetValueChanged;
         if (SteamIDLineEdit != null)
             SteamIDLineEdit.TextChanged -= OnSteamIdChanged;
         if (GooglePlayIDLineEdit != null)
@@ -221,6 +255,16 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         }
         if (DescriptionTextBox != null)
             DescriptionTextBox.Text = _currentAchievement.Description ?? string.Empty;
+
+        if (TrackProgressCheckBox != null)
+        {
+            TrackProgressCheckBox.ButtonPressed = _currentAchievement.IsIncremental;
+        }
+        if (TargetValueSpinBox != null)
+        {
+            TargetValueSpinBox.Value = _currentAchievement.MaxProgress;
+            TargetValueSpinBox.Editable = _currentAchievement.IsIncremental;
+        }
 
         if (_currentAchievement.Icon != null)
         {
@@ -257,6 +301,13 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             InternalIDLineEdit.Text = string.Empty;
         if (DescriptionTextBox != null)
             DescriptionTextBox.Text = string.Empty;
+        if (TrackProgressCheckBox != null)
+            TrackProgressCheckBox.ButtonPressed = false;
+        if (TargetValueSpinBox != null)
+        {
+            TargetValueSpinBox.Value = 1;
+            TargetValueSpinBox.Editable = false;
+        }
         if (AchievementIconButton != null)
             AchievementIconButton.TextureNormal = null;
         if (_iconPicker != null)
