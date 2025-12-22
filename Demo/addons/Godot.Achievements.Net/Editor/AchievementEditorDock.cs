@@ -33,6 +33,8 @@ public partial class AchievementEditorDock : Control
     private Control NoItemsControl = null!;
     [Export]
     private ItemList ItemList = null!;
+    [Export]
+    private ScrollContainer ItemListScrollContainer = null!;
 
     // Details Panel Component
     [Export]
@@ -462,6 +464,7 @@ public partial class AchievementEditorDock : Control
         {
             NoItemsControl.Visible = true;
             ItemList.Visible = false;
+            ItemListScrollContainer.Visible = false;
             DetailsPanel.Visible = false;
             NoItemSelectedScroll.Visible = true;
             UpdateButtonStates();
@@ -470,6 +473,7 @@ public partial class AchievementEditorDock : Control
 
         NoItemsControl.Visible = false;
         ItemList.Visible = true;
+        ItemListScrollContainer.Visible = true;
 
         var searchText = SearchLineEdit.Text.ToLower();
         var filteredAchievements = _currentDatabase.Achievements
@@ -482,6 +486,7 @@ public partial class AchievementEditorDock : Control
         {
             NoItemsControl.Visible = true;
             ItemList.Visible = false;
+            ItemListScrollContainer.Visible = false;
             DetailsPanel.Visible = false;
             NoItemSelectedScroll.Visible = true;
             UpdateButtonStates();

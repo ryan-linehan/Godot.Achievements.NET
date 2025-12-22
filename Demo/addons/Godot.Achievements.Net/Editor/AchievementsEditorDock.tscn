@@ -1,12 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://uqr6iihjft3j"]
+[gd_scene load_steps=4 format=3 uid="uid://uqr6iihjft3j"]
 
 [ext_resource type="Script" uid="uid://da1r4drkeycjw" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.cs" id="1_hvk53"]
-[ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_1wofd"]
 [ext_resource type="PackedScene" uid="uid://cjc02uatgibsf" path="res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDetailsPanel.tscn" id="2_ova2g"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jyate"]
 
-[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("ChangeDatabaseButton", "SteamCheckbox", "GameCenterCheckbox", "GooglePlayCheckbox", "SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportCSVButton", "ExportCSVButton")]
+[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("ChangeDatabaseButton", "SteamCheckbox", "GameCenterCheckbox", "GooglePlayCheckbox", "SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportCSVButton", "ExportCSVButton")]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 3
 anchors_preset = 15
@@ -24,7 +23,8 @@ AddAchievementButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginC
 RemoveButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/RemoveButton")
 DuplicateButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/DuplicateButton")
 NoItemsControl = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/NoItemsControl")
-ItemList = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ScrollContainer/ItemList")
+ItemList = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ItemListScrollContainer/ItemList")
+ItemListScrollContainer = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ItemListScrollContainer")
 DetailsPanel = NodePath("VBoxContainer/HSplitContainer/DetailsPanel")
 NoItemSelectedScroll = NodePath("VBoxContainer/HSplitContainer/NoItemSelectedScroll")
 DatabasePathLabel = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo/DatabasePath")
@@ -203,18 +203,16 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+[node name="ItemListScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ScrollContainer"]
+[node name="ItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ItemListScrollContainer"]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-item_count = 2
-item_0/text = "My Achievement"
-item_0/icon = ExtResource("2_1wofd")
-item_1/text = "New Achievement"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
