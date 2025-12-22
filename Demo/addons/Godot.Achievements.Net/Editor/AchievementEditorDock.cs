@@ -62,9 +62,23 @@ public partial class AchievementEditorDock : Control
     private int _contextMenuTargetIndex = -1;
     private bool _hasUnsavedChanges = false;
     private Action? _pendingAction;
+    private bool _isLoadingSettings = false;
 
     private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
     private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
+
+    // Platform settings keys
+    private const string STEAM_ENABLED_SETTING = "addons/achievements/platforms/steam_enabled";
+    private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
+    private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
+
+    // Platform autoload configuration
+    private const string STEAM_AUTOLOAD_NAME = "SteamAchievements";
+    private const string STEAM_AUTOLOAD_PATH = "res://addons/Godot.Achievements.Net.Steamworks/SteamAchievementAutoload.cs";
+    private const string GAMECENTER_AUTOLOAD_NAME = "GameCenterAchievements";
+    private const string GAMECENTER_AUTOLOAD_PATH = "res://addons/Godot.Achievements.Net.GameCenter/GameCenterAchievementAutoload.cs";
+    private const string GOOGLEPLAY_AUTOLOAD_NAME = "GooglePlayAchievements";
+    private const string GOOGLEPLAY_AUTOLOAD_PATH = "res://addons/Godot.Achievements.Net.GooglePlay/GooglePlayAchievementAutoload.cs";
 
     public override void _Ready()
     {
@@ -132,7 +146,10 @@ public partial class AchievementEditorDock : Control
         // Initialize button states
         UpdateButtonStates();
 
-        // Set initial platform checkbox visibility
+        // Load platform settings from project settings (sets checkbox states)
+        LoadPlatformSettings();
+
+        // Set initial platform checkbox visibility based on loaded settings
         if (DetailsPanel != null && SteamCheckbox != null && DetailsPanel.SteamVBox != null)
             DetailsPanel.SteamVBox.Visible = SteamCheckbox.ButtonPressed;
         if (DetailsPanel != null && GameCenterCheckbox != null && DetailsPanel.GameCenterVBox != null)
@@ -242,18 +259,39 @@ public partial class AchievementEditorDock : Control
     {
         if (DetailsPanel?.SteamVBox != null)
             DetailsPanel.SteamVBox.Visible = enabled;
+
+        // Skip saving/autoload management during initial settings load
+        if (_isLoadingSettings) return;
+
+        // Save setting and manage autoload
+        SavePlatformSetting(STEAM_ENABLED_SETTING, enabled);
+        SetPlatformAutoload(STEAM_AUTOLOAD_NAME, STEAM_AUTOLOAD_PATH, enabled);
     }
 
     private void OnGameCenterCheckboxToggled(bool enabled)
     {
         if (DetailsPanel?.GameCenterVBox != null)
             DetailsPanel.GameCenterVBox.Visible = enabled;
+
+        // Skip saving/autoload management during initial settings load
+        if (_isLoadingSettings) return;
+
+        // Save setting and manage autoload
+        SavePlatformSetting(GAMECENTER_ENABLED_SETTING, enabled);
+        SetPlatformAutoload(GAMECENTER_AUTOLOAD_NAME, GAMECENTER_AUTOLOAD_PATH, enabled);
     }
 
     private void OnGooglePlayCheckboxToggled(bool enabled)
     {
         if (DetailsPanel?.GooglePlayVBox != null)
             DetailsPanel.GooglePlayVBox.Visible = enabled;
+
+        // Skip saving/autoload management during initial settings load
+        if (_isLoadingSettings) return;
+
+        // Save setting and manage autoload
+        SavePlatformSetting(GOOGLEPLAY_ENABLED_SETTING, enabled);
+        SetPlatformAutoload(GOOGLEPLAY_AUTOLOAD_NAME, GOOGLEPLAY_AUTOLOAD_PATH, enabled);
     }
 
     private void OnAchievementIdChanged(Achievement achievement, string oldId, string newId)
@@ -463,6 +501,108 @@ public partial class AchievementEditorDock : Control
     private void OnDatabaseFileSelected(string path)
     {
         LoadDatabase(path);
+    }
+
+    #endregion
+
+    #region Platform Settings
+
+    private void LoadPlatformSettings()
+    {
+        // Set flag to prevent handlers from saving during initial load
+        _isLoadingSettings = true;
+
+        // Load Steam setting
+        bool steamEnabled = false;
+        if (ProjectSettings.HasSetting(STEAM_ENABLED_SETTING))
+        {
+            steamEnabled = ProjectSettings.GetSetting(STEAM_ENABLED_SETTING).AsBool();
+        }
+        if (SteamCheckbox != null)
+            SteamCheckbox.ButtonPressed = steamEnabled;
+
+        // Load GameCenter setting
+        bool gameCenterEnabled = false;
+        if (ProjectSettings.HasSetting(GAMECENTER_ENABLED_SETTING))
+        {
+            gameCenterEnabled = ProjectSettings.GetSetting(GAMECENTER_ENABLED_SETTING).AsBool();
+        }
+        if (GameCenterCheckbox != null)
+            GameCenterCheckbox.ButtonPressed = gameCenterEnabled;
+
+        // Load GooglePlay setting
+        bool googlePlayEnabled = false;
+        if (ProjectSettings.HasSetting(GOOGLEPLAY_ENABLED_SETTING))
+        {
+            googlePlayEnabled = ProjectSettings.GetSetting(GOOGLEPLAY_ENABLED_SETTING).AsBool();
+        }
+        if (GooglePlayCheckbox != null)
+            GooglePlayCheckbox.ButtonPressed = googlePlayEnabled;
+
+        _isLoadingSettings = false;
+
+        GD.Print($"[Achievements:Editor] Loaded platform settings - Steam: {steamEnabled}, GameCenter: {gameCenterEnabled}, GooglePlay: {googlePlayEnabled}");
+    }
+
+    private void SavePlatformSetting(string settingKey, bool enabled)
+    {
+        ProjectSettings.SetSetting(settingKey, enabled);
+        var saveError = ProjectSettings.Save();
+        if (saveError != Error.Ok)
+        {
+            GD.PushWarning($"[Achievements:Editor] Failed to save platform setting {settingKey}: {saveError}");
+        }
+    }
+
+    private void SetPlatformAutoload(string autoloadName, string autoloadPath, bool enabled)
+    {
+        var editorInterface = EditorInterface.Singleton;
+        if (editorInterface == null)
+        {
+            GD.PushError("[Achievements:Editor] EditorInterface not available");
+            return;
+        }
+
+        // Check if the autoload script file exists
+        if (enabled && !FileAccess.FileExists(autoloadPath))
+        {
+            GD.PushWarning($"[Achievements:Editor] Autoload script not found: {autoloadPath}");
+            return;
+        }
+
+        // The autoload setting in project.godot follows the format: autoload/AutoloadName = "*path"
+        var autoloadSettingKey = $"autoload/{autoloadName}";
+        var autoloadExists = ProjectSettings.HasSetting(autoloadSettingKey);
+
+        if (enabled && !autoloadExists)
+        {
+            // Add the autoload
+            ProjectSettings.SetSetting(autoloadSettingKey, $"*{autoloadPath}");
+            var saveError = ProjectSettings.Save();
+            if (saveError == Error.Ok)
+            {
+                GD.Print($"[Achievements:Editor] Added autoload: {autoloadName}");
+            }
+            else
+            {
+                GD.PushError($"[Achievements:Editor] Failed to add autoload {autoloadName}: {saveError}");
+            }
+        }
+        else if (!enabled && autoloadExists)
+        {
+            // Remove the autoload
+            ProjectSettings.SetSetting(autoloadSettingKey, Variant.CreateFrom((string?)null));
+            ProjectSettings.Clear(autoloadSettingKey);
+            var saveError = ProjectSettings.Save();
+            if (saveError == Error.Ok)
+            {
+                GD.Print($"[Achievements:Editor] Removed autoload: {autoloadName}");
+            }
+            else
+            {
+                GD.PushError($"[Achievements:Editor] Failed to remove autoload {autoloadName}: {saveError}");
+            }
+        }
     }
 
     #endregion
