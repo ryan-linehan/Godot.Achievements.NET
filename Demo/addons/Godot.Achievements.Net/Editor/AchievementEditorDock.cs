@@ -268,11 +268,8 @@ public partial class AchievementEditorDock : Control
     {
         MarkDirty();
 
-        // Update the list item to reflect any validation changes
-        if (_selectedAchievement != null)
-        {
-            UpdateListItemForAchievement(_selectedAchievement);
-        }
+        // Refresh the full list to re-run all validations (including duplicate detection)
+        RefreshAchievementList(preserveSelection: true);
     }
 
     private void MarkDirty()

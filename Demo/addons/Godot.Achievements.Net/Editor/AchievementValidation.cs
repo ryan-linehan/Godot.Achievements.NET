@@ -89,13 +89,91 @@ public static class AchievementValidator
         if (database?.Achievements == null)
             return results;
 
+        // First pass: run individual validations
         foreach (var achievement in database.Achievements)
         {
             var validationResult = ValidateAchievement(achievement);
             results[achievement] = validationResult;
         }
 
+        // Second pass: check for duplicate platform IDs within each provider
+        CheckDuplicatePlatformIds(database, results);
+
         return results;
+    }
+
+    /// <summary>
+    /// Check for duplicate platform IDs within each provider and add warnings
+    /// </summary>
+    private static void CheckDuplicatePlatformIds(AchievementDatabase database, Dictionary<Achievement, AchievementValidationResult> results)
+    {
+        // Track platform IDs to detect duplicates (only check if platform is enabled)
+        var steamIds = new Dictionary<string, List<Achievement>>();
+        var gameCenterIds = new Dictionary<string, List<Achievement>>();
+        var googlePlayIds = new Dictionary<string, List<Achievement>>();
+
+        bool steamEnabled = GetPlatformEnabled(STEAM_ENABLED_SETTING);
+        bool gameCenterEnabled = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
+        bool googlePlayEnabled = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
+
+        // Collect all platform IDs
+        foreach (var achievement in database.Achievements)
+        {
+            if (steamEnabled && !string.IsNullOrWhiteSpace(achievement.SteamId))
+            {
+                if (!steamIds.ContainsKey(achievement.SteamId))
+                    steamIds[achievement.SteamId] = new List<Achievement>();
+                steamIds[achievement.SteamId].Add(achievement);
+            }
+
+            if (gameCenterEnabled && !string.IsNullOrWhiteSpace(achievement.GameCenterId))
+            {
+                if (!gameCenterIds.ContainsKey(achievement.GameCenterId))
+                    gameCenterIds[achievement.GameCenterId] = new List<Achievement>();
+                gameCenterIds[achievement.GameCenterId].Add(achievement);
+            }
+
+            if (googlePlayEnabled && !string.IsNullOrWhiteSpace(achievement.GooglePlayId))
+            {
+                if (!googlePlayIds.ContainsKey(achievement.GooglePlayId))
+                    googlePlayIds[achievement.GooglePlayId] = new List<Achievement>();
+                googlePlayIds[achievement.GooglePlayId].Add(achievement);
+            }
+        }
+
+        // Add warnings for duplicates
+        foreach (var kvp in steamIds)
+        {
+            if (kvp.Value.Count > 1)
+            {
+                foreach (var achievement in kvp.Value)
+                {
+                    results[achievement].AddWarning($"Duplicate Steam ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
+                }
+            }
+        }
+
+        foreach (var kvp in gameCenterIds)
+        {
+            if (kvp.Value.Count > 1)
+            {
+                foreach (var achievement in kvp.Value)
+                {
+                    results[achievement].AddWarning($"Duplicate Game Center ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
+                }
+            }
+        }
+
+        foreach (var kvp in googlePlayIds)
+        {
+            if (kvp.Value.Count > 1)
+            {
+                foreach (var achievement in kvp.Value)
+                {
+                    results[achievement].AddWarning($"Duplicate Google Play ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
+                }
+            }
+        }
     }
 
     private static bool GetPlatformEnabled(string settingKey)
