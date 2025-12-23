@@ -1,0 +1,54 @@
+[gd_scene load_steps=2 format=3 uid="uid://debug_item_001"]
+
+[ext_resource type="Script" path="res://addons/Godot.Achievements.Net/RuntimeDebug/AchievementDebugListItem.cs" id="1_item"]
+
+[node name="AchievementDebugListItem" type="PanelContainer" node_paths=PackedStringArray("IconRect", "NameLabel", "StatusLabel", "ProgressBar", "ActionButton")]
+custom_minimum_size = Vector2(0, 50)
+script = ExtResource("1_item")
+IconRect = NodePath("MarginContainer/HBoxContainer/IconRect")
+NameLabel = NodePath("MarginContainer/HBoxContainer/InfoVBox/NameLabel")
+StatusLabel = NodePath("MarginContainer/HBoxContainer/InfoVBox/StatusLabel")
+ProgressBar = NodePath("MarginContainer/HBoxContainer/InfoVBox/ProgressBar")
+ActionButton = NodePath("MarginContainer/HBoxContainer/ActionButton")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="IconRect" type="TextureRect" parent="MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="InfoVBox" type="VBoxContainer" parent="MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="NameLabel" type="Label" parent="MarginContainer/HBoxContainer/InfoVBox"]
+layout_mode = 2
+text = "Achievement Name"
+
+[node name="StatusLabel" type="Label" parent="MarginContainer/HBoxContainer/InfoVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Locked"
+
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/HBoxContainer/InfoVBox"]
+visible = false
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+show_percentage = false
+
+[node name="ActionButton" type="Button" parent="MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Unlock"

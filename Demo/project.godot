@@ -1,0 +1,39 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[addons]
+
+achievements/toast/position=5
+achievements/toast/display_duration=0.5
+
+[application]
+
+config/name="demo"
+run/main_scene="uid://d0fk2ricf63xa"
+config/features=PackedStringArray("4.5", "C#", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Achievements="*res://addons/Godot.Achievements.Net/AchievementManager.cs"
+AchievementToasts="*res://addons/Godot.Achievements.Net/AchievementToastContainer.tscn"
+
+[dotnet]
+
+project/assembly_name="demo"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/Godot.Achievements.Net/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

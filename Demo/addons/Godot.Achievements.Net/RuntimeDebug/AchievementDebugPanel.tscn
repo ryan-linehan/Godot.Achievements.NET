@@ -1,0 +1,56 @@
+[gd_scene load_steps=2 format=3 uid="uid://debug_panel_001"]
+
+[ext_resource type="Script" path="res://addons/Godot.Achievements.Net/RuntimeDebug/AchievementDebugPanel.cs" id="1_debug"]
+
+[node name="AchievementDebugPanel" type="PanelContainer" node_paths=PackedStringArray("TabContainer", "RefreshButton", "CloseButton")]
+custom_minimum_size = Vector2(500, 400)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -200.0
+offset_right = 250.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_debug")
+TabContainer = NodePath("MarginContainer/VBoxContainer/TabContainer")
+RefreshButton = NodePath("MarginContainer/VBoxContainer/Header/RefreshButton")
+CloseButton = NodePath("MarginContainer/VBoxContainer/Header/CloseButton")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Achievement Debug Panel"
+theme_type_variation = &"HeaderLarge"
+
+[node name="RefreshButton" type="Button" parent="MarginContainer/VBoxContainer/Header"]
+layout_mode = 2
+text = "Refresh"
+
+[node name="CloseButton" type="Button" parent="MarginContainer/VBoxContainer/Header"]
+layout_mode = 2
+text = "X"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="TabContainer" type="TabContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3

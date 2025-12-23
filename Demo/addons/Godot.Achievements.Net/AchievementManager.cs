@@ -1,0 +1,590 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Godot.Achievements.Core;
+
+/// <summary>
+/// Main achievement manager singleton - the primary API for achievement operations
+/// Automatically registered as an autoload in project settings
+/// </summary>
+public partial class AchievementManager : Node
+{
+    public static AchievementManager? Instance { get; private set; }
+
+    private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
+    private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
+
+    /// <summary>
+    /// The achievement database. Loaded automatically from project settings, or can be set at runtime using SetDatabase().
+    /// </summary>
+    [Export] public AchievementDatabase? Database { get; private set; }
+    [Export] public float SyncRetryInterval { get; set; } = 30f; // seconds
+
+    private LocalAchievementProvider? _localProvider;
+    private readonly List<IAchievementProvider> _platformProviders = new();
+    private readonly Queue<PendingSync> _syncQueue = new();
+    private double _timeSinceLastRetry = 0;
+
+    // Signals
+    [Signal] public delegate void AchievementUnlockedEventHandler(string achievementId, Achievement achievement);
+    [Signal] public delegate void AchievementProgressChangedEventHandler(string achievementId, int currentProgress, int maxProgress);
+    [Signal] public delegate void ProviderRegisteredEventHandler(string providerName);
+    [Signal] public delegate void DatabaseChangedEventHandler(AchievementDatabase database);
+
+    public override void _EnterTree()
+    {
+        if (Instance != null)
+        {
+            GD.PushWarning("Multiple AchievementManager instances detected. Using first instance.");
+            QueueFree();
+            return;
+        }
+
+        Instance = this;
+    }
+
+    public override void _Ready()
+    {
+        // If no database was set via Export, load from project settings or use default
+        if (Database == null)
+        {
+            Database = LoadDatabaseFromSettings();
+        }
+
+        if (Database == null)
+        {
+            GD.PushError("[Achievements] No AchievementDatabase found! Set one via the editor or call SetDatabase() at runtime.");
+            return;
+        }
+
+        InitializeWithDatabase();
+    }
+
+    /// <summary>
+    /// Load the database from project settings, falling back to the default path
+    /// </summary>
+    private AchievementDatabase? LoadDatabaseFromSettings()
+    {
+        var path = DEFAULT_DATABASE_PATH;
+
+        if (ProjectSettings.HasSetting(DATABASE_PATH_SETTING))
+        {
+            var settingPath = ProjectSettings.GetSetting(DATABASE_PATH_SETTING).AsString();
+            if (!string.IsNullOrEmpty(settingPath))
+            {
+                path = settingPath;
+            }
+        }
+
+        if (!ResourceLoader.Exists(path))
+        {
+            GD.PushWarning($"[Achievements] Database not found at: {path}");
+            return null;
+        }
+
+        var database = GD.Load<AchievementDatabase>(path);
+        if (database != null)
+        {
+            GD.Print($"[Achievements] Loaded database from: {path}");
+        }
+
+        return database;
+    }
+
+    /// <summary>
+    /// Initialize the manager with the current database
+    /// </summary>
+    private bool InitializeWithDatabase()
+    {
+        if (Database == null)
+        {
+            return false;
+        }
+
+        // Duplicate the database so runtime changes don't affect the original resource
+        // This prevents Godot from prompting to reload scenes when achievements are unlocked
+        Database = (AchievementDatabase)Database.Duplicate(true);
+
+        // Validate database
+        var errors = Database.Validate();
+        if (errors.Length > 0)
+        {
+            GD.PushError("[Achievements] Database validation failed:");
+            foreach (var error in errors)
+            {
+                GD.PushError($"  - {error}");
+            }
+            return false;
+        }
+
+        // Initialize local provider
+        _localProvider = new LocalAchievementProvider(Database);
+        GD.Print("[Achievements] Initialized LocalAchievementProvider");
+
+        // Sync local achievements to platforms on startup
+        CallDeferred(nameof(SyncLocalToPlatforms));
+
+        return true;
+    }
+
+    /// <summary>
+    /// Set or swap the achievement database at runtime.
+    /// This reinitializes the local provider and syncs to platforms.
+    /// </summary>
+    /// <param name="database">The new database to use</param>
+    /// <returns>True if the database was set successfully</returns>
+    public bool SetDatabase(AchievementDatabase database)
+    {
+        if (database == null)
+        {
+            GD.PushError("[Achievements] Cannot set null database");
+            return false;
+        }
+
+        Database = database;
+
+        if (!InitializeWithDatabase())
+        {
+            return false;
+        }
+
+        EmitSignal(SignalName.DatabaseChanged, database);
+        GD.Print("[Achievements] Database changed at runtime");
+
+        return true;
+    }
+
+    public override void _Process(double delta)
+    {
+        // Process sync retry queue
+        if (_syncQueue.Count > 0)
+        {
+            _timeSinceLastRetry += delta;
+
+            if (_timeSinceLastRetry >= SyncRetryInterval)
+            {
+                _timeSinceLastRetry = 0;
+                ProcessSyncQueue();
+            }
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
+    /// <summary>
+    /// Register a platform-specific achievement provider (Steam, Game Center, etc.)
+    /// Called automatically by platform autoload nodes
+    /// </summary>
+    public void RegisterProvider(IAchievementProvider provider)
+    {
+        if (_platformProviders.Any(p => p.ProviderName == provider.ProviderName))
+        {
+            GD.PushWarning($"[Achievements] Provider '{provider.ProviderName}' is already registered");
+            return;
+        }
+
+        _platformProviders.Add(provider);
+        GD.Print($"[Achievements] Registered provider: {provider.ProviderName} (Available: {provider.IsAvailable})");
+
+        EmitSignal(SignalName.ProviderRegistered, provider.ProviderName);
+
+        // Sync existing unlocked achievements to new provider
+        if (provider.IsAvailable)
+        {
+            CallDeferred(nameof(SyncLocalToPlatforms));
+        }
+    }
+
+    /// <summary>
+    /// Unlock an achievement (saves locally and syncs to all platforms)
+    /// </summary>
+    public async Task Unlock(string achievementId)
+    {
+        if (_localProvider == null)
+        {
+            GD.PushError("[Achievements] LocalProvider not initialized");
+            return;
+        }
+
+        // Unlock locally first (source of truth)
+        var localResult = await _localProvider.UnlockAchievement(achievementId);
+        if (!localResult.Success)
+        {
+            GD.PushError($"[Achievements] Failed to unlock '{achievementId}' locally: {localResult.Error}");
+            return;
+        }
+
+        var achievement = await _localProvider.GetAchievement(achievementId);
+
+        // Suppress signals and UI notifications for achievements that were already unlocked
+        // This prevents duplicate toasts when syncing across platforms or reloading state
+        if (localResult.WasAlreadyUnlocked)
+        {
+            return;
+        }
+
+        // Emit signal
+        if (achievement != null)
+        {
+            EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
+        }
+
+        // Sync to platform providers
+        await SyncAchievementToPlatforms(achievementId);
+    }
+
+    /// <summary>
+    /// Set progress for a progressive achievement
+    /// </summary>
+    public async Task SetProgress(string achievementId, int currentProgress)
+    {
+        if (_localProvider == null)
+        {
+            GD.PushError("[Achievements] LocalProvider not initialized");
+            return;
+        }
+
+        var oldProgress = await _localProvider.GetProgress(achievementId);
+        await _localProvider.SetProgress(achievementId, currentProgress);
+
+        var achievement = await _localProvider.GetAchievement(achievementId);
+
+        // Emit progress changed signal
+        if (achievement != null)
+        {
+            EmitSignal(SignalName.AchievementProgressChanged, achievementId, currentProgress, achievement.MaxProgress);
+        }
+
+        // Check if this progress update caused the achievement to auto-unlock
+        // Only emit unlock signal if progress just reached max (prevents duplicate signals)
+        if (achievement != null && achievement.IsUnlocked && oldProgress < achievement.MaxProgress)
+        {
+            EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
+        }
+
+        // Sync to platform providers
+        await SyncProgressToPlatforms(achievementId, currentProgress);
+    }
+
+    /// <summary>
+    /// Get an achievement by ID
+    /// </summary>
+    public Achievement? GetAchievement(string achievementId)
+    {
+        if (_localProvider == null)
+            return null;
+
+        return _localProvider.GetAchievement(achievementId).Result;
+    }
+
+    /// <summary>
+    /// Get all achievements
+    /// </summary>
+    public Achievement[] GetAllAchievements()
+    {
+        if (_localProvider == null)
+            return Array.Empty<Achievement>();
+
+        return _localProvider.GetAllAchievements().Result;
+    }
+
+    /// <summary>
+    /// Get all registered providers
+    /// </summary>
+    public IReadOnlyList<IAchievementProvider> GetRegisteredProviders()
+    {
+        var all = new List<IAchievementProvider>();
+        if (_localProvider != null)
+        {
+            all.Add(_localProvider);
+        }
+        all.AddRange(_platformProviders);
+        return all.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Get a specific provider by name
+    /// </summary>
+    public IAchievementProvider? GetProvider(string providerName)
+    {
+        return GetRegisteredProviders()
+            .FirstOrDefault(p => p.ProviderName.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Reset a specific achievement on all providers (for testing)
+    /// </summary>
+    public async Task<bool> ResetAchievement(string achievementId)
+    {
+        if (_localProvider == null)
+        {
+            GD.PushError("[Achievements] LocalProvider not initialized");
+            return false;
+        }
+
+        // Reset locally first
+        var localSuccess = await _localProvider.ResetAchievement(achievementId);
+        if (!localSuccess)
+        {
+            GD.PushWarning($"[Achievements] Failed to reset '{achievementId}' locally");
+            return false;
+        }
+
+        // Reset on all platform providers
+        var tasks = new List<Task<bool>>();
+        foreach (var provider in _platformProviders)
+        {
+            if (provider.IsAvailable)
+            {
+                tasks.Add(provider.ResetAchievement(achievementId));
+            }
+        }
+
+        await Task.WhenAll(tasks);
+
+        GD.Print($"[Achievements] Reset achievement: {achievementId}");
+        return true;
+    }
+
+    /// <summary>
+    /// Reset all achievements on all providers (for testing)
+    /// </summary>
+    public async Task<bool> ResetAllAchievements()
+    {
+        if (_localProvider == null)
+        {
+            GD.PushError("[Achievements] LocalProvider not initialized");
+            return false;
+        }
+
+        // Reset locally first
+        var localSuccess = await _localProvider.ResetAllAchievements();
+        if (!localSuccess)
+        {
+            GD.PushWarning("[Achievements] Failed to reset all achievements locally");
+            return false;
+        }
+
+        // Reset on all platform providers
+        var tasks = new List<Task<bool>>();
+        foreach (var provider in _platformProviders)
+        {
+            if (provider.IsAvailable)
+            {
+                tasks.Add(provider.ResetAllAchievements());
+            }
+        }
+
+        await Task.WhenAll(tasks);
+
+        GD.Print("[Achievements] Reset all achievements");
+        return true;
+    }
+
+    /// <summary>
+    /// Sync a single achievement to all platform providers
+    /// </summary>
+    private async Task SyncAchievementToPlatforms(string achievementId)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var provider in _platformProviders)
+        {
+            if (!provider.IsAvailable)
+                continue;
+
+            tasks.Add(SyncAchievementToProvider(achievementId, provider));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// Sync progress to all platform providers
+    /// </summary>
+    private async Task SyncProgressToPlatforms(string achievementId, int currentProgress)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var provider in _platformProviders)
+        {
+            if (!provider.IsAvailable)
+                continue;
+
+            tasks.Add(SyncProgressToProvider(achievementId, currentProgress, provider));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// Sync achievement unlock to a specific provider with retry on failure
+    /// </summary>
+    private async Task SyncAchievementToProvider(string achievementId, IAchievementProvider provider)
+    {
+        try
+        {
+            var result = await provider.UnlockAchievement(achievementId);
+            if (!result.Success && !result.WasAlreadyUnlocked)
+            {
+                GD.PushWarning($"[Achievements] Failed to sync '{achievementId}' to {provider.ProviderName}: {result.Error}");
+                QueueSync(new PendingSync
+                {
+                    AchievementId = achievementId,
+                    Provider = provider,
+                    Type = SyncType.Unlock
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[Achievements] Exception syncing '{achievementId}' to {provider.ProviderName}: {ex.Message}");
+            QueueSync(new PendingSync
+            {
+                AchievementId = achievementId,
+                Provider = provider,
+                Type = SyncType.Unlock
+            });
+        }
+    }
+
+    /// <summary>
+    /// Sync progress to a specific provider with retry on failure
+    /// </summary>
+    private async Task SyncProgressToProvider(string achievementId, int currentProgress, IAchievementProvider provider)
+    {
+        try
+        {
+            await provider.SetProgress(achievementId, currentProgress);
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"[Achievements] Exception syncing progress for '{achievementId}' to {provider.ProviderName}: {ex.Message}");
+            QueueSync(new PendingSync
+            {
+                AchievementId = achievementId,
+                Provider = provider,
+                Type = SyncType.Progress,
+                CurrentProgress = currentProgress
+            });
+        }
+    }
+
+    /// <summary>
+    /// Sync all locally unlocked achievements to all platforms (called on startup)
+    /// </summary>
+    private async void SyncLocalToPlatforms()
+    {
+        if (_localProvider == null || _platformProviders.Count == 0)
+            return;
+
+        var allAchievements = await _localProvider.GetAllAchievements();
+        var unlockedAchievements = allAchievements.Where(a => a.IsUnlocked).ToArray();
+
+        if (unlockedAchievements.Length == 0)
+            return;
+
+        GD.Print($"[Achievements] Syncing {unlockedAchievements.Length} unlocked achievements to {_platformProviders.Count} platform(s)");
+
+        foreach (var achievement in unlockedAchievements)
+        {
+            await SyncAchievementToPlatforms(achievement.Id);
+
+            if (achievement.CurrentProgress > 0 && achievement.CurrentProgress < achievement.MaxProgress)
+            {
+                await SyncProgressToPlatforms(achievement.Id, achievement.CurrentProgress);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Add a failed sync to the retry queue
+    /// Prevents duplicate queue entries for the same achievement+provider+action combination
+    /// </summary>
+    private void QueueSync(PendingSync sync)
+    {
+        // Prevent queue bloat by deduplicating identical pending syncs
+        // This avoids repeatedly retrying the same operation multiple times
+        if (_syncQueue.Any(s => s.AchievementId == sync.AchievementId && s.Provider == sync.Provider && s.Type == sync.Type))
+            return;
+
+        _syncQueue.Enqueue(sync);
+        GD.Print($"[Achievements] Queued {sync.Type} sync for '{sync.AchievementId}' to {sync.Provider.ProviderName} (queue size: {_syncQueue.Count})");
+    }
+
+    /// <summary>
+    /// Process pending syncs in the retry queue
+    /// Uses a batch processing strategy to avoid modifying the queue while iterating
+    /// Failed syncs are automatically re-queued for retry on the next interval
+    /// </summary>
+    private async void ProcessSyncQueue()
+    {
+        if (_syncQueue.Count == 0)
+            return;
+
+        GD.Print($"[Achievements] Processing {_syncQueue.Count} pending syncs...");
+
+        var successCount = 0;
+        var failCount = 0;
+        var batch = new List<PendingSync>();
+
+        // Dequeue all items into a batch to avoid collection modification during iteration
+        // This allows us to safely re-queue failures without concurrent modification issues
+        while (_syncQueue.Count > 0)
+        {
+            batch.Add(_syncQueue.Dequeue());
+        }
+
+        foreach (var sync in batch)
+        {
+            // Skip unavailable providers (e.g., Steam not running) and re-queue for later
+            if (!sync.Provider.IsAvailable)
+            {
+                _syncQueue.Enqueue(sync);
+                continue;
+            }
+
+            try
+            {
+                if (sync.Type == SyncType.Unlock)
+                {
+                    var result = await sync.Provider.UnlockAchievement(sync.AchievementId);
+
+                    // Consider both Success and WasAlreadyUnlocked as successful syncs
+                    if (result.Success || result.WasAlreadyUnlocked)
+                    {
+                        successCount++;
+                    }
+                    else
+                    {
+                        // Re-queue on failure to retry later
+                        failCount++;
+                        _syncQueue.Enqueue(sync);
+                    }
+                }
+                else if (sync.Type == SyncType.Progress)
+                {
+                    await sync.Provider.SetProgress(sync.AchievementId, sync.CurrentProgress);
+                    successCount++;
+                }
+            }
+            catch
+            {
+                // Re-queue on exception (network error, API error, etc.) for retry
+                failCount++;
+                _syncQueue.Enqueue(sync);
+            }
+        }
+
+        GD.Print($"[Achievements] Sync complete: {successCount} succeeded, {failCount} failed (queue size: {_syncQueue.Count})");
+    }
+
+}
