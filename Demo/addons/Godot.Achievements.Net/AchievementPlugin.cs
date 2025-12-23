@@ -66,12 +66,13 @@ public partial class AchievementPlugin : EditorPlugin
 
     private void RegisterSettings()
     {
-        // Database path
+        // Database path (requires restart so autoload reloads from new path)
         if (!ProjectSettings.HasSetting(SettingDatabasePath))
         {
             ProjectSettings.SetSetting(SettingDatabasePath, DefaultDatabasePath);
         }
         ProjectSettings.SetInitialValue(SettingDatabasePath, DefaultDatabasePath);
+        ProjectSettings.SetRestartIfChanged(SettingDatabasePath, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingDatabasePath },

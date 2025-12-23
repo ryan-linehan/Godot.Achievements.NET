@@ -12,6 +12,8 @@ config_version=5
 
 achievements/toast/position=5
 achievements/toast/display_duration=0.5
+achievements/database_path="uid://ddebvxw8oopod"
+achievements/toast/scene_path="uid://betgshcwd2vle"
 
 [application]
 

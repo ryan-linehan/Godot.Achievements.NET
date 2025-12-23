@@ -135,8 +135,9 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-item_count = 1
-item_0/text = "New Achievement"
+item_count = 2
+item_0/text = "catment"
+item_1/text = "New Achievement"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
@@ -192,7 +193,7 @@ layout_mode = 2
 tooltip_text = "Change this in project settings > addons > Achievements"
 mouse_filter = 1
 theme_override_colors/font_color = Color(0.5, 0.7, 1, 1)
-text = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres"
+text = "res://demo_achievements.tres"
 
 [node name="Actions" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
