@@ -219,15 +219,15 @@ public class LocalAchievementProvider : IAchievementProvider
         // Deserialize from Godot dictionary format to our internal C# Dictionary
         var data = json.Data.AsGodotDictionary<string, Godot.Collections.Dictionary>();
         _achievementStates = new Dictionary<string, AchievementState>();
-
+    
         foreach (var kvp in data)
         {
             var stateDict = kvp.Value;
             var state = new AchievementState
             {
                 // Use TryGetValue with fallback defaults for missing/malformed fields
-                IsUnlocked = stateDict.TryGetValue("IsUnlocked", out var unlocked) && (bool)unlocked,
-                CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? Convert.ToInt32(progress) : 0
+                IsUnlocked = stateDict.TryGetValue("IsUnlocked", out var unlocked) && unlocked.AsBool(),
+                CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? progress.AsInt32() : 0
             };
 
             // Parse optional UnlockedAt field (stored as ISO 8601 string)

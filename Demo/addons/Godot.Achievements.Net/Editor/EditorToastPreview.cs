@@ -1,0 +1,265 @@
+#if TOOLS
+using System.Collections.Generic;
+using Godot.Achievements.Core;
+
+namespace Godot.Achievements.Core.Editor;
+
+/// <summary>
+/// Editor-only toast preview system for visualizing achievement unlocks in the editor.
+/// This is separate from the runtime AchievementToastContainer to maintain separation of concerns.
+/// </summary>
+[Tool]
+public partial class EditorToastPreview : CanvasLayer
+{
+    private const string SettingScenePath = "addons/achievements/toast/scene_path";
+    private const string SettingPosition = "addons/achievements/toast/position";
+    private const string SettingDisplayDuration = "addons/achievements/toast/display_duration";
+
+    private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
+    private const float DefaultDisplayDuration = 5.0f;
+    private const ToastPosition DefaultPosition = ToastPosition.TopRight;
+
+    private MarginContainer? _marginContainer;
+    private VBoxContainer? _toastVBox;
+
+    private string _toastScenePath = DefaultToastScenePath;
+    private ToastPosition _position = DefaultPosition;
+    private float _displayDuration = DefaultDisplayDuration;
+    private PackedScene? _toastScene;
+    private readonly List<ToastEntry> _activeToasts = new();
+
+    private class ToastEntry
+    {
+        public Control Toast { get; set; } = null!;
+        public Tween? Tween { get; set; }
+    }
+
+    public override void _Ready()
+    {
+        Layer = 100; // Draw on top of everything
+
+        LoadSettings();
+
+        // Load the toast scene
+        if (string.IsNullOrEmpty(_toastScenePath) || !ResourceLoader.Exists(_toastScenePath))
+        {
+            // Fall back to default if custom path doesn't exist
+            _toastScenePath = DefaultToastScenePath;
+        }
+
+        _toastScene = GD.Load<PackedScene>(_toastScenePath);
+        if (_toastScene == null)
+        {
+            GD.PushError($"[EditorToastPreview] Failed to load toast scene: {_toastScenePath}");
+            return;
+        }
+
+        // Create the container hierarchy programmatically
+        CreateContainerHierarchy();
+        ApplyPosition();
+    }
+
+    private void CreateContainerHierarchy()
+    {
+        _marginContainer = new MarginContainer();
+        AddChild(_marginContainer);
+
+        _toastVBox = new VBoxContainer();
+        _toastVBox.AddThemeConstantOverride("separation", 8);
+        _marginContainer.AddChild(_toastVBox);
+    }
+
+    private void LoadSettings()
+    {
+        if (ProjectSettings.HasSetting(SettingScenePath))
+        {
+            _toastScenePath = ProjectSettings.GetSetting(SettingScenePath).AsString();
+        }
+
+        if (ProjectSettings.HasSetting(SettingPosition))
+        {
+            _position = (ToastPosition)ProjectSettings.GetSetting(SettingPosition).AsInt32();
+        }
+
+        if (ProjectSettings.HasSetting(SettingDisplayDuration))
+        {
+            _displayDuration = (float)ProjectSettings.GetSetting(SettingDisplayDuration).AsDouble();
+        }
+    }
+
+    private void ApplyPosition()
+    {
+        if (_marginContainer == null) return;
+
+        // Reset anchors and margins
+        _marginContainer.AnchorLeft = 0;
+        _marginContainer.AnchorTop = 0;
+        _marginContainer.AnchorRight = 0;
+        _marginContainer.AnchorBottom = 0;
+        _marginContainer.OffsetLeft = 0;
+        _marginContainer.OffsetTop = 0;
+        _marginContainer.OffsetRight = 0;
+        _marginContainer.OffsetBottom = 0;
+
+        const float margin = 20f;
+
+        switch (_position)
+        {
+            case ToastPosition.TopLeft:
+                _marginContainer.AnchorLeft = 0;
+                _marginContainer.AnchorTop = 0;
+                _marginContainer.OffsetLeft = margin;
+                _marginContainer.OffsetTop = margin;
+                _marginContainer.GrowHorizontal = Control.GrowDirection.End;
+                _marginContainer.GrowVertical = Control.GrowDirection.End;
+                break;
+
+            case ToastPosition.TopCenter:
+                _marginContainer.AnchorLeft = 0.5f;
+                _marginContainer.AnchorTop = 0;
+                _marginContainer.OffsetTop = margin;
+                _marginContainer.GrowHorizontal = Control.GrowDirection.Both;
+                _marginContainer.GrowVertical = Control.GrowDirection.End;
+                break;
+
+            case ToastPosition.TopRight:
+                _marginContainer.AnchorLeft = 1;
+                _marginContainer.AnchorTop = 0;
+                _marginContainer.OffsetRight = -margin;
+                _marginContainer.OffsetTop = margin;
+                _marginContainer.GrowHorizontal = Control.GrowDirection.Begin;
+                _marginContainer.GrowVertical = Control.GrowDirection.End;
+                break;
+
+            case ToastPosition.BottomLeft:
+                _marginContainer.AnchorLeft = 0;
+                _marginContainer.AnchorTop = 1;
+                _marginContainer.OffsetLeft = margin;
+                _marginContainer.OffsetBottom = -margin;
+                _marginContainer.GrowHorizontal = Control.GrowDirection.End;
+                _marginContainer.GrowVertical = Control.GrowDirection.Begin;
+                break;
+
+            case ToastPosition.BottomCenter:
+                _marginContainer.AnchorLeft = 0.5f;
+                _marginContainer.AnchorTop = 1;
+                _marginContainer.OffsetBottom = -margin;
+                _marginContainer.GrowHorizontal = Control.GrowDirection.Both;
+                _marginContainer.GrowVertical = Control.GrowDirection.Begin;
+                break;
+
+            case ToastPosition.BottomRight:
+                _marginContainer.AnchorLeft = 1;
+                _marginContainer.AnchorTop = 1;
+                _marginContainer.OffsetRight = -margin;
+                _marginContainer.OffsetBottom = -margin;
+                _marginContainer.GrowHorizontal = Control.GrowDirection.Begin;
+                _marginContainer.GrowVertical = Control.GrowDirection.Begin;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Show a toast notification preview for an achievement
+    /// </summary>
+    public void ShowToast(Achievement achievement)
+    {
+        // Reload settings each time to pick up any changes from Project Settings
+        var previousScenePath = _toastScenePath;
+        var previousPosition = _position;
+        LoadSettings();
+
+        // Reload scene if path changed
+        if (_toastScenePath != previousScenePath)
+        {
+            if (string.IsNullOrEmpty(_toastScenePath) || !ResourceLoader.Exists(_toastScenePath))
+            {
+                _toastScenePath = DefaultToastScenePath;
+            }
+            _toastScene = GD.Load<PackedScene>(_toastScenePath);
+        }
+
+        // Reapply position if changed
+        if (_position != previousPosition)
+        {
+            ApplyPosition();
+        }
+
+        if (_toastScene == null || _toastVBox == null) return;
+
+        var toast = _toastScene.Instantiate<Control>();
+        if (toast == null)
+        {
+            GD.PushError("[EditorToastPreview] Failed to instantiate toast scene.");
+            return;
+        }
+
+        // Call Setup method on the toast
+        if (toast.HasMethod("Setup"))
+        {
+            toast.Call("Setup", achievement);
+        }
+        else
+        {
+            GD.PushWarning("[EditorToastPreview] Toast scene does not have a Setup method.");
+        }
+
+        // For bottom positions, add at the beginning so newest appears at bottom
+        bool isBottomPosition = _position >= ToastPosition.BottomLeft;
+        if (isBottomPosition)
+        {
+            _toastVBox.AddChild(toast);
+            _toastVBox.MoveChild(toast, 0);
+        }
+        else
+        {
+            _toastVBox.AddChild(toast);
+        }
+
+        // Start hidden
+        toast.Modulate = new Color(1, 1, 1, 0);
+
+        var entry = new ToastEntry { Toast = toast };
+        _activeToasts.Add(entry);
+
+        // Animate in
+        var tween = CreateTween();
+        entry.Tween = tween;
+
+        // Fade in
+        tween.TweenProperty(toast, "modulate:a", 1.0f, 0.3f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+
+        // Wait for display duration
+        tween.TweenInterval(_displayDuration);
+
+        // Fade out
+        tween.TweenProperty(toast, "modulate:a", 0.0f, 0.3f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+
+        // Remove when done
+        tween.TweenCallback(Callable.From(() => RemoveToast(entry)));
+    }
+
+    private void RemoveToast(ToastEntry entry)
+    {
+        if (!_activeToasts.Contains(entry)) return;
+
+        _activeToasts.Remove(entry);
+        entry.Tween?.Kill();
+        entry.Toast.QueueFree();
+    }
+
+    public override void _ExitTree()
+    {
+        // Clean up all active toasts
+        foreach (var entry in _activeToasts)
+        {
+            entry.Tween?.Kill();
+        }
+        _activeToasts.Clear();
+    }
+}
+#endif

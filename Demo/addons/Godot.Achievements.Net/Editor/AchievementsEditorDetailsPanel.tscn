@@ -1,6 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://cjc02uatgibsf"]
+[gd_scene load_steps=5 format=3 uid="uid://cjc02uatgibsf"]
 
 [ext_resource type="Script" uid="uid://cy8i5orrm878e" path="res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDetailsPanel.cs" id="1_ilrbq"]
+[ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_ilrbq"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foldable"]
 content_margin_left = 12.0
@@ -34,7 +35,7 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer")]
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer", "VisualizeUnlockButton")]
 custom_minimum_size = Vector2(400, 0)
 anchors_preset = 15
 anchor_right = 1.0
@@ -57,6 +58,7 @@ GooglePlayIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/C
 GameCenterVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox")
 GameCenterIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterIDLineEdit")
 CustomPropertiesContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/CustomProperties")
+VisualizeUnlockButton = NodePath("MarginContainer/VBoxContainer/HeaderHBox/VisualizeUnlockButton")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
@@ -69,9 +71,19 @@ theme_override_constants/margin_bottom = 16
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+[node name="HeaderHBox" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
 text = "Achievement Details"
+
+[node name="VisualizeUnlockButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderHBox"]
+layout_mode = 2
+tooltip_text = "Preview how the achievement unlock toast will appear in your game.
+Note: This does not actually unlock the achievement."
+text = "Visualize Unlock"
 
 [node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -97,8 +109,12 @@ theme_override_constants/separation = 16
 layout_mode = 2
 theme_override_constants/separation = 8
 
+[node name="AchievementIconButton" type="TextureRect" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
+layout_mode = 2
+texture = ExtResource("2_ilrbq")
+
 [node name="IconPickerContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
-custom_minimum_size = Vector2(128, 0)
+custom_minimum_size = Vector2(128, 32)
 layout_mode = 2
 size_flags_vertical = 8
 

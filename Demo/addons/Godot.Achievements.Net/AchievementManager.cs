@@ -103,6 +103,10 @@ public partial class AchievementManager : Node
             return false;
         }
 
+        // Duplicate the database so runtime changes don't affect the original resource
+        // This prevents Godot from prompting to reload scenes when achievements are unlocked
+        Database = (AchievementDatabase)Database.Duplicate(true);
+
         // Validate database
         var errors = Database.Validate();
         if (errors.Length > 0)

@@ -1,0 +1,50 @@
+[gd_scene load_steps=3 format=3 uid="uid://betgshcwd2vle"]
+
+[ext_resource type="Script" uid="uid://br07amyr0w43x" path="res://addons/Godot.Achievements.Net/AchievementToastItem.cs" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+bg_color = Color(0.2726555, 0.27265528, 0.2726553, 0.9490196)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="AchievementToastItem" type="PanelContainer" node_paths=PackedStringArray("IconRect", "TitleLabel", "DescriptionLabel")]
+custom_minimum_size = Vector2(400, 0)
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_script")
+IconRect = NodePath("HBoxContainer/IconRect")
+TitleLabel = NodePath("HBoxContainer/VBoxContainer/TitleLabel")
+DescriptionLabel = NodePath("HBoxContainer/VBoxContainer/DescriptionLabel")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="IconRect" type="TextureRect" parent="HBoxContainer"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="TitleLabel" type="Label" parent="HBoxContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "Achievement Unlocked"
+
+[node name="DescriptionLabel" type="Label" parent="HBoxContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "Description"
+autowrap_mode = 3
