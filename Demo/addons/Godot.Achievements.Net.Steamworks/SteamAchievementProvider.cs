@@ -66,19 +66,19 @@ public class SteamAchievementProvider : IAchievementProvider
             // Initialize Steamworks API
             // if (!SteamAPI.Init())
             // {
-            //     GD.PushError("[Steam] SteamAPI.Init() failed - is Steam running?");
+            //     this.LogError("SteamAPI.Init() failed - is Steam running?");
             //     return false;
             // }
             //
             // return true;
 
             // PLACEHOLDER: Remove this when implementing real Steamworks integration
-            GD.Print("[Steam] SteamAchievementProvider initialized (Steamworks.NET integration required)");
+            GD.Print("[Achievements] [Steam] SteamAchievementProvider initialized (Steamworks.NET integration required)");
             return false; // Change to true when Steamworks.NET is properly integrated
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Steam] Failed to initialize: {ex.Message}");
+            GD.PushError($"[Achievements] [Steam] Failed to initialize: {ex.Message}");
             return false;
         }
     }
@@ -117,7 +117,7 @@ public class SteamAchievementProvider : IAchievementProvider
             //     return AchievementUnlockResult.FailureResult("Failed to unlock Steam achievement");
             // }
 
-            GD.Print($"[Steam] Would unlock achievement: {steamId}");
+            this.Log($"Would unlock achievement: {steamId}");
 
             // Simulate async operation
             await Task.Delay(10);
@@ -162,7 +162,7 @@ public class SteamAchievementProvider : IAchievementProvider
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Steam] Error getting achievement: {ex.Message}");
+            this.LogError($"Error getting achievement: {ex.Message}");
             return achievement;
         }
     }
@@ -193,7 +193,7 @@ public class SteamAchievementProvider : IAchievementProvider
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Steam] Error getting achievements: {ex.Message}");
+            this.LogError($"Error getting achievements: {ex.Message}");
             return _database.Achievements.ToArray();
         }
     }
@@ -222,7 +222,7 @@ public class SteamAchievementProvider : IAchievementProvider
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Steam] Error getting progress: {ex.Message}");
+            this.LogError($"Error getting progress: {ex.Message}");
             return 0;
         }
     }
@@ -244,13 +244,13 @@ public class SteamAchievementProvider : IAchievementProvider
             // SteamUserStats.StoreStats();
 
             float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
-            GD.Print($"[Steam] Would set progress for {achievement.SteamId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
+            this.Log($"Would set progress for {achievement.SteamId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
 
             await Task.CompletedTask;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Steam] Error setting progress: {ex.Message}");
+            this.LogError($"Error setting progress: {ex.Message}");
         }
     }
 
@@ -273,13 +273,13 @@ public class SteamAchievementProvider : IAchievementProvider
             // }
             // return success;
 
-            GD.Print($"[Steam] Would reset achievement: {achievement.SteamId}");
+            this.Log($"Would reset achievement: {achievement.SteamId}");
             await Task.CompletedTask;
             return true;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Steam] Error resetting achievement: {ex.Message}");
+            this.LogError($"Error resetting achievement: {ex.Message}");
             return false;
         }
     }
@@ -299,13 +299,13 @@ public class SteamAchievementProvider : IAchievementProvider
             // }
             // return success;
 
-            GD.Print("[Steam] Would reset all achievements");
+            this.Log("Would reset all achievements");
             await Task.CompletedTask;
             return true;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Steam] Error resetting all achievements: {ex.Message}");
+            this.LogError($"Error resetting all achievements: {ex.Message}");
             return false;
         }
     }

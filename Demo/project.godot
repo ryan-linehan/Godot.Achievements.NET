@@ -10,21 +10,20 @@ config_version=5
 
 [addons]
 
-achievements/database_path="res://addons/Godot.Achievements.Net/_achievements/_achievements.tres"
-achievements/platforms/steam_enabled=false
-achievements/platforms/gamecenter_enabled=false
-achievements/platforms/googleplay_enabled=false
+achievements/toast/position=5
+achievements/toast/display_duration=0.5
 
 [application]
 
 config/name="demo"
-run/main_scene="uid://dvgdgi3jrhrvt"
+run/main_scene="uid://d0fk2ricf63xa"
 config/features=PackedStringArray("4.5", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 Achievements="*res://addons/Godot.Achievements.Net/AchievementManager.cs"
+AchievementToasts="*res://addons/Godot.Achievements.Net/AchievementToastContainer.tscn"
 
 [dotnet]
 
