@@ -26,6 +26,7 @@ public partial class AchievementPlugin : EditorPlugin
     private const string SettingToastScenePath = "addons/achievements/toast/scene_path";
     private const string SettingToastPosition = "addons/achievements/toast/position";
     private const string SettingToastDisplayDuration = "addons/achievements/toast/display_duration";
+    private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
     private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
 
     private Editor.AchievementEditorDock? _dock;
@@ -160,6 +161,20 @@ public partial class AchievementPlugin : EditorPlugin
             { "type", (int)Variant.Type.Float },
             { "hint", (int)PropertyHint.Range },
             { "hint_string", "0.5,30.0,0.5" }
+        });
+
+        // Unlock sound (default: empty = no sound)
+        if (!ProjectSettings.HasSetting(SettingUnlockSound))
+        {
+            ProjectSettings.SetSetting(SettingUnlockSound, "");
+        }
+        ProjectSettings.SetInitialValue(SettingUnlockSound, "");
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", SettingUnlockSound },
+            { "type", (int)Variant.Type.String },
+            { "hint", (int)PropertyHint.File },
+            { "hint_string", "*.wav,*.ogg,*.mp3" }
         });
 
         ProjectSettings.Save();
