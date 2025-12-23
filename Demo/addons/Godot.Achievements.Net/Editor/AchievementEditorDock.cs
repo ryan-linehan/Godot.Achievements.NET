@@ -54,6 +54,11 @@ public partial class AchievementEditorDock : Control
     private bool _hasUnsavedChanges = false;
     private Action? _pendingAction;
 
+    // Validation
+    private System.Collections.Generic.Dictionary<Achievement, AchievementValidationResult> _validationResults = new();
+    private Texture2D? _warningIcon;
+    private const string WARNING_PREFIX = "\u26a0 "; // ⚠ Unicode warning sign
+
     private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
     private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
 
@@ -143,6 +148,9 @@ public partial class AchievementEditorDock : Control
             if (DetailsPanel.GooglePlayVBox != null)
                 DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
         }
+
+        // Load warning icon from editor theme
+        _warningIcon = EditorInterface.Singleton.GetEditorTheme().GetIcon("StatusWarning", "EditorIcons");
 
         // Load database from settings
         var savedPath = LoadDatabasePath();
@@ -259,6 +267,12 @@ public partial class AchievementEditorDock : Control
     private void OnAchievementChanged()
     {
         MarkDirty();
+
+        // Update the list item to reflect any validation changes
+        if (_selectedAchievement != null)
+        {
+            UpdateListItemForAchievement(_selectedAchievement);
+        }
     }
 
     private void MarkDirty()
@@ -329,14 +343,24 @@ public partial class AchievementEditorDock : Control
     {
         if (achievement == null) return;
 
+        // Re-validate this specific achievement
+        var validationResult = AchievementValidator.ValidateAchievement(achievement);
+        _validationResults[achievement] = validationResult;
+
         // Find the item in the list
         for (int i = 0; i < ItemList.ItemCount; i++)
         {
             var itemAchievement = ItemList.GetItemMetadata(i).As<Achievement>();
             if (itemAchievement == achievement)
             {
-                ItemList.SetItemText(i, achievement.DisplayName);
+                var hasWarnings = validationResult.HasWarnings;
+                var displayText = hasWarnings ? WARNING_PREFIX + achievement.DisplayName : achievement.DisplayName;
+
+                ItemList.SetItemText(i, displayText);
                 ItemList.SetItemIcon(i, achievement.Icon);
+
+                // Update tooltip with warnings or clear it
+                ItemList.SetItemTooltip(i, hasWarnings ? validationResult.GetTooltipText() : string.Empty);
                 break;
             }
         }
@@ -464,6 +488,7 @@ public partial class AchievementEditorDock : Control
 
         if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
         {
+            _validationResults.Clear();
             NoItemsControl.Visible = true;
             ItemList.Visible = false;
             ItemListScrollContainer.Visible = false;
@@ -472,6 +497,9 @@ public partial class AchievementEditorDock : Control
             UpdateButtonStates();
             return;
         }
+
+        // Run validation on all achievements
+        _validationResults = AchievementValidator.ValidateDatabase(_currentDatabase);
 
         NoItemsControl.Visible = false;
         ItemList.Visible = true;
@@ -498,8 +526,19 @@ public partial class AchievementEditorDock : Control
         for (int i = 0; i < filteredAchievements.Count; i++)
         {
             var achievement = filteredAchievements[i];
-            var index = ItemList.AddItem(achievement.DisplayName, achievement.Icon);
+
+            // Check for validation warnings
+            var hasWarnings = _validationResults.TryGetValue(achievement, out var validationResult) && validationResult.HasWarnings;
+            var displayText = hasWarnings ? WARNING_PREFIX + achievement.DisplayName : achievement.DisplayName;
+
+            var index = ItemList.AddItem(displayText, achievement.Icon);
             ItemList.SetItemMetadata(index, achievement);
+
+            // Set tooltip with warning details if there are warnings
+            if (hasWarnings && validationResult != null)
+            {
+                ItemList.SetItemTooltip(index, validationResult.GetTooltipText());
+            }
 
             // Restore selection if this is the previously selected achievement
             if (previousSelection != null && achievement.Id == previousSelection)
