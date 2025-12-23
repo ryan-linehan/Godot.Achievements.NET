@@ -967,6 +967,7 @@ public partial class AchievementEditorDock : Control
 
             int importedCount = 0;
             int updatedCount = 0;
+            int skippedCount = 0;
 
             // Process data rows using Godot's GetCsvLine()
             while (!file.EofReached())
@@ -984,24 +985,73 @@ public partial class AchievementEditorDock : Control
                 bool isNew = existing == null;
 
                 var achievement = existing ?? new Achievement { Id = id };
+                bool hasChanges = false;
 
-                // Update fields from CSV
+                // Update fields from CSV, tracking if any changes occur
                 if (columnMap.ContainsKey("DisplayName"))
-                    achievement.DisplayName = GetCSVValue(values, columnMap, "DisplayName") ?? achievement.DisplayName;
+                {
+                    var newValue = GetCSVValue(values, columnMap, "DisplayName") ?? achievement.DisplayName;
+                    if (achievement.DisplayName != newValue)
+                    {
+                        achievement.DisplayName = newValue;
+                        hasChanges = true;
+                    }
+                }
                 if (columnMap.ContainsKey("Description"))
-                    achievement.Description = GetCSVValue(values, columnMap, "Description") ?? achievement.Description;
+                {
+                    var newValue = GetCSVValue(values, columnMap, "Description") ?? achievement.Description;
+                    if (achievement.Description != newValue)
+                    {
+                        achievement.Description = newValue;
+                        hasChanges = true;
+                    }
+                }
                 if (columnMap.ContainsKey("SteamId"))
-                    achievement.SteamId = GetCSVValue(values, columnMap, "SteamId") ?? achievement.SteamId;
+                {
+                    var newValue = GetCSVValue(values, columnMap, "SteamId") ?? achievement.SteamId;
+                    if (achievement.SteamId != newValue)
+                    {
+                        achievement.SteamId = newValue;
+                        hasChanges = true;
+                    }
+                }
                 if (columnMap.ContainsKey("GameCenterId"))
-                    achievement.GameCenterId = GetCSVValue(values, columnMap, "GameCenterId") ?? achievement.GameCenterId;
+                {
+                    var newValue = GetCSVValue(values, columnMap, "GameCenterId") ?? achievement.GameCenterId;
+                    if (achievement.GameCenterId != newValue)
+                    {
+                        achievement.GameCenterId = newValue;
+                        hasChanges = true;
+                    }
+                }
                 if (columnMap.ContainsKey("GooglePlayId"))
-                    achievement.GooglePlayId = GetCSVValue(values, columnMap, "GooglePlayId") ?? achievement.GooglePlayId;
+                {
+                    var newValue = GetCSVValue(values, columnMap, "GooglePlayId") ?? achievement.GooglePlayId;
+                    if (achievement.GooglePlayId != newValue)
+                    {
+                        achievement.GooglePlayId = newValue;
+                        hasChanges = true;
+                    }
+                }
                 if (columnMap.ContainsKey("IsIncremental"))
-                    achievement.IsIncremental = GetCSVValue(values, columnMap, "IsIncremental")?.ToLower() == "true";
+                {
+                    var newValue = GetCSVValue(values, columnMap, "IsIncremental")?.ToLower() == "true";
+                    if (achievement.IsIncremental != newValue)
+                    {
+                        achievement.IsIncremental = newValue;
+                        hasChanges = true;
+                    }
+                }
                 if (columnMap.ContainsKey("MaxProgress"))
                 {
                     if (int.TryParse(GetCSVValue(values, columnMap, "MaxProgress"), out int maxProgress))
-                        achievement.MaxProgress = maxProgress;
+                    {
+                        if (achievement.MaxProgress != maxProgress)
+                        {
+                            achievement.MaxProgress = maxProgress;
+                            hasChanges = true;
+                        }
+                    }
                 }
 
                 if (isNew)
@@ -1011,9 +1061,13 @@ public partial class AchievementEditorDock : Control
                     _currentDatabase.AddAchievement(achievement);
                     importedCount++;
                 }
-                else
+                else if (hasChanges)
                 {
                     updatedCount++;
+                }
+                else
+                {
+                    skippedCount++;
                 }
             }
 
@@ -1024,12 +1078,12 @@ public partial class AchievementEditorDock : Control
             RefreshAchievementList(preserveSelection: true);
 
             var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"CSV Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}";
+            resultDialog.DialogText = $"CSV Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}\nSkipped (unchanged): {skippedCount}";
             resultDialog.Title = "Import Successful";
             AddChild(resultDialog);
             resultDialog.PopupCentered();
 
-            GD.Print($"[Achievements:Editor] Imported CSV from {path}: {importedCount} new, {updatedCount} updated");
+            GD.Print($"[Achievements:Editor] Imported CSV from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
         }
         catch (Exception ex)
         {
