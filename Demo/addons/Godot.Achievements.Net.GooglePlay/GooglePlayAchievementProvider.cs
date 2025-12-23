@@ -56,20 +56,20 @@ public class GooglePlayAchievementProvider : IAchievementProvider
             //     _isSignedIn = success;
             //     if (success)
             //     {
-            //         GD.Print("[GooglePlay] Successfully signed in");
+            //         this.Log("Successfully signed in");
             //     }
             //     else
             //     {
-            //         GD.PushWarning("[GooglePlay] Failed to sign in");
+            //         this.LogWarning("Failed to sign in");
             //     }
             // });
 
-            GD.Print("[GooglePlay] GooglePlayAchievementProvider initialized (Play Games Services required)");
+            GD.Print("[Achievements] [Google Play Games] GooglePlayAchievementProvider initialized (Play Games Services required)");
             _isSignedIn = false; // Set to true when properly signed in
         }
         catch (Exception ex)
         {
-            GD.PushError($"[GooglePlay] Failed to initialize: {ex.Message}");
+            GD.PushError($"[Achievements] [Google Play Games] Failed to initialize: {ex.Message}");
             _isSignedIn = false;
         }
     }
@@ -109,7 +109,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
             //     return AchievementUnlockResult.FailureResult("Failed to unlock on Google Play Games");
             // }
 
-            GD.Print($"[GooglePlay] Would unlock achievement: {googlePlayId}");
+            this.Log($"Would unlock achievement: {googlePlayId}");
             await Task.Delay(10);
 
             return AchievementUnlockResult.SuccessResult();
