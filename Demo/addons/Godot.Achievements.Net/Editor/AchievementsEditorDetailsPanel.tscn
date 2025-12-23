@@ -210,7 +210,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
-text = "Enter the platform-specific achievement IDs. Use the checkboxes above to filter which platforms you're working with."
+text = "Enter the platform-specific achievement IDs. Set these in project settings > addons > Achievements."
 autowrap_mode = 3
 
 [node name="SteamVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]

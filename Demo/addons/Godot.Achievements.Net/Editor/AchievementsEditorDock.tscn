@@ -1,12 +1,9 @@
-[gd_scene load_steps=5 format=3 uid="uid://uqr6iihjft3j"]
+[gd_scene load_steps=3 format=3 uid="uid://uqr6iihjft3j"]
 
 [ext_resource type="Script" uid="uid://da1r4drkeycjw" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.cs" id="1_hvk53"]
-[ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_1wofd"]
 [ext_resource type="PackedScene" uid="uid://cjc02uatgibsf" path="res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDetailsPanel.tscn" id="2_ova2g"]
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jyate"]
-
-[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("ChangeDatabaseButton", "SteamCheckbox", "GameCenterCheckbox", "GooglePlayCheckbox", "SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportCSVButton", "ExportCSVButton")]
+[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportCSVButton", "ExportCSVButton")]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 3
 anchors_preset = 15
@@ -15,10 +12,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_hvk53")
-ChangeDatabaseButton = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/DatabaseHBox/ChangeDatabaseButton")
-SteamCheckbox = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox/SteamCheckbox")
-GameCenterCheckbox = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox/GameCenterCheckbox")
-GooglePlayCheckbox = NodePath("VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox/GooglePlayCheckbox")
 SearchLineEdit = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox/SearchLineEdit")
 AddAchievementButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/AddAchievementButton")
 RemoveButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/RemoveButton")
@@ -40,77 +33,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 0
-
-[node name="TopBar" type="PanelContainer" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 80)
-layout_mode = 2
-
-[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/TopBar"]
-layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 12
-
-[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TopBar/MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="AchievementsLabel" type="RichTextLabel" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer"]
-custom_minimum_size = Vector2(160, 28)
-layout_mode = 2
-theme_override_font_sizes/normal_font_size = 18
-theme_override_styles/normal = SubResource("StyleBoxEmpty_jyate")
-bbcode_enabled = true
-text = "[b]Achievements[/b]"
-fit_content = true
-scroll_active = false
-
-[node name="HeaderHBox" type="HBoxContainer" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="DatabaseHBox" type="HBoxContainer" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-
-[node name="DatabaseLabel" type="Label" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/DatabaseHBox"]
-layout_mode = 2
-text = "Database:"
-
-[node name="ChangeDatabaseButton" type="Button" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/DatabaseHBox"]
-layout_mode = 2
-text = "Select..."
-
-[node name="Spacer" type="Control" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
-custom_minimum_size = Vector2(16, 0)
-layout_mode = 2
-
-[node name="PlatformFiltersLabel" type="Label" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
-layout_mode = 2
-text = "Enabled Platforms:"
-
-[node name="PlatformFiltersHBox" type="HBoxContainer" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="SteamCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox"]
-layout_mode = 2
-tooltip_text = "Show Steam platform fields"
-text = "Steam"
-
-[node name="GameCenterCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox"]
-layout_mode = 2
-tooltip_text = "Show Game Center platform fields"
-text = "Game Center"
-
-[node name="GooglePlayCheckbox" type="CheckBox" parent="VBoxContainer/TopBar/MarginContainer/VBoxContainer/HeaderHBox/PlatformFiltersHBox"]
-layout_mode = 2
-tooltip_text = "Show Google Play platform fields"
-text = "Google Play"
-
-[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
-layout_mode = 2
 
 [node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
 layout_mode = 2
@@ -213,10 +135,8 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-item_count = 2
-item_0/text = "testing"
-item_0/icon = ExtResource("2_1wofd")
-item_1/text = "wooo!"
+item_count = 1
+item_0/text = "New Achievement"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
@@ -262,11 +182,15 @@ theme_override_constants/separation = 8
 
 [node name="DatabaseLabel" type="Label" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo"]
 layout_mode = 2
+tooltip_text = "Change this in project settings > addons > Achievements"
+mouse_filter = 1
 theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
 text = "Database:"
 
 [node name="DatabasePath" type="Label" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo"]
 layout_mode = 2
+tooltip_text = "Change this in project settings > addons > Achievements"
+mouse_filter = 1
 theme_override_colors/font_color = Color(0.5, 0.7, 1, 1)
 text = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres"
 
