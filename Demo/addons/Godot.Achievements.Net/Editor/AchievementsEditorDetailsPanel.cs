@@ -1,5 +1,6 @@
 #if TOOLS
 using Godot;
+using Godot.Achievements.Core;
 using System;
 
 namespace Godot.Achievements.Core.Editor;
@@ -48,12 +49,17 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     [Export]
     private FoldableContainer CustomPropertiesContainer = null!;
 
+    // Visualize Unlock
+    [Export]
+    private Button VisualizeUnlockButton = null!;
+
     // Private Fields
     private Achievement? _currentAchievement;
     private bool _isUpdating = false;
     private EditorResourcePicker? _iconPicker;
     private string _previousId = string.Empty;
     private string _idBeforeEdit = string.Empty;
+    private EditorToastPreview? _editorToastPreview;
 
     // Signals
     [Signal]
@@ -110,6 +116,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             GooglePlayIDLineEdit.TextChanged += OnGooglePlayIdChanged;
         if (GameCenterIDLineEdit != null)
             GameCenterIDLineEdit.TextChanged += OnGameCenterIdChanged;
+        if (VisualizeUnlockButton != null)
+            VisualizeUnlockButton.Pressed += OnVisualizeUnlockPressed;
     }
 
     private void OnNameChanged(string newName)
@@ -205,8 +213,33 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         EmitSignal(SignalName.AchievementChanged);
     }
 
+    private void OnVisualizeUnlockPressed()
+    {
+        if (_currentAchievement == null) return;
+
+        // Create editor toast preview if it doesn't exist
+        if (_editorToastPreview == null || !IsInstanceValid(_editorToastPreview))
+        {
+            _editorToastPreview = new EditorToastPreview();
+
+            // Add to editor's base control
+            var baseControl = EditorInterface.Singleton.GetBaseControl();
+            baseControl.AddChild(_editorToastPreview);
+        }
+
+        // Show the toast
+        _editorToastPreview.ShowToast(_currentAchievement);
+    }
+
     public override void _ExitTree()
     {
+        // Clean up editor toast preview
+        if (_editorToastPreview != null && IsInstanceValid(_editorToastPreview))
+        {
+            _editorToastPreview.QueueFree();
+            _editorToastPreview = null;
+        }
+
         if (_iconPicker != null)
         {
             _iconPicker.ResourceChanged -= OnIconResourceChanged;
@@ -234,6 +267,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             GooglePlayIDLineEdit.TextChanged -= OnGooglePlayIdChanged;
         if (GameCenterIDLineEdit != null)
             GameCenterIDLineEdit.TextChanged -= OnGameCenterIdChanged;
+        if (VisualizeUnlockButton != null)
+            VisualizeUnlockButton.Pressed -= OnVisualizeUnlockPressed;
     }
 
     private void LoadAchievementData()

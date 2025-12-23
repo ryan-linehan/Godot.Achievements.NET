@@ -107,7 +107,7 @@ public class LocalAchievementProvider : IAchievementProvider
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
         {
-            GD.PushWarning($"Achievement '{achievementId}' not found in database");
+            this.LogWarning($"Achievement '{achievementId}' not found in database");
             return Task.CompletedTask;
         }
 
@@ -143,7 +143,7 @@ public class LocalAchievementProvider : IAchievementProvider
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
         {
-            GD.PushWarning($"[Local] Achievement '{achievementId}' not found in database");
+            this.LogWarning($"Achievement '{achievementId}' not found in database");
             return Task.FromResult(false);
         }
 
@@ -156,7 +156,7 @@ public class LocalAchievementProvider : IAchievementProvider
             achievement.CurrentProgress = 0;
 
             SaveToDisk();
-            GD.Print($"[Local] Reset achievement: {achievementId}");
+            this.Log($"Reset achievement: {achievementId}");
             return Task.FromResult(true);
         }
 
@@ -177,7 +177,7 @@ public class LocalAchievementProvider : IAchievementProvider
         }
 
         SaveToDisk();
-        GD.Print($"[Local] Reset all achievements");
+        this.Log("Reset all achievements");
         return Task.FromResult(true);
     }
 
@@ -198,7 +198,7 @@ public class LocalAchievementProvider : IAchievementProvider
         var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
         if (file == null)
         {
-            GD.PushError($"Failed to open achievement save file: {FileAccess.GetOpenError()}");
+            this.LogError($"Failed to open achievement save file: {FileAccess.GetOpenError()}");
             _achievementStates = new Dictionary<string, AchievementState>();
             return;
         }
@@ -211,7 +211,7 @@ public class LocalAchievementProvider : IAchievementProvider
         var error = json.Parse(jsonText);
         if (error != Error.Ok)
         {
-            GD.PushError($"Failed to parse achievement save file: {json.GetErrorMessage()}");
+            this.LogError($"Failed to parse achievement save file: {json.GetErrorMessage()}");
             _achievementStates = new Dictionary<string, AchievementState>();
             return;
         }
@@ -219,15 +219,15 @@ public class LocalAchievementProvider : IAchievementProvider
         // Deserialize from Godot dictionary format to our internal C# Dictionary
         var data = json.Data.AsGodotDictionary<string, Godot.Collections.Dictionary>();
         _achievementStates = new Dictionary<string, AchievementState>();
-
+    
         foreach (var kvp in data)
         {
             var stateDict = kvp.Value;
             var state = new AchievementState
             {
                 // Use TryGetValue with fallback defaults for missing/malformed fields
-                IsUnlocked = stateDict.TryGetValue("IsUnlocked", out var unlocked) && (bool)unlocked,
-                CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? Convert.ToInt32(progress) : 0
+                IsUnlocked = stateDict.TryGetValue("IsUnlocked", out var unlocked) && unlocked.AsBool(),
+                CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? progress.AsInt32() : 0
             };
 
             // Parse optional UnlockedAt field (stored as ISO 8601 string)
@@ -244,7 +244,7 @@ public class LocalAchievementProvider : IAchievementProvider
             _achievementStates[kvp.Key] = state;
         }
 
-        GD.Print($"[Achievements] Loaded {_achievementStates.Count} achievement states from {SavePath}");
+        this.Log($"Loaded {_achievementStates.Count} achievement states from {SavePath}");
     }
 
     /// <summary>
@@ -281,14 +281,14 @@ public class LocalAchievementProvider : IAchievementProvider
         var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         if (file == null)
         {
-            GD.PushError($"Failed to write achievement save file: {FileAccess.GetOpenError()}");
+            this.LogError($"Failed to write achievement save file: {FileAccess.GetOpenError()}");
             return;
         }
 
         file.StoreString(jsonText);
         file.Close();
 
-        GD.Print($"[Achievements] Saved {_achievementStates.Count} achievement states to {SavePath}");
+        this.Log($"Saved {_achievementStates.Count} achievement states to {SavePath}");
     }
 }
 

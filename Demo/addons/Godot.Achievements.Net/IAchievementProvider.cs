@@ -3,6 +3,27 @@ using System.Threading.Tasks;
 namespace Godot.Achievements.Core;
 
 /// <summary>
+/// Extension methods for provider logging with consistent [Achievements] [ProviderName] format
+/// </summary>
+public static class ProviderLogExtensions
+{
+    public static void Log(this IAchievementProvider provider, string message)
+    {
+        GD.Print($"[Achievements] [{provider.ProviderName}] {message}");
+    }
+
+    public static void LogWarning(this IAchievementProvider provider, string message)
+    {
+        GD.PushWarning($"[Achievements] [{provider.ProviderName}] {message}");
+    }
+
+    public static void LogError(this IAchievementProvider provider, string message)
+    {
+        GD.PushError($"[Achievements] [{provider.ProviderName}] {message}");
+    }
+}
+
+/// <summary>
 /// Result of an achievement unlock operation
 /// </summary>
 public readonly struct AchievementUnlockResult
