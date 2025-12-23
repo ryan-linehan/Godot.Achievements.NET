@@ -1,31 +1,8 @@
-[gd_resource type="Resource" script_class="AchievementDatabase" load_steps=7 format=3 uid="uid://b7uqxw06h12xe"]
+[gd_resource type="Resource" script_class="AchievementDatabase" load_steps=3 format=3 uid="uid://b7uqxw06h12xe"]
 
 [ext_resource type="Script" uid="uid://dsqo75ulogvcd" path="res://addons/Godot.Achievements.Net/Achievement.cs" id="1_u6cic"]
 [ext_resource type="Script" uid="uid://b5jk8htcq1rfi" path="res://addons/Godot.Achievements.Net/AchievementDatabase.cs" id="2_xwse6"]
-[ext_resource type="Texture2D" uid="uid://ch0aljsxfwrd6" path="res://icon.svg" id="3_mopjf"]
-
-[sub_resource type="Resource" id="Resource_afwjp"]
-script = ExtResource("1_u6cic")
-Id = "achievement_01"
-DisplayName = "testing test"
-Description = "Achievement description"
-SteamId = "test"
-
-[sub_resource type="Resource" id="Resource_x7u30"]
-script = ExtResource("1_u6cic")
-Id = "achievement_02"
-DisplayName = "heyo test test"
-Description = "Achievement description"
-Icon = ExtResource("3_mopjf")
-
-[sub_resource type="Resource" id="Resource_mopjf"]
-script = ExtResource("1_u6cic")
-Id = "achievement_03"
-DisplayName = "no way jose -_-s"
-Description = "Achievement description"
-SteamId = "wow"
 
 [resource]
 script = ExtResource("2_xwse6")
-Achievements = Array[ExtResource("1_u6cic")]([SubResource("Resource_afwjp"), SubResource("Resource_x7u30"), SubResource("Resource_mopjf")])
 metadata/_custom_type_script = "uid://b5jk8htcq1rfi"
