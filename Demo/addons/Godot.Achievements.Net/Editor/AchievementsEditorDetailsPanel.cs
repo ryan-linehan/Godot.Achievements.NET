@@ -279,7 +279,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_isUpdating || _currentAchievement == null) return;
 
         _currentAchievement.DisplayName = newName;
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementDisplayNameChanged, _currentAchievement);
         EmitSignal(SignalName.AchievementChanged);
     }
@@ -311,7 +310,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 NameLineEdit.Text = name;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementDisplayNameChanged, achievement);
         EmitSignal(SignalName.AchievementChanged);
     }
@@ -331,7 +329,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_isUpdating || _currentAchievement == null) return;
 
         _currentAchievement.Id = newId;
-        SaveCurrentAchievement();
         _previousId = newId;
         EmitSignal(SignalName.AchievementChanged);
     }
@@ -369,7 +366,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             _isUpdating = false;
         }
         _previousId = id;
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -388,7 +384,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_isUpdating || _currentAchievement == null || DescriptionTextBox == null) return;
 
         _currentAchievement.Description = DescriptionTextBox.Text;
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -419,7 +414,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 DescriptionTextBox.Text = description;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -438,7 +432,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_isUpdating || _currentAchievement == null) return;
 
         _currentAchievement.SteamId = text;
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -469,7 +462,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 SteamIDLineEdit.Text = steamId;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -484,7 +476,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_isUpdating || _currentAchievement == null) return;
 
         _currentAchievement.GooglePlayId = text;
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -515,7 +506,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 GooglePlayIDLineEdit.Text = googlePlayId;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -530,7 +520,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_isUpdating || _currentAchievement == null) return;
 
         _currentAchievement.GameCenterId = text;
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -561,7 +550,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 GameCenterIDLineEdit.Text = gameCenterId;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -588,7 +576,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             _undoRedoManager.CommitAction(false);
         }
 
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -604,7 +591,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 TargetValueSpinBox.Editable = enabled;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -626,7 +612,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             _undoRedoManager.CommitAction(false);
         }
 
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -640,7 +625,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 TargetValueSpinBox.Value = maxProgress;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
 
@@ -816,13 +800,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         _isUpdating = false;
     }
 
-    private void SaveCurrentAchievement()
-    {
-        // Achievements are stored inline in the database, no individual file saving needed
-        // The achievement object is already being modified in the database's Achievements array
-        // Database will be saved when user explicitly saves or through auto-save
-    }
-
     private void OnIconResourceChanged(Resource resource)
     {
         if (_isUpdating || _currentAchievement == null)
@@ -843,7 +820,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             _undoRedoManager.CommitAction(false);
         }
 
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementDisplayNameChanged, _currentAchievement);
         EmitSignal(SignalName.AchievementChanged);
     }
@@ -860,7 +836,6 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 _iconPicker.EditedResource = icon;
             _isUpdating = false;
         }
-        SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementDisplayNameChanged, achievement);
         EmitSignal(SignalName.AchievementChanged);
     }
