@@ -48,11 +48,8 @@ public partial class AchievementEditorDock : Control
     private EditorFileDialog? _importCSVFileDialog;
     private EditorFileDialog? _exportCSVFileDialog;
     private ConfirmationDialog? _removeConfirmDialog;
-    private AcceptDialog? _unsavedChangesDialog;
     private PopupMenu? _contextMenu;
     private int _contextMenuTargetIndex = -1;
-    private bool _hasUnsavedChanges = false;
-    private Action? _pendingAction;
     private EditorUndoRedoManager? _undoRedoManager;
 
     // Validation
@@ -91,19 +88,6 @@ public partial class AchievementEditorDock : Control
         _removeConfirmDialog = new ConfirmationDialog();
         _removeConfirmDialog.Confirmed += ConfirmRemoveAchievement;
         AddChild(_removeConfirmDialog);
-
-        // Create unsaved changes dialog
-        _unsavedChangesDialog = new AcceptDialog();
-        _unsavedChangesDialog.DialogText = "The database has unsaved changes.\nWhat would you like to do?";
-        _unsavedChangesDialog.Title = "Unsaved Changes";
-        _unsavedChangesDialog.GetOkButton().Text = "Save and Continue";
-        _unsavedChangesDialog.Confirmed += OnUnsavedChangesSaveAndContinue;
-
-        _unsavedChangesDialog.AddButton("Don't Save", true, "dont_save");
-        _unsavedChangesDialog.CustomAction += OnUnsavedChangesCustomAction;
-
-        _unsavedChangesDialog.AddCancelButton("Cancel");
-        AddChild(_unsavedChangesDialog);
 
         // Create context menu for list items
         _contextMenu = new PopupMenu();
@@ -175,24 +159,6 @@ public partial class AchievementEditorDock : Control
         var savedPath = LoadDatabasePath();
         _lastKnownDatabasePath = savedPath;
         LoadDatabase(savedPath);
-
-        // Enable shortcut input processing for Ctrl+S
-        SetProcessShortcutInput(true);
-    }
-
-    public override void _ShortcutInput(InputEvent @event)
-    {
-        // Only process when dock is visible
-        if (!Visible) return;
-
-        if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo)
-        {
-            // Ctrl+S or Cmd+S to save (don't consume the event - let editor also save)
-            if (keyEvent.Keycode == Key.S && (keyEvent.CtrlPressed || keyEvent.MetaPressed) && _hasUnsavedChanges)
-            {
-                SaveDatabase();
-            }
-        }
     }
 
     private void OnProjectSettingsChanged()
@@ -257,13 +223,6 @@ public partial class AchievementEditorDock : Control
             _removeConfirmDialog.QueueFree();
         }
 
-        if (_unsavedChangesDialog != null)
-        {
-            _unsavedChangesDialog.Confirmed -= OnUnsavedChangesSaveAndContinue;
-            _unsavedChangesDialog.CustomAction -= OnUnsavedChangesCustomAction;
-            _unsavedChangesDialog.QueueFree();
-        }
-
         if (_contextMenu != null)
         {
             _contextMenu.IdPressed -= OnContextMenuItemPressed;
@@ -318,26 +277,8 @@ public partial class AchievementEditorDock : Control
 
     private void OnAchievementChanged()
     {
-        MarkDirty();
-
         // Refresh the full list to re-run all validations (including duplicate detection)
         RefreshAchievementList(preserveSelection: true);
-    }
-
-    private void MarkDirty()
-    {
-        if (_hasUnsavedChanges) return;
-
-        _hasUnsavedChanges = true;
-        UpdateDatabasePathLabel();
-    }
-
-    private void ClearDirty()
-    {
-        if (!_hasUnsavedChanges) return;
-
-        _hasUnsavedChanges = false;
-        UpdateDatabasePathLabel();
     }
 
     private void UpdateDatabasePathLabel()
@@ -348,44 +289,8 @@ public partial class AchievementEditorDock : Control
         }
         else
         {
-            var prefix = _hasUnsavedChanges ? "* " : "";
             var displayPath = ResolveUidToPath(_currentDatabasePath);
-            DatabasePathLabel.Text = $"{prefix}{displayPath}";
-        }
-    }
-
-    private void ShowUnsavedChangesDialog()
-    {
-        if (_unsavedChangesDialog != null)
-        {
-            _unsavedChangesDialog.PopupCentered();
-        }
-    }
-
-    private void OnUnsavedChangesSaveAndContinue()
-    {
-        // Save and then execute the pending action
-        SaveDatabase();
-        ExecutePendingAction();
-    }
-
-    private void OnUnsavedChangesCustomAction(StringName action)
-    {
-        if (action == "dont_save")
-        {
-            // Clear dirty flag and execute pending action without saving
-            ClearDirty();
-            ExecutePendingAction();
-        }
-    }
-
-    private void ExecutePendingAction()
-    {
-        if (_pendingAction != null)
-        {
-            var action = _pendingAction;
-            _pendingAction = null;
-            action.Invoke();
+            DatabasePathLabel.Text = displayPath;
         }
     }
 
@@ -458,7 +363,6 @@ public partial class AchievementEditorDock : Control
         _currentDatabase = resource;
         _currentDatabasePath = path;
         SaveDatabasePath(path);
-        ClearDirty();
         UpdateDatabasePathLabel();
         RefreshAchievementList();
 
@@ -491,7 +395,6 @@ public partial class AchievementEditorDock : Control
             return;
         }
 
-        ClearDirty();
         GD.Print($"[Achievements:Editor] Database saved to {savePath}");
 
         // Refresh the Inspector if it's showing this resource
@@ -695,14 +598,6 @@ public partial class AchievementEditorDock : Control
 
     private void OnAddAchievementPressed()
     {
-        // Check if there are unsaved changes before adding new achievement
-        if (_hasUnsavedChanges)
-        {
-            _pendingAction = () => CreateNewAchievement();
-            ShowUnsavedChangesDialog();
-            return;
-        }
-
         CreateNewAchievement();
     }
 
@@ -733,8 +628,8 @@ public partial class AchievementEditorDock : Control
         if (_undoRedoManager != null)
         {
             _undoRedoManager.CreateAction("Add Achievement");
-            _undoRedoManager.AddDoMethod(Callable.From(() => DoAddAchievement(newAchievement)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => UndoAddAchievement(newAchievement)));
+            _undoRedoManager.AddDoMethod(this, nameof(DoAddAchievement), newAchievement);
+            _undoRedoManager.AddUndoMethod(this, nameof(UndoAddAchievement), newAchievement);
             _undoRedoManager.CommitAction();
         }
         else
@@ -748,7 +643,6 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null) return;
 
         _currentDatabase.AddAchievement(achievement);
-        MarkDirty();
         SaveDatabase();
         RefreshAchievementList();
         SelectAchievementById(achievement.Id);
@@ -761,7 +655,6 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null) return;
 
         _currentDatabase.RemoveAchievement(achievement.Id);
-        MarkDirty();
         SaveDatabase();
         RefreshAchievementList();
 
@@ -808,8 +701,8 @@ public partial class AchievementEditorDock : Control
         if (_undoRedoManager != null)
         {
             _undoRedoManager.CreateAction("Remove Achievement");
-            _undoRedoManager.AddDoMethod(Callable.From(() => DoRemoveAchievement(achievementToRemove)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => UndoRemoveAchievement(achievementToRemove, originalIndex)));
+            _undoRedoManager.AddDoMethod(this, nameof(DoRemoveAchievement), achievementToRemove);
+            _undoRedoManager.AddUndoMethod(this, nameof(UndoRemoveAchievement), achievementToRemove, originalIndex);
             _undoRedoManager.CommitAction();
         }
         else
@@ -823,7 +716,6 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null) return;
 
         _currentDatabase.RemoveAchievement(achievement.Id);
-        MarkDirty();
         SaveDatabase();
 
         _selectedAchievement = null;
@@ -846,7 +738,6 @@ public partial class AchievementEditorDock : Control
             _currentDatabase.Achievements.Add(achievement);
         }
 
-        MarkDirty();
         SaveDatabase();
         RefreshAchievementList();
         SelectAchievementById(achievement.Id);
@@ -877,8 +768,8 @@ public partial class AchievementEditorDock : Control
         if (_undoRedoManager != null)
         {
             _undoRedoManager.CreateAction("Duplicate Achievement");
-            _undoRedoManager.AddDoMethod(Callable.From(() => DoDuplicateAchievement(duplicate, sourceId)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => UndoDuplicateAchievement(duplicate)));
+            _undoRedoManager.AddDoMethod(this, nameof(DoDuplicateAchievement), duplicate, sourceId);
+            _undoRedoManager.AddUndoMethod(this, nameof(UndoDuplicateAchievement), duplicate);
             _undoRedoManager.CommitAction();
         }
         else
@@ -892,7 +783,6 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null) return;
 
         _currentDatabase.AddAchievement(duplicate);
-        MarkDirty();
         SaveDatabase();
         RefreshAchievementList();
         SelectAchievementById(duplicate.Id);
@@ -905,7 +795,6 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null) return;
 
         _currentDatabase.RemoveAchievement(duplicate.Id);
-        MarkDirty();
         SaveDatabase();
         RefreshAchievementList();
 
@@ -1067,8 +956,8 @@ public partial class AchievementEditorDock : Control
         if (_undoRedoManager != null)
         {
             _undoRedoManager.CreateAction("Move Achievement Up");
-            _undoRedoManager.AddDoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex - 1)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex)));
+            _undoRedoManager.AddDoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex - 1);
+            _undoRedoManager.AddUndoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex);
             _undoRedoManager.CommitAction();
         }
         else
@@ -1089,8 +978,8 @@ public partial class AchievementEditorDock : Control
         if (_undoRedoManager != null)
         {
             _undoRedoManager.CreateAction("Move Achievement Down");
-            _undoRedoManager.AddDoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex + 1)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex)));
+            _undoRedoManager.AddDoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex + 1);
+            _undoRedoManager.AddUndoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex);
             _undoRedoManager.CommitAction();
         }
         else
@@ -1108,7 +997,6 @@ public partial class AchievementEditorDock : Control
 
         _currentDatabase.Achievements.RemoveAt(currentIndex);
         _currentDatabase.Achievements.Insert(toIndex, achievement);
-        MarkDirty();
 
         SaveDatabase();
         RefreshAchievementList(preserveSelection: true);
@@ -1301,7 +1189,6 @@ public partial class AchievementEditorDock : Control
 
             file.Close();
 
-            MarkDirty();
             SaveDatabase();
             RefreshAchievementList(preserveSelection: true);
 

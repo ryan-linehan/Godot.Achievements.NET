@@ -272,6 +272,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _nameBeforeEdit = _currentAchievement.DisplayName ?? string.Empty;
+        if (NameLineEdit != null)
+            NameLineEdit.CaretColumn = NameLineEdit.Text.Length;
     }
 
     private void OnNameChanged(string newName)
@@ -294,8 +296,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var oldValue = _nameBeforeEdit;
 
             _undoRedoManager.CreateAction("Change Achievement Name");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementName(achievement, newName)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementName(achievement, oldValue)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementName), achievement, newName);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementName), achievement, oldValue);
             _undoRedoManager.CommitAction(false);
         }
     }
@@ -307,7 +309,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         {
             _isUpdating = true;
             if (NameLineEdit != null)
+            {
                 NameLineEdit.Text = name;
+                NameLineEdit.CaretColumn = name.Length;
+            }
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementDisplayNameChanged, achievement);
@@ -322,6 +327,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _idBeforeEdit = _currentAchievement.Id ?? string.Empty;
+        if (InternalIDLineEdit != null)
+            InternalIDLineEdit.CaretColumn = InternalIDLineEdit.Text.Length;
     }
 
     private void OnIdTextChanged(string newId)
@@ -346,8 +353,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
                 var oldValue = _idBeforeEdit;
 
                 _undoRedoManager.CreateAction("Change Achievement ID");
-                _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementId(achievement, newId)));
-                _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementId(achievement, oldValue)));
+                _undoRedoManager.AddDoMethod(this, nameof(SetAchievementId), achievement, newId);
+                _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementId), achievement, oldValue);
                 _undoRedoManager.CommitAction(false);
             }
 
@@ -362,7 +369,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         {
             _isUpdating = true;
             if (InternalIDLineEdit != null)
+            {
                 InternalIDLineEdit.Text = id;
+                InternalIDLineEdit.CaretColumn = id.Length;
+            }
             _isUpdating = false;
         }
         _previousId = id;
@@ -377,6 +387,12 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _descriptionBeforeEdit = _currentAchievement.Description ?? string.Empty;
+        if (DescriptionTextBox != null)
+        {
+            var lastLine = DescriptionTextBox.GetLineCount() - 1;
+            DescriptionTextBox.SetCaretLine(lastLine);
+            DescriptionTextBox.SetCaretColumn(DescriptionTextBox.GetLine(lastLine).Length);
+        }
     }
 
     private void OnDescriptionChanged()
@@ -398,8 +414,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var oldValue = _descriptionBeforeEdit;
 
             _undoRedoManager.CreateAction("Change Achievement Description");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementDescription(achievement, newDescription)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementDescription(achievement, oldValue)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementDescription), achievement, newDescription);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementDescription), achievement, oldValue);
             _undoRedoManager.CommitAction(false);
         }
     }
@@ -411,7 +427,12 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         {
             _isUpdating = true;
             if (DescriptionTextBox != null)
+            {
                 DescriptionTextBox.Text = description;
+                var lastLine = DescriptionTextBox.GetLineCount() - 1;
+                DescriptionTextBox.SetCaretLine(lastLine);
+                DescriptionTextBox.SetCaretColumn(DescriptionTextBox.GetLine(lastLine).Length);
+            }
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -425,6 +446,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _steamIdBeforeEdit = _currentAchievement.SteamId ?? string.Empty;
+        if (SteamIDLineEdit != null)
+            SteamIDLineEdit.CaretColumn = SteamIDLineEdit.Text.Length;
     }
 
     private void OnSteamIdChanged(string text)
@@ -446,8 +469,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var oldValue = _steamIdBeforeEdit;
 
             _undoRedoManager.CreateAction("Change Steam ID");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementSteamId(achievement, newSteamId)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementSteamId(achievement, oldValue)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementSteamId), achievement, newSteamId);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementSteamId), achievement, oldValue);
             _undoRedoManager.CommitAction(false);
         }
     }
@@ -459,7 +482,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         {
             _isUpdating = true;
             if (SteamIDLineEdit != null)
+            {
                 SteamIDLineEdit.Text = steamId;
+                SteamIDLineEdit.CaretColumn = steamId.Length;
+            }
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -469,6 +495,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _googlePlayIdBeforeEdit = _currentAchievement.GooglePlayId ?? string.Empty;
+        if (GooglePlayIDLineEdit != null)
+            GooglePlayIDLineEdit.CaretColumn = GooglePlayIDLineEdit.Text.Length;
     }
 
     private void OnGooglePlayIdChanged(string text)
@@ -490,8 +518,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var oldValue = _googlePlayIdBeforeEdit;
 
             _undoRedoManager.CreateAction("Change Google Play ID");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementGooglePlayId(achievement, newGooglePlayId)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementGooglePlayId(achievement, oldValue)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementGooglePlayId), achievement, newGooglePlayId);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementGooglePlayId), achievement, oldValue);
             _undoRedoManager.CommitAction(false);
         }
     }
@@ -503,7 +531,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         {
             _isUpdating = true;
             if (GooglePlayIDLineEdit != null)
+            {
                 GooglePlayIDLineEdit.Text = googlePlayId;
+                GooglePlayIDLineEdit.CaretColumn = googlePlayId.Length;
+            }
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -513,6 +544,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _gameCenterIdBeforeEdit = _currentAchievement.GameCenterId ?? string.Empty;
+        if (GameCenterIDLineEdit != null)
+            GameCenterIDLineEdit.CaretColumn = GameCenterIDLineEdit.Text.Length;
     }
 
     private void OnGameCenterIdChanged(string text)
@@ -534,8 +567,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var oldValue = _gameCenterIdBeforeEdit;
 
             _undoRedoManager.CreateAction("Change Game Center ID");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementGameCenterId(achievement, newGameCenterId)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementGameCenterId(achievement, oldValue)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementGameCenterId), achievement, newGameCenterId);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementGameCenterId), achievement, oldValue);
             _undoRedoManager.CommitAction(false);
         }
     }
@@ -547,7 +580,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         {
             _isUpdating = true;
             if (GameCenterIDLineEdit != null)
+            {
                 GameCenterIDLineEdit.Text = gameCenterId;
+                GameCenterIDLineEdit.CaretColumn = gameCenterId.Length;
+            }
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -571,8 +607,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var achievement = _currentAchievement;
 
             _undoRedoManager.CreateAction("Change Track Progress");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementTrackProgress(achievement, enabled)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementTrackProgress(achievement, oldValue)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementTrackProgress), achievement, enabled);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementTrackProgress), achievement, oldValue);
             _undoRedoManager.CommitAction(false);
         }
 
@@ -607,8 +643,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var achievement = _currentAchievement;
 
             _undoRedoManager.CreateAction("Change Target Value");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementMaxProgress(achievement, newValue)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementMaxProgress(achievement, oldValue)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementMaxProgress), achievement, newValue);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementMaxProgress), achievement, oldValue);
             _undoRedoManager.CommitAction(false);
         }
 
@@ -815,8 +851,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var achievement = _currentAchievement;
 
             _undoRedoManager.CreateAction("Change Achievement Icon");
-            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementIcon(achievement, texture)));
-            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementIcon(achievement, oldIcon)));
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementIcon), achievement, texture);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementIcon), achievement, oldIcon);
             _undoRedoManager.CommitAction(false);
         }
 
