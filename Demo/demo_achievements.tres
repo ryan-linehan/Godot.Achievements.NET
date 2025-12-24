@@ -14,6 +14,8 @@ script = ExtResource("1_pevyi")
 Id = "achievement_04"
 DisplayName = "Have 20 hearts at once!"
 Description = "Achievement description"
+IsIncremental = true
+MaxProgress = 20
 
 [sub_resource type="Resource" id="Resource_1mgol"]
 script = ExtResource("1_pevyi")
@@ -26,6 +28,7 @@ script = ExtResource("1_pevyi")
 Id = "achievement_03"
 DisplayName = "Take no damage for a whole level!"
 Description = "Achievement description"
+MaxProgress = 10
 
 [resource]
 script = ExtResource("2_1mgol")

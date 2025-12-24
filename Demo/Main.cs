@@ -12,6 +12,7 @@ public partial class Main : CanvasLayer
 
     private AchievementManager? _achievements;
     private readonly Dictionary<string, Button> _achievementButtons = new();
+    private readonly Dictionary<string, HBoxContainer> _incrementalContainers = new();
 
     public override void _Ready()
     {
@@ -69,15 +70,41 @@ public partial class Main : CanvasLayer
 
         foreach (var achievement in allAchievements)
         {
-            var button = new Button();
-            UpdateButtonState(button, achievement);
-
             // Capture achievement ID for the lambda
             var achievementId = achievement.Id;
-            button.Pressed += () => OnAchievementButtonPressed(achievementId);
 
-            ButtonsVBox.AddChild(button);
-            _achievementButtons[achievement.Id] = button;
+            if (achievement.IsIncremental)
+            {
+                // Create a container for incremental achievements
+                var container = new HBoxContainer();
+                container.AddThemeConstantOverride("separation", 8);
+
+                var button = new Button();
+                button.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                UpdateButtonState(button, achievement);
+                button.Pressed += () => OnAchievementButtonPressed(achievementId);
+
+                var incrementButton = new Button();
+                incrementButton.Text = "+1";
+                incrementButton.TooltipText = "Increment progress";
+                incrementButton.Pressed += () => OnIncrementPressed(achievementId);
+
+                container.AddChild(button);
+                container.AddChild(incrementButton);
+                ButtonsVBox.AddChild(container);
+
+                _achievementButtons[achievement.Id] = button;
+                _incrementalContainers[achievement.Id] = container;
+            }
+            else
+            {
+                var button = new Button();
+                UpdateButtonState(button, achievement);
+                button.Pressed += () => OnAchievementButtonPressed(achievementId);
+
+                ButtonsVBox.AddChild(button);
+                _achievementButtons[achievement.Id] = button;
+            }
         }
     }
 
@@ -87,10 +114,27 @@ public partial class Main : CanvasLayer
         {
             button.Text = $"Reset: {achievement.DisplayName}";
         }
+        else if (achievement.IsIncremental)
+        {
+            button.Text = $"Unlock: {achievement.DisplayName} ({achievement.CurrentProgress}/{achievement.MaxProgress})";
+        }
         else
         {
             button.Text = $"Unlock: {achievement.DisplayName}";
         }
+    }
+
+    private async void OnIncrementPressed(string achievementId)
+    {
+        if (_achievements == null) return;
+
+        var achievement = _achievements.GetAchievement(achievementId);
+        if (achievement == null) return;
+
+        var newProgress = achievement.CurrentProgress + 1;
+        await _achievements.SetProgress(achievementId, newProgress);
+
+        RefreshAll();
     }
 
     private async void OnAchievementButtonPressed(string achievementId)
@@ -154,7 +198,14 @@ public partial class Main : CanvasLayer
         foreach (var achievement in allAchievements)
         {
             var label = new Label();
-            label.Text = achievement.DisplayName;
+            if (achievement.IsIncremental && !achievement.IsUnlocked)
+            {
+                label.Text = $"{achievement.DisplayName} ({achievement.CurrentProgress}/{achievement.MaxProgress})";
+            }
+            else
+            {
+                label.Text = achievement.DisplayName;
+            }
 
             if (achievement.IsUnlocked)
                 CompletedVBox.AddChild(label);
