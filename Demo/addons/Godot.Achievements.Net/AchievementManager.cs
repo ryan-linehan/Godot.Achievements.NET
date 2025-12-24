@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Godot.Achievements.Steam;
+using Godot.Achievements.iOS;
+using Godot.Achievements.Android;
 
 namespace Godot.Achievements.Core;
 
@@ -15,6 +18,11 @@ public partial class AchievementManager : Node
 
     private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
     private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
+
+    // Platform settings
+    private const string STEAM_ENABLED_SETTING = "addons/achievements/platforms/steam_enabled";
+    private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
+    private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
 
     /// <summary>
     /// The achievement database. Loaded automatically from project settings, or can be set at runtime using SetDatabase().
@@ -31,6 +39,7 @@ public partial class AchievementManager : Node
     [Signal] public delegate void AchievementUnlockedEventHandler(string achievementId, Achievement achievement);
     [Signal] public delegate void AchievementProgressChangedEventHandler(string achievementId, int currentProgress, int maxProgress);
     [Signal] public delegate void ProviderRegisteredEventHandler(string providerName);
+    [Signal] public delegate void ProviderUnregisteredEventHandler(string providerName);
     [Signal] public delegate void DatabaseChangedEventHandler(AchievementDatabase database);
 
     public override void _EnterTree()
@@ -60,6 +69,7 @@ public partial class AchievementManager : Node
         }
 
         InitializeWithDatabase();
+        InitializePlatformProviders();
     }
 
     /// <summary>
@@ -127,6 +137,44 @@ public partial class AchievementManager : Node
         CallDeferred(nameof(SyncLocalToPlatforms));
 
         return true;
+    }
+
+    /// <summary>
+    /// Initialize platform providers based on project settings
+    /// </summary>
+    private void InitializePlatformProviders()
+    {
+        if (Database == null) return;
+
+        if (SteamAchievementProvider.IsPlatformSupported && GetPlatformSetting(STEAM_ENABLED_SETTING))
+        {
+            var steamProvider = new SteamAchievementProvider(Database);
+            RegisterProvider(steamProvider);
+            GD.Print("[Achievements] Steam provider initialized from settings");
+        }
+
+        if (GameCenterAchievementProvider.IsPlatformSupported && GetPlatformSetting(GAMECENTER_ENABLED_SETTING))
+        {
+            var gameCenterProvider = new GameCenterAchievementProvider(Database);
+            RegisterProvider(gameCenterProvider);
+            GD.Print("[Achievements] Game Center provider initialized from settings");
+        }
+
+        if (GooglePlayAchievementProvider.IsPlatformSupported && GetPlatformSetting(GOOGLEPLAY_ENABLED_SETTING))
+        {
+            var googlePlayProvider = new GooglePlayAchievementProvider(Database);
+            RegisterProvider(googlePlayProvider);
+            GD.Print("[Achievements] Google Play provider initialized from settings");
+        }
+    }
+
+    private static bool GetPlatformSetting(string settingKey)
+    {
+        if (ProjectSettings.HasSetting(settingKey))
+        {
+            return ProjectSettings.GetSetting(settingKey).AsBool();
+        }
+        return false;
     }
 
     /// <summary>
@@ -200,6 +248,33 @@ public partial class AchievementManager : Node
         if (provider.IsAvailable)
         {
             CallDeferred(nameof(SyncLocalToPlatforms));
+        }
+    }
+
+    /// <summary>
+    /// Unregister a platform-specific achievement provider
+    /// Called automatically by platform autoload nodes when removed
+    /// </summary>
+    public void UnregisterProvider(IAchievementProvider provider)
+    {
+        if (provider == null) return;
+
+        if (_platformProviders.Remove(provider))
+        {
+            GD.Print($"[Achievements] Unregistered provider: {provider.ProviderName}");
+            EmitSignal(SignalName.ProviderUnregistered, provider.ProviderName);
+        }
+    }
+
+    /// <summary>
+    /// Unregister a provider by name
+    /// </summary>
+    public void UnregisterProvider(string providerName)
+    {
+        var provider = _platformProviders.FirstOrDefault(p => p.ProviderName == providerName);
+        if (provider != null)
+        {
+            UnregisterProvider(provider);
         }
     }
 

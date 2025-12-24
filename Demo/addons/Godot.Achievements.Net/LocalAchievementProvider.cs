@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Godot.Achievements.Core;
@@ -11,6 +10,11 @@ namespace Godot.Achievements.Core;
 /// </summary>
 public class LocalAchievementProvider : IAchievementProvider
 {
+    /// <summary>
+    /// Local provider is always supported on all platforms
+    /// </summary>
+    public static bool IsPlatformSupported => true;
+
     private const string SavePath = "user://achievements.json";
     private readonly AchievementDatabase _database;
     private Dictionary<string, AchievementState> _achievementStates = new();
@@ -57,39 +61,6 @@ public class LocalAchievementProvider : IAchievementProvider
         SaveToDisk();
 
         return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: false));
-    }
-
-    public Task<Achievement?> GetAchievement(string achievementId)
-    {
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-            return Task.FromResult<Achievement?>(null);
-
-        // Apply local state to achievement
-        if (_achievementStates.TryGetValue(achievementId, out var state))
-        {
-            achievement.IsUnlocked = state.IsUnlocked;
-            achievement.UnlockedAt = state.UnlockedAt;
-            achievement.CurrentProgress = state.CurrentProgress;
-        }
-
-        return Task.FromResult<Achievement?>(achievement);
-    }
-
-    public Task<Achievement[]> GetAllAchievements()
-    {
-        // Apply local state to all achievements
-        foreach (var achievement in _database.Achievements)
-        {
-            if (_achievementStates.TryGetValue(achievement.Id, out var state))
-            {
-                achievement.IsUnlocked = state.IsUnlocked;
-                achievement.UnlockedAt = state.UnlockedAt;
-                achievement.CurrentProgress = state.CurrentProgress;
-            }
-        }
-
-        return Task.FromResult(_database.Achievements.ToArray());
     }
 
     public Task<int> GetProgress(string achievementId)

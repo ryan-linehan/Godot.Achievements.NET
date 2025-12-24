@@ -22,14 +22,6 @@ public partial class AchievementPlugin : EditorPlugin
     private const string SettingGameCenterEnabled = "addons/achievements/platforms/gamecenter_enabled";
     private const string SettingGooglePlayEnabled = "addons/achievements/platforms/googleplay_enabled";
 
-    // Platform autoload paths
-    private const string SteamAutoloadName = "SteamAchievements";
-    private const string SteamAutoloadPath = "res://addons/Godot.Achievements.Net/Steamworks/SteamAchievementAutoload.cs";
-    private const string GameCenterAutoloadName = "GameCenterAchievements";
-    private const string GameCenterAutoloadPath = "res://addons/Godot.Achievements.Net/GameCenter/GameCenterAchievementAutoload.cs";
-    private const string GooglePlayAutoloadName = "GooglePlayAchievements";
-    private const string GooglePlayAutoloadPath = "res://addons/Godot.Achievements.Net/GooglePlay/GooglePlayAchievementAutoload.cs";
-
     // Toast settings (grouped under "Toast" header)
     private const string SettingToastScenePath = "addons/achievements/toast/scene_path";
     private const string SettingToastPosition = "addons/achievements/toast/position";
@@ -39,125 +31,19 @@ public partial class AchievementPlugin : EditorPlugin
 
     private Editor.AchievementEditorDock? _dock;
 
-    // Track platform enabled states to detect changes
-    private bool _lastSteamEnabled;
-    private bool _lastGameCenterEnabled;
-    private bool _lastGooglePlayEnabled;
-
     public override void _EnterTree()
     {
         // Register all settings (ensures property info is available on every load)
         RegisterSettings();
 
         // Create and add the achievement editor dock
-        // This runs on every project load to ensure the dock is always available
         _dock = AchievementEditorDockScene.Instantiate<Editor.AchievementEditorDock>();
         _dock.Name = "Achievements";
         AddControlToBottomPanel(_dock, "Achievements");
-
-        // Initialize platform state tracking
-        _lastSteamEnabled = GetPlatformSetting(SettingSteamEnabled);
-        _lastGameCenterEnabled = GetPlatformSetting(SettingGameCenterEnabled);
-        _lastGooglePlayEnabled = GetPlatformSetting(SettingGooglePlayEnabled);
-
-        // Sync autoloads to match current settings
-        SyncPlatformAutoloads();
-
-        // Connect to project settings changed signal
-        ProjectSettings.Singleton.SettingsChanged += OnProjectSettingsChanged;
-    }
-
-    private void OnProjectSettingsChanged()
-    {
-        CheckPlatformSettingChanges();
-    }
-
-    private void CheckPlatformSettingChanges()
-    {
-        var steamEnabled = GetPlatformSetting(SettingSteamEnabled);
-        var gameCenterEnabled = GetPlatformSetting(SettingGameCenterEnabled);
-        var googlePlayEnabled = GetPlatformSetting(SettingGooglePlayEnabled);
-
-        bool changed = false;
-
-        if (steamEnabled != _lastSteamEnabled)
-        {
-            _lastSteamEnabled = steamEnabled;
-            UpdatePlatformAutoload(SteamAutoloadName, SteamAutoloadPath, steamEnabled, "Steam");
-            changed = true;
-        }
-
-        if (gameCenterEnabled != _lastGameCenterEnabled)
-        {
-            _lastGameCenterEnabled = gameCenterEnabled;
-            UpdatePlatformAutoload(GameCenterAutoloadName, GameCenterAutoloadPath, gameCenterEnabled, "Game Center");
-            changed = true;
-        }
-
-        if (googlePlayEnabled != _lastGooglePlayEnabled)
-        {
-            _lastGooglePlayEnabled = googlePlayEnabled;
-            UpdatePlatformAutoload(GooglePlayAutoloadName, GooglePlayAutoloadPath, googlePlayEnabled, "Google Play");
-            changed = true;
-        }
-
-        if (changed)
-        {
-            ProjectSettings.Save();
-        }
-    }
-
-    private void UpdatePlatformAutoload(string autoloadName, string autoloadPath, bool enabled, string platformName)
-    {
-        if (enabled)
-        {
-            AddAutoloadSingleton(autoloadName, autoloadPath);
-            GD.Print($"[Achievements] {platformName} platform enabled - autoload added");
-        }
-        else
-        {
-            RemoveAutoloadSingleton(autoloadName);
-            GD.Print($"[Achievements] {platformName} platform disabled - autoload removed");
-        }
-    }
-
-    private void SyncPlatformAutoloads()
-    {
-        // Sync each platform autoload to match current settings
-        SyncAutoload(SteamAutoloadName, SteamAutoloadPath, _lastSteamEnabled);
-        SyncAutoload(GameCenterAutoloadName, GameCenterAutoloadPath, _lastGameCenterEnabled);
-        SyncAutoload(GooglePlayAutoloadName, GooglePlayAutoloadPath, _lastGooglePlayEnabled);
-    }
-
-    private void SyncAutoload(string autoloadName, string autoloadPath, bool shouldBeEnabled)
-    {
-        var autoloadKey = $"autoload/{autoloadName}";
-        var isCurrentlyEnabled = ProjectSettings.HasSetting(autoloadKey);
-
-        if (shouldBeEnabled && !isCurrentlyEnabled)
-        {
-            AddAutoloadSingleton(autoloadName, autoloadPath);
-        }
-        else if (!shouldBeEnabled && isCurrentlyEnabled)
-        {
-            RemoveAutoloadSingleton(autoloadName);
-        }
-    }
-
-    private static bool GetPlatformSetting(string settingKey)
-    {
-        if (ProjectSettings.HasSetting(settingKey))
-        {
-            return ProjectSettings.GetSetting(settingKey).AsBool();
-        }
-        return false;
     }
 
     public override void _ExitTree()
     {
-        // Disconnect from project settings signal
-        ProjectSettings.Singleton.SettingsChanged -= OnProjectSettingsChanged;
-
         // Remove and cleanup dock when editor closes
         if (_dock != null)
         {
@@ -201,6 +87,7 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingSteamEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingSteamEnabled, false);
+        ProjectSettings.SetRestartIfChanged(SettingSteamEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingSteamEnabled },
@@ -213,6 +100,7 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingGameCenterEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingGameCenterEnabled, false);
+        ProjectSettings.SetRestartIfChanged(SettingGameCenterEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingGameCenterEnabled },
@@ -225,6 +113,7 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingGooglePlayEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingGooglePlayEnabled, false);
+        ProjectSettings.SetRestartIfChanged(SettingGooglePlayEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingGooglePlayEnabled },
@@ -232,7 +121,6 @@ public partial class AchievementPlugin : EditorPlugin
         });
 
         // Toast scene path (default: built-in, empty = disabled)
-        // Always ensure the setting exists with a value
         if (!ProjectSettings.HasSetting(SettingToastScenePath) ||
             ProjectSettings.GetSetting(SettingToastScenePath).VariantType == Variant.Type.Nil)
         {
@@ -296,9 +184,10 @@ public partial class AchievementPlugin : EditorPlugin
 
     public override void _DisablePlugin()
     {
-        // Remove autoload singletons (only runs when plugin is disabled)
+        // Remove core autoload singletons
         RemoveAutoloadSingleton(AutoloadName);
         RemoveAutoloadSingleton(ToastAutoloadName);
+
         GD.Print("[Achievements] Plugin disabled, autoloads removed");
     }
 }
