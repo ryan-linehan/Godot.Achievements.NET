@@ -8,24 +8,27 @@ script = ExtResource("1_pevyi")
 Id = "achievement_01"
 DisplayName = "Beat a boss!"
 Description = "Achievement description"
+SteamId = "testing"
+GameCenterId = "yes"
+GooglePlayId = "123"
 
 [sub_resource type="Resource" id="Resource_g4ipy"]
 script = ExtResource("1_pevyi")
-Id = "achievement_04"
+Id = "achievement_02"
 DisplayName = "Have 20 hearts at once!"
-Description = "Achievement description"
+Description = "Achievement descriptionsdfsdfdsfs"
 IsIncremental = true
 MaxProgress = 20
 
 [sub_resource type="Resource" id="Resource_1mgol"]
 script = ExtResource("1_pevyi")
-Id = "achievement_02"
+Id = "achievement_05"
 DisplayName = "Hit a max combo!"
 Description = "Achievement description"
 
 [sub_resource type="Resource" id="Resource_dgc33"]
 script = ExtResource("1_pevyi")
-Id = "achievement_03"
+Id = "achievement_04"
 DisplayName = "Take no damage for a whole level!"
 Description = "Achievement description"
 MaxProgress = 10

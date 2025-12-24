@@ -103,6 +103,32 @@ public static class AchievementValidator
     }
 
     /// <summary>
+    /// Check for duplicate internal IDs - returns list of duplicate IDs if any exist
+    /// </summary>
+    public static List<string> GetDuplicateInternalIds(AchievementDatabase database)
+    {
+        var duplicates = new List<string>();
+        var seenIds = new HashSet<string>();
+
+        if (database?.Achievements == null)
+            return duplicates;
+
+        foreach (var achievement in database.Achievements)
+        {
+            if (!string.IsNullOrWhiteSpace(achievement.Id))
+            {
+                if (!seenIds.Add(achievement.Id))
+                {
+                    if (!duplicates.Contains(achievement.Id))
+                        duplicates.Add(achievement.Id);
+                }
+            }
+        }
+
+        return duplicates;
+    }
+
+    /// <summary>
     /// Check for duplicate platform IDs within each provider and add warnings
     /// </summary>
     private static void CheckDuplicatePlatformIds(AchievementDatabase database, Dictionary<Achievement, AchievementValidationResult> results)
