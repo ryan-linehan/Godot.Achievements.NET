@@ -72,7 +72,6 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingDatabasePath, DefaultDatabasePath);
         }
         ProjectSettings.SetInitialValue(SettingDatabasePath, DefaultDatabasePath);
-        ProjectSettings.SetRestartIfChanged(SettingDatabasePath, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingDatabasePath },

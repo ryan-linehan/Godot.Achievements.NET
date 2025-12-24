@@ -728,7 +728,7 @@ public partial class AchievementEditorDock : Control
 
         if (_removeConfirmDialog != null)
         {
-            _removeConfirmDialog.DialogText = $"Are you sure you want to remove the achievement:\n\n'{_selectedAchievement.DisplayName}' ({_selectedAchievement.Id})\n\nThis will delete the .tres file from disk.";
+            _removeConfirmDialog.DialogText = $"Are you sure you want to remove the achievement:\n\n'{_selectedAchievement.DisplayName}' ({_selectedAchievement.Id}).";
             _removeConfirmDialog.PopupCentered();
         }
     }
