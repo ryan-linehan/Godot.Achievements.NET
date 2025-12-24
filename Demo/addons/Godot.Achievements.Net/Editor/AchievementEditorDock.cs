@@ -53,6 +53,7 @@ public partial class AchievementEditorDock : Control
     private int _contextMenuTargetIndex = -1;
     private bool _hasUnsavedChanges = false;
     private Action? _pendingAction;
+    private EditorUndoRedoManager? _undoRedoManager;
 
     // Validation
     private System.Collections.Generic.Dictionary<Achievement, AchievementValidationResult> _validationResults = new();
@@ -71,6 +72,18 @@ public partial class AchievementEditorDock : Control
 
     // Track last known database path for change detection
     private string _lastKnownDatabasePath = string.Empty;
+
+    /// <summary>
+    /// Sets the undo/redo manager for editor history support
+    /// </summary>
+    public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
+    {
+        _undoRedoManager = undoRedoManager;
+        if (DetailsPanel != null)
+        {
+            DetailsPanel.SetUndoRedoManager(undoRedoManager);
+        }
+    }
 
     public override void _Ready()
     {
@@ -135,6 +148,12 @@ public partial class AchievementEditorDock : Control
             DetailsPanel.AchievementIdChanged += OnAchievementIdChanged;
             DetailsPanel.AchievementDisplayNameChanged += OnAchievementDisplayNameChanged;
             DetailsPanel.AchievementChanged += OnAchievementChanged;
+
+            // Pass undo/redo manager if already set
+            if (_undoRedoManager != null)
+            {
+                DetailsPanel.SetUndoRedoManager(_undoRedoManager);
+            }
         }
 
         // Connect visibility change
@@ -711,22 +730,50 @@ public partial class AchievementEditorDock : Control
             ExtraProperties = new Godot.Collections.Dictionary<string, Variant>()
         };
 
-        _currentDatabase.AddAchievement(newAchievement);
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Add Achievement");
+            _undoRedoManager.AddDoMethod(Callable.From(() => DoAddAchievement(newAchievement)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => UndoAddAchievement(newAchievement)));
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoAddAchievement(newAchievement);
+        }
+    }
+
+    private void DoAddAchievement(Achievement achievement)
+    {
+        if (_currentDatabase == null) return;
+
+        _currentDatabase.AddAchievement(achievement);
         MarkDirty();
-
-        GD.Print($"[Achievements:Editor] Created new achievement: {uniqueId}");
-
-        // Auto-save after add
         SaveDatabase();
+        RefreshAchievementList();
+        SelectAchievementById(achievement.Id);
 
-        // Refresh and auto-select new achievement
+        GD.Print($"[Achievements:Editor] Created new achievement: {achievement.Id}");
+    }
+
+    private void UndoAddAchievement(Achievement achievement)
+    {
+        if (_currentDatabase == null) return;
+
+        _currentDatabase.RemoveAchievement(achievement.Id);
+        MarkDirty();
+        SaveDatabase();
         RefreshAchievementList();
 
-        // Find and select the new achievement in the list
+        GD.Print($"[Achievements:Editor] Undid add achievement: {achievement.Id}");
+    }
+
+    private void SelectAchievementById(string id)
+    {
         for (int i = 0; i < ItemList.ItemCount; i++)
         {
             var achievement = ItemList.GetItemMetadata(i).As<Achievement>();
-            if (achievement.Id == uniqueId)
+            if (achievement?.Id == id)
             {
                 ItemList.Select(i);
                 SelectAchievement(i, achievement);
@@ -756,22 +803,55 @@ public partial class AchievementEditorDock : Control
             return;
 
         var achievementToRemove = _selectedAchievement;
+        var originalIndex = _currentDatabase.Achievements.IndexOf(achievementToRemove);
 
-        // Remove from database
-        _currentDatabase.RemoveAchievement(achievementToRemove.Id);
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Remove Achievement");
+            _undoRedoManager.AddDoMethod(Callable.From(() => DoRemoveAchievement(achievementToRemove)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => UndoRemoveAchievement(achievementToRemove, originalIndex)));
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoRemoveAchievement(achievementToRemove);
+        }
+    }
+
+    private void DoRemoveAchievement(Achievement achievement)
+    {
+        if (_currentDatabase == null) return;
+
+        _currentDatabase.RemoveAchievement(achievement.Id);
         MarkDirty();
-
-        GD.Print($"[Achievements:Editor] Removed achievement: {achievementToRemove.Id}");
-
-        // Auto-save after remove
         SaveDatabase();
 
-        // Clear selection
         _selectedAchievement = null;
         _selectedIndex = -1;
-
-        // Refresh list
         RefreshAchievementList();
+
+        GD.Print($"[Achievements:Editor] Removed achievement: {achievement.Id}");
+    }
+
+    private void UndoRemoveAchievement(Achievement achievement, int originalIndex)
+    {
+        if (_currentDatabase == null) return;
+
+        if (originalIndex >= 0 && originalIndex <= _currentDatabase.Achievements.Count)
+        {
+            _currentDatabase.Achievements.Insert(originalIndex, achievement);
+        }
+        else
+        {
+            _currentDatabase.Achievements.Add(achievement);
+        }
+
+        MarkDirty();
+        SaveDatabase();
+        RefreshAchievementList();
+        SelectAchievementById(achievement.Id);
+
+        GD.Print($"[Achievements:Editor] Undid remove achievement: {achievement.Id}");
     }
 
     private void OnDuplicatePressed()
@@ -782,6 +862,7 @@ public partial class AchievementEditorDock : Control
             return;
         }
 
+        var sourceId = _selectedAchievement.Id;
         var duplicate = DuplicateAchievement(_selectedAchievement);
 
         // Ensure unique ID
@@ -793,28 +874,42 @@ public partial class AchievementEditorDock : Control
             counter++;
         }
 
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Duplicate Achievement");
+            _undoRedoManager.AddDoMethod(Callable.From(() => DoDuplicateAchievement(duplicate, sourceId)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => UndoDuplicateAchievement(duplicate)));
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoDuplicateAchievement(duplicate, sourceId);
+        }
+    }
+
+    private void DoDuplicateAchievement(Achievement duplicate, string sourceId)
+    {
+        if (_currentDatabase == null) return;
+
         _currentDatabase.AddAchievement(duplicate);
         MarkDirty();
-
-        GD.Print($"[Achievements:Editor] Duplicated achievement: {_selectedAchievement.Id} -> {duplicate.Id}");
-
-        // Auto-save after duplicate
         SaveDatabase();
+        RefreshAchievementList();
+        SelectAchievementById(duplicate.Id);
 
-        // Refresh and auto-select duplicate
+        GD.Print($"[Achievements:Editor] Duplicated achievement: {sourceId} -> {duplicate.Id}");
+    }
+
+    private void UndoDuplicateAchievement(Achievement duplicate)
+    {
+        if (_currentDatabase == null) return;
+
+        _currentDatabase.RemoveAchievement(duplicate.Id);
+        MarkDirty();
+        SaveDatabase();
         RefreshAchievementList();
 
-        // Find and select the duplicated achievement in the list
-        for (int i = 0; i < ItemList.ItemCount; i++)
-        {
-            var achievement = ItemList.GetItemMetadata(i).As<Achievement>();
-            if (achievement.Id == duplicate.Id)
-            {
-                ItemList.Select(i);
-                OnItemSelected(i);
-                break;
-            }
-        }
+        GD.Print($"[Achievements:Editor] Undid duplicate achievement: {duplicate.Id}");
     }
 
     private Achievement DuplicateAchievement(Achievement original)
@@ -969,13 +1064,17 @@ public partial class AchievementEditorDock : Control
         if (currentIndex <= 0)
             return;
 
-        _currentDatabase.Achievements.RemoveAt(currentIndex);
-        _currentDatabase.Achievements.Insert(currentIndex - 1, achievement);
-        MarkDirty();
-
-        SaveDatabase();
-        RefreshAchievementList(preserveSelection: true);
-        GD.Print($"[Achievements:Editor] Moved achievement up: {achievement.DisplayName}");
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Move Achievement Up");
+            _undoRedoManager.AddDoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex - 1)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex)));
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoMoveAchievement(achievement, currentIndex - 1);
+        }
     }
 
     private void MoveAchievementDown(Achievement achievement)
@@ -987,13 +1086,33 @@ public partial class AchievementEditorDock : Control
         if (currentIndex < 0 || currentIndex >= _currentDatabase.Achievements.Count - 1)
             return;
 
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Move Achievement Down");
+            _undoRedoManager.AddDoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex + 1)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => DoMoveAchievement(achievement, currentIndex)));
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoMoveAchievement(achievement, currentIndex + 1);
+        }
+    }
+
+    private void DoMoveAchievement(Achievement achievement, int toIndex)
+    {
+        if (_currentDatabase == null) return;
+
+        var currentIndex = _currentDatabase.Achievements.IndexOf(achievement);
+        if (currentIndex < 0) return;
+
         _currentDatabase.Achievements.RemoveAt(currentIndex);
-        _currentDatabase.Achievements.Insert(currentIndex + 1, achievement);
+        _currentDatabase.Achievements.Insert(toIndex, achievement);
         MarkDirty();
 
         SaveDatabase();
         RefreshAchievementList(preserveSelection: true);
-        GD.Print($"[Achievements:Editor] Moved achievement down: {achievement.DisplayName}");
+        GD.Print($"[Achievements:Editor] Moved achievement: {achievement.DisplayName}");
     }
 
     #endregion

@@ -60,6 +60,14 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     private string _previousId = string.Empty;
     private string _idBeforeEdit = string.Empty;
     private EditorToastPreview? _editorToastPreview;
+    private EditorUndoRedoManager? _undoRedoManager;
+
+    // Track old values for undo/redo
+    private string _nameBeforeEdit = string.Empty;
+    private string _descriptionBeforeEdit = string.Empty;
+    private string _steamIdBeforeEdit = string.Empty;
+    private string _googlePlayIdBeforeEdit = string.Empty;
+    private string _gameCenterIdBeforeEdit = string.Empty;
 
     // Validation labels
     private Label? _internalIdErrorLabel;
@@ -92,6 +100,14 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         }
     }
 
+    /// <summary>
+    /// Sets the undo/redo manager for editor history support
+    /// </summary>
+    public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
+    {
+        _undoRedoManager = undoRedoManager;
+    }
+
     public override void _Ready()
     {
         // Create and setup icon picker
@@ -107,7 +123,11 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
 
         // Connect field signals
         if (NameLineEdit != null)
+        {
             NameLineEdit.TextChanged += OnNameChanged;
+            NameLineEdit.FocusEntered += OnNameFocusEntered;
+            NameLineEdit.FocusExited += OnNameFocusExited;
+        }
         if (InternalIDLineEdit != null)
         {
             InternalIDLineEdit.TextChanged += OnIdTextChanged;
@@ -115,17 +135,33 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             InternalIDLineEdit.FocusExited += OnIdFocusExited;
         }
         if (DescriptionTextBox != null)
+        {
             DescriptionTextBox.TextChanged += OnDescriptionChanged;
+            DescriptionTextBox.FocusEntered += OnDescriptionFocusEntered;
+            DescriptionTextBox.FocusExited += OnDescriptionFocusExited;
+        }
         if (TrackProgressCheckBox != null)
             TrackProgressCheckBox.Toggled += OnTrackProgressToggled;
         if (TargetValueSpinBox != null)
             TargetValueSpinBox.ValueChanged += OnTargetValueChanged;
         if (SteamIDLineEdit != null)
+        {
             SteamIDLineEdit.TextChanged += OnSteamIdChanged;
+            SteamIDLineEdit.FocusEntered += OnSteamIdFocusEntered;
+            SteamIDLineEdit.FocusExited += OnSteamIdFocusExited;
+        }
         if (GooglePlayIDLineEdit != null)
+        {
             GooglePlayIDLineEdit.TextChanged += OnGooglePlayIdChanged;
+            GooglePlayIDLineEdit.FocusEntered += OnGooglePlayIdFocusEntered;
+            GooglePlayIDLineEdit.FocusExited += OnGooglePlayIdFocusExited;
+        }
         if (GameCenterIDLineEdit != null)
+        {
             GameCenterIDLineEdit.TextChanged += OnGameCenterIdChanged;
+            GameCenterIDLineEdit.FocusEntered += OnGameCenterIdFocusEntered;
+            GameCenterIDLineEdit.FocusExited += OnGameCenterIdFocusExited;
+        }
         if (VisualizeUnlockButton != null)
             VisualizeUnlockButton.Pressed += OnVisualizeUnlockPressed;
 
@@ -230,6 +266,14 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         }
     }
 
+    #region Name Field Handlers
+
+    private void OnNameFocusEntered()
+    {
+        if (_currentAchievement == null) return;
+        _nameBeforeEdit = _currentAchievement.DisplayName ?? string.Empty;
+    }
+
     private void OnNameChanged(string newName)
     {
         if (_isUpdating || _currentAchievement == null) return;
@@ -240,10 +284,46 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         EmitSignal(SignalName.AchievementChanged);
     }
 
+    private void OnNameFocusExited()
+    {
+        if (_currentAchievement == null) return;
+
+        var newName = _currentAchievement.DisplayName ?? string.Empty;
+        if (_nameBeforeEdit != newName && _undoRedoManager != null)
+        {
+            var achievement = _currentAchievement;
+            var oldValue = _nameBeforeEdit;
+
+            _undoRedoManager.CreateAction("Change Achievement Name");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementName(achievement, newName)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementName(achievement, oldValue)));
+            _undoRedoManager.CommitAction(false);
+        }
+    }
+
+    private void SetAchievementName(Achievement achievement, string name)
+    {
+        achievement.DisplayName = name;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (NameLineEdit != null)
+                NameLineEdit.Text = name;
+            _isUpdating = false;
+        }
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementDisplayNameChanged, achievement);
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    #endregion
+
+    #region Internal ID Field Handlers
+
     private void OnIdFocusEntered()
     {
         if (_currentAchievement == null) return;
-        _idBeforeEdit = _currentAchievement.Id;
+        _idBeforeEdit = _currentAchievement.Id ?? string.Empty;
     }
 
     private void OnIdTextChanged(string newId)
@@ -260,11 +340,47 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
 
-        // Only trigger rename if the ID actually changed
-        if (_idBeforeEdit != _currentAchievement.Id)
+        var newId = _currentAchievement.Id ?? string.Empty;
+        if (_idBeforeEdit != newId)
         {
-            EmitSignal(SignalName.AchievementIdChanged, _currentAchievement, _idBeforeEdit, _currentAchievement.Id);
+            if (_undoRedoManager != null)
+            {
+                var achievement = _currentAchievement;
+                var oldValue = _idBeforeEdit;
+
+                _undoRedoManager.CreateAction("Change Achievement ID");
+                _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementId(achievement, newId)));
+                _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementId(achievement, oldValue)));
+                _undoRedoManager.CommitAction(false);
+            }
+
+            EmitSignal(SignalName.AchievementIdChanged, _currentAchievement, _idBeforeEdit, newId);
         }
+    }
+
+    private void SetAchievementId(Achievement achievement, string id)
+    {
+        achievement.Id = id;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (InternalIDLineEdit != null)
+                InternalIDLineEdit.Text = id;
+            _isUpdating = false;
+        }
+        _previousId = id;
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    #endregion
+
+    #region Description Field Handlers
+
+    private void OnDescriptionFocusEntered()
+    {
+        if (_currentAchievement == null) return;
+        _descriptionBeforeEdit = _currentAchievement.Description ?? string.Empty;
     }
 
     private void OnDescriptionChanged()
@@ -276,6 +392,47 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         EmitSignal(SignalName.AchievementChanged);
     }
 
+    private void OnDescriptionFocusExited()
+    {
+        if (_currentAchievement == null || DescriptionTextBox == null) return;
+
+        var newDescription = _currentAchievement.Description ?? string.Empty;
+        if (_descriptionBeforeEdit != newDescription && _undoRedoManager != null)
+        {
+            var achievement = _currentAchievement;
+            var oldValue = _descriptionBeforeEdit;
+
+            _undoRedoManager.CreateAction("Change Achievement Description");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementDescription(achievement, newDescription)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementDescription(achievement, oldValue)));
+            _undoRedoManager.CommitAction(false);
+        }
+    }
+
+    private void SetAchievementDescription(Achievement achievement, string description)
+    {
+        achievement.Description = description;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (DescriptionTextBox != null)
+                DescriptionTextBox.Text = description;
+            _isUpdating = false;
+        }
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    #endregion
+
+    #region Platform ID Field Handlers
+
+    private void OnSteamIdFocusEntered()
+    {
+        if (_currentAchievement == null) return;
+        _steamIdBeforeEdit = _currentAchievement.SteamId ?? string.Empty;
+    }
+
     private void OnSteamIdChanged(string text)
     {
         if (_isUpdating || _currentAchievement == null) return;
@@ -283,6 +440,43 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         _currentAchievement.SteamId = text;
         SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
+    }
+
+    private void OnSteamIdFocusExited()
+    {
+        if (_currentAchievement == null) return;
+
+        var newSteamId = _currentAchievement.SteamId ?? string.Empty;
+        if (_steamIdBeforeEdit != newSteamId && _undoRedoManager != null)
+        {
+            var achievement = _currentAchievement;
+            var oldValue = _steamIdBeforeEdit;
+
+            _undoRedoManager.CreateAction("Change Steam ID");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementSteamId(achievement, newSteamId)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementSteamId(achievement, oldValue)));
+            _undoRedoManager.CommitAction(false);
+        }
+    }
+
+    private void SetAchievementSteamId(Achievement achievement, string steamId)
+    {
+        achievement.SteamId = steamId;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (SteamIDLineEdit != null)
+                SteamIDLineEdit.Text = steamId;
+            _isUpdating = false;
+        }
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    private void OnGooglePlayIdFocusEntered()
+    {
+        if (_currentAchievement == null) return;
+        _googlePlayIdBeforeEdit = _currentAchievement.GooglePlayId ?? string.Empty;
     }
 
     private void OnGooglePlayIdChanged(string text)
@@ -294,6 +488,43 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         EmitSignal(SignalName.AchievementChanged);
     }
 
+    private void OnGooglePlayIdFocusExited()
+    {
+        if (_currentAchievement == null) return;
+
+        var newGooglePlayId = _currentAchievement.GooglePlayId ?? string.Empty;
+        if (_googlePlayIdBeforeEdit != newGooglePlayId && _undoRedoManager != null)
+        {
+            var achievement = _currentAchievement;
+            var oldValue = _googlePlayIdBeforeEdit;
+
+            _undoRedoManager.CreateAction("Change Google Play ID");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementGooglePlayId(achievement, newGooglePlayId)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementGooglePlayId(achievement, oldValue)));
+            _undoRedoManager.CommitAction(false);
+        }
+    }
+
+    private void SetAchievementGooglePlayId(Achievement achievement, string googlePlayId)
+    {
+        achievement.GooglePlayId = googlePlayId;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (GooglePlayIDLineEdit != null)
+                GooglePlayIDLineEdit.Text = googlePlayId;
+            _isUpdating = false;
+        }
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    private void OnGameCenterIdFocusEntered()
+    {
+        if (_currentAchievement == null) return;
+        _gameCenterIdBeforeEdit = _currentAchievement.GameCenterId ?? string.Empty;
+    }
+
     private void OnGameCenterIdChanged(string text)
     {
         if (_isUpdating || _currentAchievement == null) return;
@@ -303,13 +534,76 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         EmitSignal(SignalName.AchievementChanged);
     }
 
+    private void OnGameCenterIdFocusExited()
+    {
+        if (_currentAchievement == null) return;
+
+        var newGameCenterId = _currentAchievement.GameCenterId ?? string.Empty;
+        if (_gameCenterIdBeforeEdit != newGameCenterId && _undoRedoManager != null)
+        {
+            var achievement = _currentAchievement;
+            var oldValue = _gameCenterIdBeforeEdit;
+
+            _undoRedoManager.CreateAction("Change Game Center ID");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementGameCenterId(achievement, newGameCenterId)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementGameCenterId(achievement, oldValue)));
+            _undoRedoManager.CommitAction(false);
+        }
+    }
+
+    private void SetAchievementGameCenterId(Achievement achievement, string gameCenterId)
+    {
+        achievement.GameCenterId = gameCenterId;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (GameCenterIDLineEdit != null)
+                GameCenterIDLineEdit.Text = gameCenterId;
+            _isUpdating = false;
+        }
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    #endregion
+
+    #region Progress and Value Handlers
+
     private void OnTrackProgressToggled(bool enabled)
     {
         if (_isUpdating || _currentAchievement == null) return;
 
+        var oldValue = _currentAchievement.IsIncremental;
         _currentAchievement.IsIncremental = enabled;
         if (TargetValueSpinBox != null)
             TargetValueSpinBox.Editable = enabled;
+
+        if (_undoRedoManager != null && oldValue != enabled)
+        {
+            var achievement = _currentAchievement;
+
+            _undoRedoManager.CreateAction("Change Track Progress");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementTrackProgress(achievement, enabled)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementTrackProgress(achievement, oldValue)));
+            _undoRedoManager.CommitAction(false);
+        }
+
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    private void SetAchievementTrackProgress(Achievement achievement, bool enabled)
+    {
+        achievement.IsIncremental = enabled;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (TrackProgressCheckBox != null)
+                TrackProgressCheckBox.ButtonPressed = enabled;
+            if (TargetValueSpinBox != null)
+                TargetValueSpinBox.Editable = enabled;
+            _isUpdating = false;
+        }
         SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
@@ -318,10 +612,39 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_isUpdating || _currentAchievement == null) return;
 
-        _currentAchievement.MaxProgress = (int)value;
+        var oldValue = _currentAchievement.MaxProgress;
+        var newValue = (int)value;
+        _currentAchievement.MaxProgress = newValue;
+
+        if (_undoRedoManager != null && oldValue != newValue)
+        {
+            var achievement = _currentAchievement;
+
+            _undoRedoManager.CreateAction("Change Target Value");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementMaxProgress(achievement, newValue)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementMaxProgress(achievement, oldValue)));
+            _undoRedoManager.CommitAction(false);
+        }
+
         SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementChanged);
     }
+
+    private void SetAchievementMaxProgress(Achievement achievement, int maxProgress)
+    {
+        achievement.MaxProgress = maxProgress;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (TargetValueSpinBox != null)
+                TargetValueSpinBox.Value = maxProgress;
+            _isUpdating = false;
+        }
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    #endregion
 
     private void OnVisualizeUnlockPressed()
     {
@@ -364,7 +687,11 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
 
         // Disconnect signals
         if (NameLineEdit != null)
+        {
             NameLineEdit.TextChanged -= OnNameChanged;
+            NameLineEdit.FocusEntered -= OnNameFocusEntered;
+            NameLineEdit.FocusExited -= OnNameFocusExited;
+        }
         if (InternalIDLineEdit != null)
         {
             InternalIDLineEdit.TextChanged -= OnIdTextChanged;
@@ -372,17 +699,33 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             InternalIDLineEdit.FocusExited -= OnIdFocusExited;
         }
         if (DescriptionTextBox != null)
+        {
             DescriptionTextBox.TextChanged -= OnDescriptionChanged;
+            DescriptionTextBox.FocusEntered -= OnDescriptionFocusEntered;
+            DescriptionTextBox.FocusExited -= OnDescriptionFocusExited;
+        }
         if (TrackProgressCheckBox != null)
             TrackProgressCheckBox.Toggled -= OnTrackProgressToggled;
         if (TargetValueSpinBox != null)
             TargetValueSpinBox.ValueChanged -= OnTargetValueChanged;
         if (SteamIDLineEdit != null)
+        {
             SteamIDLineEdit.TextChanged -= OnSteamIdChanged;
+            SteamIDLineEdit.FocusEntered -= OnSteamIdFocusEntered;
+            SteamIDLineEdit.FocusExited -= OnSteamIdFocusExited;
+        }
         if (GooglePlayIDLineEdit != null)
+        {
             GooglePlayIDLineEdit.TextChanged -= OnGooglePlayIdChanged;
+            GooglePlayIDLineEdit.FocusEntered -= OnGooglePlayIdFocusEntered;
+            GooglePlayIDLineEdit.FocusExited -= OnGooglePlayIdFocusExited;
+        }
         if (GameCenterIDLineEdit != null)
+        {
             GameCenterIDLineEdit.TextChanged -= OnGameCenterIdChanged;
+            GameCenterIDLineEdit.FocusEntered -= OnGameCenterIdFocusEntered;
+            GameCenterIDLineEdit.FocusExited -= OnGameCenterIdFocusExited;
+        }
         if (VisualizeUnlockButton != null)
             VisualizeUnlockButton.Pressed -= OnVisualizeUnlockPressed;
     }
@@ -486,10 +829,39 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             return;
 
         var texture = resource as Texture2D;
+        var oldIcon = _currentAchievement.Icon;
         _currentAchievement.Icon = texture;
         AchievementIconButton.TextureNormal = texture;
+
+        if (_undoRedoManager != null)
+        {
+            var achievement = _currentAchievement;
+
+            _undoRedoManager.CreateAction("Change Achievement Icon");
+            _undoRedoManager.AddDoMethod(Callable.From(() => SetAchievementIcon(achievement, texture)));
+            _undoRedoManager.AddUndoMethod(Callable.From(() => SetAchievementIcon(achievement, oldIcon)));
+            _undoRedoManager.CommitAction(false);
+        }
+
         SaveCurrentAchievement();
         EmitSignal(SignalName.AchievementDisplayNameChanged, _currentAchievement);
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    private void SetAchievementIcon(Achievement achievement, Texture2D? icon)
+    {
+        achievement.Icon = icon;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            if (AchievementIconButton != null)
+                AchievementIconButton.TextureNormal = icon;
+            if (_iconPicker != null)
+                _iconPicker.EditedResource = icon;
+            _isUpdating = false;
+        }
+        SaveCurrentAchievement();
+        EmitSignal(SignalName.AchievementDisplayNameChanged, achievement);
         EmitSignal(SignalName.AchievementChanged);
     }
 }
