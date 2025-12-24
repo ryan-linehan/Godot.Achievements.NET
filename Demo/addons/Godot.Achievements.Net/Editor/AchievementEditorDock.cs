@@ -45,6 +45,7 @@ public partial class AchievementEditorDock : Control
     private string _currentDatabasePath = string.Empty;
     private Achievement? _selectedAchievement;
     private int _selectedIndex = -1;
+    private System.Collections.Generic.List<Achievement> _selectedAchievements = new();
     private EditorFileDialog? _importCSVFileDialog;
     private EditorFileDialog? _exportCSVFileDialog;
     private ConfirmationDialog? _removeConfirmDialog;
@@ -53,6 +54,10 @@ public partial class AchievementEditorDock : Control
     private int _contextMenuTargetIndex = -1;
     private bool _hasUnsavedChanges = false;
     private Action? _pendingAction;
+
+    // Drag and drop fields
+    private int _dragSourceIndex = -1;
+    private bool _isDragging = false;
 
     // Validation
     private System.Collections.Generic.Dictionary<Achievement, AchievementValidationResult> _validationResults = new();
@@ -126,8 +131,12 @@ public partial class AchievementEditorDock : Control
         SearchLineEdit.TextChanged += OnSearchTextChanged;
         ItemList.ItemSelected += OnItemSelected;
         ItemList.ItemClicked += OnItemListClicked;
+        ItemList.MultiSelected += OnItemMultiSelected;
         ImportCSVButton.Pressed += OnImportCSVPressed;
         ExportCSVButton.Pressed += OnExportCSVPressed;
+
+        // Connect drag and drop signals
+        ItemList.GuiInput += OnItemListGuiInput;
 
         // Connect details panel signals
         if (DetailsPanel != null)
@@ -263,6 +272,8 @@ public partial class AchievementEditorDock : Control
         {
             ItemList.ItemSelected -= OnItemSelected;
             ItemList.ItemClicked -= OnItemListClicked;
+            ItemList.MultiSelected -= OnItemMultiSelected;
+            ItemList.GuiInput -= OnItemListGuiInput;
         }
         if (ImportCSVButton != null)
             ImportCSVButton.Pressed -= OnImportCSVPressed;
@@ -280,9 +291,20 @@ public partial class AchievementEditorDock : Control
 
     private void UpdateButtonStates()
     {
-        var hasSelection = _selectedAchievement != null;
+        var hasSelection = _selectedAchievements.Count > 0 || _selectedAchievement != null;
+        var hasSingleSelection = _selectedAchievements.Count == 1 || (_selectedAchievements.Count == 0 && _selectedAchievement != null);
         RemoveButton.Disabled = !hasSelection;
-        DuplicateButton.Disabled = !hasSelection;
+        DuplicateButton.Disabled = !hasSingleSelection;
+
+        // Update remove button text to indicate count
+        if (_selectedAchievements.Count > 1)
+        {
+            RemoveButton.Text = $"Remove ({_selectedAchievements.Count})";
+        }
+        else
+        {
+            RemoveButton.Text = "Remove";
+        }
     }
 
     private void OnAchievementIdChanged(Achievement achievement, string oldId, string newId)
@@ -531,10 +553,12 @@ public partial class AchievementEditorDock : Control
     private void RefreshAchievementList(bool preserveSelection = false)
     {
         var previousSelection = preserveSelection ? _selectedAchievement : null;
+        var previousMultiSelection = preserveSelection ? new System.Collections.Generic.List<Achievement>(_selectedAchievements) : new System.Collections.Generic.List<Achievement>();
 
         ItemList.Clear();
         _selectedAchievement = null;
         _selectedIndex = -1;
+        _selectedAchievements.Clear();
 
         if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
         {
@@ -607,12 +631,24 @@ public partial class AchievementEditorDock : Control
                 ItemList.SetItemTooltip(index, validationResult.GetTooltipText());
             }
 
-            // Restore selection if this is the previously selected achievement
+            // Restore single selection if this is the previously selected achievement
             if (achievement == previousSelection)
             {
-                ItemList.Select(index);
+                ItemList.Select(index, false);
                 _selectedAchievement = achievement;
                 _selectedIndex = index;
+            }
+
+            // Restore multi-selection
+            if (previousMultiSelection.Contains(achievement))
+            {
+                ItemList.Select(index, false);
+                _selectedAchievements.Add(achievement);
+                if (_selectedAchievement == null)
+                {
+                    _selectedAchievement = achievement;
+                    _selectedIndex = index;
+                }
             }
         }
 
@@ -654,7 +690,71 @@ public partial class AchievementEditorDock : Control
     private void OnItemSelected(long index)
     {
         var targetAchievement = ItemList.GetItemMetadata((int)index).As<Achievement>();
+
+        // When single click without modifier, clear multi-selection
+        _selectedAchievements.Clear();
+        _selectedAchievements.Add(targetAchievement);
+
         SelectAchievement((int)index, targetAchievement);
+    }
+
+    private void OnItemMultiSelected(long index, bool selected)
+    {
+        var targetAchievement = ItemList.GetItemMetadata((int)index).As<Achievement>();
+
+        if (selected)
+        {
+            if (!_selectedAchievements.Contains(targetAchievement))
+            {
+                _selectedAchievements.Add(targetAchievement);
+            }
+            // Update current selection to the newly selected item
+            _selectedIndex = (int)index;
+            _selectedAchievement = targetAchievement;
+        }
+        else
+        {
+            _selectedAchievements.Remove(targetAchievement);
+            // If we deselected the current achievement, update to another selected one
+            if (_selectedAchievement == targetAchievement)
+            {
+                if (_selectedAchievements.Count > 0)
+                {
+                    _selectedAchievement = _selectedAchievements[0];
+                    // Find its index
+                    for (int i = 0; i < ItemList.ItemCount; i++)
+                    {
+                        if (ItemList.GetItemMetadata(i).As<Achievement>() == _selectedAchievement)
+                        {
+                            _selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    _selectedAchievement = null;
+                    _selectedIndex = -1;
+                }
+            }
+        }
+
+        // Update details panel for current selection
+        if (_selectedAchievement != null)
+        {
+            DetailsPanel.Visible = true;
+            NoItemSelectedScroll.Visible = false;
+            DetailsPanel.CurrentAchievement = _selectedAchievement;
+            UpdateDetailsPanelValidation();
+        }
+        else
+        {
+            DetailsPanel.Visible = false;
+            NoItemSelectedScroll.Visible = true;
+            DetailsPanel.ClearValidation();
+        }
+
+        UpdateButtonStates();
     }
 
     private void SelectAchievement(int index, Achievement achievement)
@@ -737,6 +837,17 @@ public partial class AchievementEditorDock : Control
 
     private void OnRemovePressed()
     {
+        // Check for multi-selection first
+        if (_selectedAchievements.Count > 1)
+        {
+            if (_removeConfirmDialog != null)
+            {
+                _removeConfirmDialog.DialogText = $"Are you sure you want to remove {_selectedAchievements.Count} achievements?";
+                _removeConfirmDialog.PopupCentered();
+            }
+            return;
+        }
+
         if (_selectedAchievement == null)
         {
             GD.PushWarning("[Achievements:Editor] No achievement selected to remove");
@@ -752,7 +863,32 @@ public partial class AchievementEditorDock : Control
 
     private void ConfirmRemoveAchievement()
     {
-        if (_selectedAchievement == null || _currentDatabase == null)
+        if (_currentDatabase == null)
+            return;
+
+        // Handle multi-delete
+        if (_selectedAchievements.Count > 1)
+        {
+            var achievementsToRemove = new System.Collections.Generic.List<Achievement>(_selectedAchievements);
+            foreach (var achievement in achievementsToRemove)
+            {
+                _currentDatabase.RemoveAchievement(achievement.Id);
+                GD.Print($"[Achievements:Editor] Removed achievement: {achievement.Id}");
+            }
+            MarkDirty();
+            SaveDatabase();
+
+            // Clear selections
+            _selectedAchievements.Clear();
+            _selectedAchievement = null;
+            _selectedIndex = -1;
+
+            RefreshAchievementList();
+            return;
+        }
+
+        // Single delete
+        if (_selectedAchievement == null)
             return;
 
         var achievementToRemove = _selectedAchievement;
@@ -767,6 +903,7 @@ public partial class AchievementEditorDock : Control
         SaveDatabase();
 
         // Clear selection
+        _selectedAchievements.Clear();
         _selectedAchievement = null;
         _selectedIndex = -1;
 
@@ -854,6 +991,115 @@ public partial class AchievementEditorDock : Control
             }
         } while (_currentDatabase.GetById(id) != null);
         return id;
+    }
+
+    #endregion
+
+    #region Drag and Drop
+
+    private void OnItemListGuiInput(InputEvent @event)
+    {
+        // Only allow drag when not filtering
+        var isFiltered = !string.IsNullOrEmpty(SearchLineEdit.Text);
+        if (isFiltered)
+            return;
+
+        if (@event is InputEventMouseButton mouseButton)
+        {
+            if (mouseButton.ButtonIndex == MouseButton.Left)
+            {
+                if (mouseButton.Pressed)
+                {
+                    // Start potential drag
+                    var itemIndex = ItemList.GetItemAtPosition(mouseButton.Position, true);
+                    if (itemIndex >= 0)
+                    {
+                        _dragSourceIndex = itemIndex;
+                    }
+                }
+                else
+                {
+                    // End drag
+                    if (_isDragging && _dragSourceIndex >= 0)
+                    {
+                        var dropIndex = ItemList.GetItemAtPosition(mouseButton.Position, true);
+                        if (dropIndex >= 0 && dropIndex != _dragSourceIndex)
+                        {
+                            PerformDragDrop(_dragSourceIndex, dropIndex);
+                        }
+                    }
+                    _isDragging = false;
+                    _dragSourceIndex = -1;
+                }
+            }
+        }
+        else if (@event is InputEventMouseMotion mouseMotion)
+        {
+            // Detect drag start
+            if (_dragSourceIndex >= 0 && mouseMotion.ButtonMask.HasFlag(MouseButtonMask.Left))
+            {
+                if (!_isDragging)
+                {
+                    _isDragging = true;
+                    ItemList.MouseDefaultCursorShape = Control.CursorShape.Drag;
+                }
+
+                // Visual feedback: highlight drop target
+                var dropIndex = ItemList.GetItemAtPosition(mouseMotion.Position, true);
+                if (dropIndex >= 0 && dropIndex != _dragSourceIndex)
+                {
+                    // The item under cursor is the potential drop target
+                    ItemList.MouseDefaultCursorShape = Control.CursorShape.CanDrop;
+                }
+                else if (dropIndex < 0)
+                {
+                    ItemList.MouseDefaultCursorShape = Control.CursorShape.Forbidden;
+                }
+            }
+        }
+
+        // Reset cursor when not dragging
+        if (!_isDragging)
+        {
+            ItemList.MouseDefaultCursorShape = Control.CursorShape.Arrow;
+        }
+    }
+
+    private void PerformDragDrop(int sourceIndex, int targetIndex)
+    {
+        if (_currentDatabase == null)
+            return;
+
+        var sourceAchievement = ItemList.GetItemMetadata(sourceIndex).As<Achievement>();
+        if (sourceAchievement == null)
+            return;
+
+        // Get the actual database indices
+        var sourceDatabaseIndex = _currentDatabase.Achievements.IndexOf(sourceAchievement);
+        var targetAchievement = ItemList.GetItemMetadata(targetIndex).As<Achievement>();
+        var targetDatabaseIndex = _currentDatabase.Achievements.IndexOf(targetAchievement);
+
+        if (sourceDatabaseIndex < 0 || targetDatabaseIndex < 0)
+            return;
+
+        // Perform the move in the database
+        _currentDatabase.Achievements.RemoveAt(sourceDatabaseIndex);
+        _currentDatabase.Achievements.Insert(targetDatabaseIndex, sourceAchievement);
+
+        MarkDirty();
+        SaveDatabase();
+
+        // Refresh and maintain selection on the moved item
+        _selectedAchievements.Clear();
+        _selectedAchievements.Add(sourceAchievement);
+        _selectedAchievement = sourceAchievement;
+
+        RefreshAchievementList(preserveSelection: true);
+
+        GD.Print($"[Achievements:Editor] Moved achievement '{sourceAchievement.DisplayName}' from position {sourceDatabaseIndex} to {targetDatabaseIndex}");
+
+        // Reset cursor
+        ItemList.MouseDefaultCursorShape = Control.CursorShape.Arrow;
     }
 
     #endregion
