@@ -87,7 +87,6 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingSteamEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingSteamEnabled, false);
-        ProjectSettings.SetRestartIfChanged(SettingSteamEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingSteamEnabled },
@@ -100,7 +99,6 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingGameCenterEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingGameCenterEnabled, false);
-        ProjectSettings.SetRestartIfChanged(SettingGameCenterEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingGameCenterEnabled },
@@ -113,7 +111,6 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingGooglePlayEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingGooglePlayEnabled, false);
-        ProjectSettings.SetRestartIfChanged(SettingGooglePlayEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingGooglePlayEnabled },

@@ -76,6 +76,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         get => _currentAchievement;
         set
         {
+            // Skip reload if setting the same achievement (prevents cursor jump while typing)
+            if (_currentAchievement == value)
+                return;
+
             _currentAchievement = value;
             _previousId = value?.Id ?? string.Empty;
             LoadAchievementData();

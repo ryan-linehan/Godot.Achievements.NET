@@ -178,6 +178,8 @@ public partial class AchievementEditorDock : Control
     {
         UpdatePlatformVisibility();
         CheckDatabasePathChanged();
+        // Re-run validation since platform enablement affects warnings
+        RefreshAchievementList(preserveSelection: true);
     }
 
     private void CheckDatabasePathChanged()
