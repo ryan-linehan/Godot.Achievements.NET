@@ -54,6 +54,13 @@ public partial class AchievementEditorDock : Control
     private bool _hasUnsavedChanges = false;
     private Action? _pendingAction;
 
+    // Validation
+    private System.Collections.Generic.Dictionary<Achievement, AchievementValidationResult> _validationResults = new();
+    private System.Collections.Generic.List<string> _duplicateInternalIds = new();
+    private Texture2D? _warningIcon;
+    private const string WARNING_PREFIX = "\u26a0 "; // ⚠ Unicode warning sign
+    private const string ERROR_PREFIX = "\u274c "; // ❌ Unicode cross mark
+
     private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
     private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
 
@@ -142,6 +149,9 @@ public partial class AchievementEditorDock : Control
         // Listen for project settings changes to update platform visibility
         ProjectSettings.Singleton.SettingsChanged += OnProjectSettingsChanged;
 
+        // Load warning icon from editor theme
+        _warningIcon = EditorInterface.Singleton.GetEditorTheme().GetIcon("StatusWarning", "EditorIcons");
+
         // Load database from settings
         var savedPath = LoadDatabasePath();
         _lastKnownDatabasePath = savedPath;
@@ -170,6 +180,8 @@ public partial class AchievementEditorDock : Control
     {
         UpdatePlatformVisibility();
         CheckDatabasePathChanged();
+        // Re-run validation since platform enablement affects warnings
+        RefreshAchievementList(preserveSelection: true);
     }
 
     private void CheckDatabasePathChanged()
@@ -288,6 +300,9 @@ public partial class AchievementEditorDock : Control
     private void OnAchievementChanged()
     {
         MarkDirty();
+
+        // Refresh the full list to re-run all validations (including duplicate detection)
+        RefreshAchievementList(preserveSelection: true);
     }
 
     private void MarkDirty()
@@ -359,14 +374,24 @@ public partial class AchievementEditorDock : Control
     {
         if (achievement == null) return;
 
+        // Re-validate this specific achievement
+        var validationResult = AchievementValidator.ValidateAchievement(achievement);
+        _validationResults[achievement] = validationResult;
+
         // Find the item in the list
         for (int i = 0; i < ItemList.ItemCount; i++)
         {
             var itemAchievement = ItemList.GetItemMetadata(i).As<Achievement>();
             if (itemAchievement == achievement)
             {
-                ItemList.SetItemText(i, achievement.DisplayName);
+                var hasWarnings = validationResult.HasWarnings;
+                var displayText = hasWarnings ? WARNING_PREFIX + achievement.DisplayName : achievement.DisplayName;
+
+                ItemList.SetItemText(i, displayText);
                 ItemList.SetItemIcon(i, achievement.Icon);
+
+                // Update tooltip with warnings or clear it
+                ItemList.SetItemTooltip(i, hasWarnings ? validationResult.GetTooltipText() : string.Empty);
                 break;
             }
         }
@@ -505,9 +530,7 @@ public partial class AchievementEditorDock : Control
 
     private void RefreshAchievementList(bool preserveSelection = false)
     {
-        var previousSelection = preserveSelection && _selectedAchievement != null
-            ? _selectedAchievement.Id
-            : null;
+        var previousSelection = preserveSelection ? _selectedAchievement : null;
 
         ItemList.Clear();
         _selectedAchievement = null;
@@ -515,6 +538,7 @@ public partial class AchievementEditorDock : Control
 
         if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
         {
+            _validationResults.Clear();
             NoItemsControl.Visible = true;
             ItemList.Visible = false;
             ItemListScrollContainer.Visible = false;
@@ -523,6 +547,10 @@ public partial class AchievementEditorDock : Control
             UpdateButtonStates();
             return;
         }
+
+        // Run validation on all achievements
+        _validationResults = AchievementValidator.ValidateDatabase(_currentDatabase);
+        _duplicateInternalIds = AchievementValidator.GetDuplicateInternalIds(_currentDatabase);
 
         NoItemsControl.Visible = false;
         ItemList.Visible = true;
@@ -549,11 +577,38 @@ public partial class AchievementEditorDock : Control
         for (int i = 0; i < filteredAchievements.Count; i++)
         {
             var achievement = filteredAchievements[i];
-            var index = ItemList.AddItem(achievement.DisplayName, achievement.Icon);
+
+            // Check for errors (missing/duplicate internal ID) vs warnings
+            var hasError = string.IsNullOrWhiteSpace(achievement.Id)
+                || _duplicateInternalIds.Contains(achievement.Id);
+            var hasWarnings = _validationResults.TryGetValue(achievement, out var validationResult) && validationResult.HasWarnings;
+
+            string displayText;
+            if (hasError)
+                displayText = ERROR_PREFIX + achievement.DisplayName;
+            else if (hasWarnings)
+                displayText = WARNING_PREFIX + achievement.DisplayName;
+            else
+                displayText = achievement.DisplayName;
+
+            var index = ItemList.AddItem(displayText, achievement.Icon);
             ItemList.SetItemMetadata(index, achievement);
 
+            // Set tooltip with warning/error details
+            if (hasError)
+            {
+                var errorText = string.IsNullOrWhiteSpace(achievement.Id)
+                    ? "Internal ID is required"
+                    : $"Duplicate internal ID: {achievement.Id}";
+                ItemList.SetItemTooltip(index, errorText);
+            }
+            else if (hasWarnings && validationResult != null)
+            {
+                ItemList.SetItemTooltip(index, validationResult.GetTooltipText());
+            }
+
             // Restore selection if this is the previously selected achievement
-            if (previousSelection != null && achievement.Id == previousSelection)
+            if (achievement == previousSelection)
             {
                 ItemList.Select(index);
                 _selectedAchievement = achievement;
@@ -567,14 +622,28 @@ public partial class AchievementEditorDock : Control
             DetailsPanel.Visible = true;
             NoItemSelectedScroll.Visible = false;
             DetailsPanel.CurrentAchievement = _selectedAchievement;
+            UpdateDetailsPanelValidation();
         }
         else
         {
             DetailsPanel.Visible = false;
             NoItemSelectedScroll.Visible = true;
+            DetailsPanel.ClearValidation();
         }
 
         UpdateButtonStates();
+    }
+
+    private void UpdateDetailsPanelValidation()
+    {
+        if (_selectedAchievement == null || _currentDatabase == null)
+        {
+            DetailsPanel.ClearValidation();
+            return;
+        }
+
+        _validationResults.TryGetValue(_selectedAchievement, out var validationResult);
+        DetailsPanel.UpdateValidation(validationResult, _duplicateInternalIds);
     }
 
     private void OnSearchTextChanged(string newText)
@@ -585,21 +654,6 @@ public partial class AchievementEditorDock : Control
     private void OnItemSelected(long index)
     {
         var targetAchievement = ItemList.GetItemMetadata((int)index).As<Achievement>();
-
-        // Check if there are unsaved changes before switching
-        if (_hasUnsavedChanges && targetAchievement != _selectedAchievement)
-        {
-            _pendingAction = () => SelectAchievement((int)index, targetAchievement);
-            ShowUnsavedChangesDialog();
-
-            // Restore previous selection in the list (user might cancel)
-            if (_selectedIndex >= 0 && _selectedIndex < ItemList.ItemCount)
-            {
-                ItemList.Select(_selectedIndex);
-            }
-            return;
-        }
-
         SelectAchievement((int)index, targetAchievement);
     }
 
@@ -611,6 +665,7 @@ public partial class AchievementEditorDock : Control
         DetailsPanel.Visible = true;
         NoItemSelectedScroll.Visible = false;
         DetailsPanel.CurrentAchievement = _selectedAchievement;
+        UpdateDetailsPanelValidation();
 
         UpdateButtonStates();
     }
@@ -690,7 +745,7 @@ public partial class AchievementEditorDock : Control
 
         if (_removeConfirmDialog != null)
         {
-            _removeConfirmDialog.DialogText = $"Are you sure you want to remove the achievement:\n\n'{_selectedAchievement.DisplayName}' ({_selectedAchievement.Id})\n\nThis will delete the .tres file from disk.";
+            _removeConfirmDialog.DialogText = $"Are you sure you want to remove the achievement:\n\n'{_selectedAchievement.DisplayName}' ({_selectedAchievement.Id}).";
             _removeConfirmDialog.PopupCentered();
         }
     }

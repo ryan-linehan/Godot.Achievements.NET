@@ -61,6 +61,12 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     private string _idBeforeEdit = string.Empty;
     private EditorToastPreview? _editorToastPreview;
 
+    // Validation labels
+    private Label? _internalIdErrorLabel;
+    private Label? _steamWarningLabel;
+    private Label? _googlePlayWarningLabel;
+    private Label? _gameCenterWarningLabel;
+
     // Signals
     [Signal]
     public delegate void AchievementIdChangedEventHandler(Achievement achievement, string oldId, string newId);
@@ -76,6 +82,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         get => _currentAchievement;
         set
         {
+            // Skip reload if setting the same achievement (prevents cursor jump while typing)
+            if (_currentAchievement == value)
+                return;
+
             _currentAchievement = value;
             _previousId = value?.Id ?? string.Empty;
             LoadAchievementData();
@@ -118,6 +128,106 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             GameCenterIDLineEdit.TextChanged += OnGameCenterIdChanged;
         if (VisualizeUnlockButton != null)
             VisualizeUnlockButton.Pressed += OnVisualizeUnlockPressed;
+
+        // Create validation labels
+        _internalIdErrorLabel = CreateValidationLabel(InternalIDLineEdit, isError: true);
+        _steamWarningLabel = CreateValidationLabel(SteamIDLineEdit, isError: false);
+        _googlePlayWarningLabel = CreateValidationLabel(GooglePlayIDLineEdit, isError: false);
+        _gameCenterWarningLabel = CreateValidationLabel(GameCenterIDLineEdit, isError: false);
+    }
+
+    private Label? CreateValidationLabel(Control? siblingControl, bool isError)
+    {
+        if (siblingControl == null) return null;
+
+        var label = new Label();
+        label.AddThemeColorOverride("font_color", isError ? new Color(1, 0.4f, 0.4f) : new Color(1, 0.75f, 0.3f));
+        label.Visible = false;
+
+        // Add after the sibling control
+        var parent = siblingControl.GetParent();
+        if (parent != null)
+        {
+            var siblingIndex = siblingControl.GetIndex();
+            parent.AddChild(label);
+            parent.MoveChild(label, siblingIndex + 1);
+        }
+
+        return label;
+    }
+
+    /// <summary>
+    /// Updates validation display for the current achievement
+    /// </summary>
+    public void UpdateValidation(AchievementValidationResult? validationResult, System.Collections.Generic.List<string>? duplicateInternalIds)
+    {
+        // Update internal ID error label
+        if (_internalIdErrorLabel != null)
+        {
+            var isMissing = _currentAchievement != null
+                && string.IsNullOrWhiteSpace(_currentAchievement.Id);
+
+            var hasDuplicateId = _currentAchievement != null
+                && duplicateInternalIds != null
+                && !string.IsNullOrWhiteSpace(_currentAchievement.Id)
+                && duplicateInternalIds.Contains(_currentAchievement.Id);
+
+            _internalIdErrorLabel.Visible = isMissing || hasDuplicateId;
+            _internalIdErrorLabel.Text = isMissing ? "\u274c Required" : (hasDuplicateId ? "\u274c Duplicate" : string.Empty);
+        }
+
+        // Update platform warning labels based on validation result
+        UpdatePlatformWarningLabel(_steamWarningLabel, validationResult, "Steam");
+        UpdatePlatformWarningLabel(_googlePlayWarningLabel, validationResult, "Google Play");
+        UpdatePlatformWarningLabel(_gameCenterWarningLabel, validationResult, "Game Center");
+    }
+
+    private void UpdatePlatformWarningLabel(Label? label, AchievementValidationResult? validationResult, string platformName)
+    {
+        if (label == null) return;
+
+        string? warningText = null;
+        if (validationResult != null)
+        {
+            foreach (var warning in validationResult.Warnings)
+            {
+                if (warning.Contains(platformName))
+                {
+                    warningText = warning.Contains("missing") ? "\u26a0 Missing" : "\u26a0 Duplicate";
+                    break;
+                }
+            }
+        }
+
+        label.Visible = warningText != null;
+        label.Text = warningText ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Clears all validation labels
+    /// </summary>
+    public void ClearValidation()
+    {
+        if (_internalIdErrorLabel != null)
+        {
+            _internalIdErrorLabel.Visible = false;
+            _internalIdErrorLabel.Text = string.Empty;
+        }
+        if (_steamWarningLabel != null)
+        {
+            _steamWarningLabel.Visible = false;
+            _steamWarningLabel.Text = string.Empty;
+        }
+        if (_googlePlayWarningLabel != null)
+        {
+            _googlePlayWarningLabel.Visible = false;
+            _googlePlayWarningLabel.Text = string.Empty;
+        }
+        if (_gameCenterWarningLabel != null)
+        {
+            _gameCenterWarningLabel.Visible = false;
+            _gameCenterWarningLabel.Text = string.Empty;
+        }
     }
 
     private void OnNameChanged(string newName)
@@ -245,6 +355,12 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             _iconPicker.ResourceChanged -= OnIconResourceChanged;
             _iconPicker.QueueFree();
         }
+
+        // Clean up validation labels
+        _internalIdErrorLabel?.QueueFree();
+        _steamWarningLabel?.QueueFree();
+        _googlePlayWarningLabel?.QueueFree();
+        _gameCenterWarningLabel?.QueueFree();
 
         // Disconnect signals
         if (NameLineEdit != null)

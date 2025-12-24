@@ -14,9 +14,6 @@ achievements/toast/position=1
 achievements/toast/display_duration=0.5
 achievements/database_path="uid://ddebvxw8oopod"
 achievements/toast/scene_path="uid://betgshcwd2vle"
-achievements/platforms/gamecenter_enabled=true
-achievements/platforms/steam_enabled=true
-achievements/platforms/googleplay_enabled=true
 achievements/toast/unlock_sound="uid://tfy5p37ns3cg"
 
 [application]

@@ -14,6 +14,7 @@ public partial class EditorToastPreview : CanvasLayer
     private const string SettingScenePath = "addons/achievements/toast/scene_path";
     private const string SettingPosition = "addons/achievements/toast/position";
     private const string SettingDisplayDuration = "addons/achievements/toast/display_duration";
+    private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
 
     private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
     private const float DefaultDisplayDuration = 5.0f;
@@ -21,10 +22,13 @@ public partial class EditorToastPreview : CanvasLayer
 
     private MarginContainer? _marginContainer;
     private VBoxContainer? _toastVBox;
+    private AudioStreamPlayer? _audioPlayer;
 
     private string _toastScenePath = DefaultToastScenePath;
     private ToastPosition _position = DefaultPosition;
     private float _displayDuration = DefaultDisplayDuration;
+    private string _unlockSoundPath = string.Empty;
+    private AudioStream? _unlockSound;
     private PackedScene? _toastScene;
     private readonly List<ToastEntry> _activeToasts = new();
 
@@ -67,6 +71,10 @@ public partial class EditorToastPreview : CanvasLayer
         _toastVBox = new VBoxContainer();
         _toastVBox.AddThemeConstantOverride("separation", 8);
         _marginContainer.AddChild(_toastVBox);
+
+        // Create audio player for unlock sound
+        _audioPlayer = new AudioStreamPlayer();
+        AddChild(_audioPlayer);
     }
 
     private void LoadSettings()
@@ -84,6 +92,20 @@ public partial class EditorToastPreview : CanvasLayer
         if (ProjectSettings.HasSetting(SettingDisplayDuration))
         {
             _displayDuration = (float)ProjectSettings.GetSetting(SettingDisplayDuration).AsDouble();
+        }
+
+        if (ProjectSettings.HasSetting(SettingUnlockSound))
+        {
+            var newSoundPath = ProjectSettings.GetSetting(SettingUnlockSound).AsString();
+            if (newSoundPath != _unlockSoundPath)
+            {
+                _unlockSoundPath = newSoundPath;
+                _unlockSound = null;
+                if (!string.IsNullOrEmpty(_unlockSoundPath) && ResourceLoader.Exists(_unlockSoundPath))
+                {
+                    _unlockSound = GD.Load<AudioStream>(_unlockSoundPath);
+                }
+            }
         }
     }
 
@@ -221,6 +243,13 @@ public partial class EditorToastPreview : CanvasLayer
 
         var entry = new ToastEntry { Toast = toast };
         _activeToasts.Add(entry);
+
+        // Play unlock sound if configured
+        if (_unlockSound != null && _audioPlayer != null)
+        {
+            _audioPlayer.Stream = _unlockSound;
+            _audioPlayer.Play();
+        }
 
         // Animate in
         var tween = CreateTween();
