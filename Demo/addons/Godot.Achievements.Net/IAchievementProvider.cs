@@ -43,7 +43,12 @@ public readonly struct AchievementUnlockResult
 /// Interface for platform-specific achievement providers (Steam, Game Center, Google Play, etc.)
 /// </summary>
 public interface IAchievementProvider
-{
+{    
+    /// <summary>
+    /// Whether this provider is supported on the current platform (compile-time check)
+    /// </summary>
+    static virtual bool IsPlatformSupported => false;
+
     /// <summary>
     /// Name of the provider (e.g., "Steam", "Game Center", "Local")
     /// </summary>
@@ -58,16 +63,6 @@ public interface IAchievementProvider
     /// Unlock an achievement on this platform
     /// </summary>
     Task<AchievementUnlockResult> UnlockAchievement(string achievementId);
-
-    /// <summary>
-    /// Get achievement details from this platform
-    /// </summary>
-    Task<Achievement?> GetAchievement(string achievementId);
-
-    /// <summary>
-    /// Get all achievements from this platform
-    /// </summary>
-    Task<Achievement[]> GetAllAchievements();
 
     /// <summary>
     /// Get current progress for a progressive achievement

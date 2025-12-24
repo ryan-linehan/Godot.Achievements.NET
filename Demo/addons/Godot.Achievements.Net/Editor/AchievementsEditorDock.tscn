@@ -72,6 +72,7 @@ text = "🔍"
 [node name="SearchLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "Search by id or name"
 placeholder_text = "Search achievements..."
 clear_button_enabled = true
 
@@ -135,8 +136,11 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-item_count = 1
-item_0/text = "New Achievement"
+item_count = 4
+item_0/text = "Beat a boss!"
+item_1/text = "Have 20 hearts at once!"
+item_2/text = "Hit a max combo!"
+item_3/text = "Take no damage for a whole level!"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
@@ -192,7 +196,7 @@ layout_mode = 2
 tooltip_text = "Change this in project settings > addons > Achievements"
 mouse_filter = 1
 theme_override_colors/font_color = Color(0.5, 0.7, 1, 1)
-text = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres"
+text = "res://demo_achievements.tres"
 
 [node name="Actions" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer"]
 layout_mode = 2

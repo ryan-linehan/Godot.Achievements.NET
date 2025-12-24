@@ -26,6 +26,7 @@ public partial class AchievementPlugin : EditorPlugin
     private const string SettingToastScenePath = "addons/achievements/toast/scene_path";
     private const string SettingToastPosition = "addons/achievements/toast/position";
     private const string SettingToastDisplayDuration = "addons/achievements/toast/display_duration";
+    private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
     private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
 
     private Editor.AchievementEditorDock? _dock;
@@ -36,7 +37,6 @@ public partial class AchievementPlugin : EditorPlugin
         RegisterSettings();
 
         // Create and add the achievement editor dock
-        // This runs on every project load to ensure the dock is always available
         _dock = AchievementEditorDockScene.Instantiate<Editor.AchievementEditorDock>();
         _dock.Name = "Achievements";
         AddControlToBottomPanel(_dock, "Achievements");
@@ -66,12 +66,13 @@ public partial class AchievementPlugin : EditorPlugin
 
     private void RegisterSettings()
     {
-        // Database path
+        // Database path (requires restart so autoload reloads from new path)
         if (!ProjectSettings.HasSetting(SettingDatabasePath))
         {
             ProjectSettings.SetSetting(SettingDatabasePath, DefaultDatabasePath);
         }
         ProjectSettings.SetInitialValue(SettingDatabasePath, DefaultDatabasePath);
+        ProjectSettings.SetRestartIfChanged(SettingDatabasePath, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingDatabasePath },
@@ -86,6 +87,7 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingSteamEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingSteamEnabled, false);
+        ProjectSettings.SetRestartIfChanged(SettingSteamEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingSteamEnabled },
@@ -98,6 +100,7 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingGameCenterEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingGameCenterEnabled, false);
+        ProjectSettings.SetRestartIfChanged(SettingGameCenterEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingGameCenterEnabled },
@@ -110,6 +113,7 @@ public partial class AchievementPlugin : EditorPlugin
             ProjectSettings.SetSetting(SettingGooglePlayEnabled, false);
         }
         ProjectSettings.SetInitialValue(SettingGooglePlayEnabled, false);
+        ProjectSettings.SetRestartIfChanged(SettingGooglePlayEnabled, true);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", SettingGooglePlayEnabled },
@@ -117,7 +121,6 @@ public partial class AchievementPlugin : EditorPlugin
         });
 
         // Toast scene path (default: built-in, empty = disabled)
-        // Always ensure the setting exists with a value
         if (!ProjectSettings.HasSetting(SettingToastScenePath) ||
             ProjectSettings.GetSetting(SettingToastScenePath).VariantType == Variant.Type.Nil)
         {
@@ -162,14 +165,29 @@ public partial class AchievementPlugin : EditorPlugin
             { "hint_string", "0.5,30.0,0.5" }
         });
 
+        // Unlock sound (default: empty = no sound)
+        if (!ProjectSettings.HasSetting(SettingUnlockSound))
+        {
+            ProjectSettings.SetSetting(SettingUnlockSound, "");
+        }
+        ProjectSettings.SetInitialValue(SettingUnlockSound, "");
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", SettingUnlockSound },
+            { "type", (int)Variant.Type.String },
+            { "hint", (int)PropertyHint.File },
+            { "hint_string", "*.wav,*.ogg,*.mp3" }
+        });
+
         ProjectSettings.Save();
     }
 
     public override void _DisablePlugin()
     {
-        // Remove autoload singletons (only runs when plugin is disabled)
+        // Remove core autoload singletons
         RemoveAutoloadSingleton(AutoloadName);
         RemoveAutoloadSingleton(ToastAutoloadName);
+
         GD.Print("[Achievements] Plugin disabled, autoloads removed");
     }
 }

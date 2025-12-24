@@ -67,6 +67,9 @@ public partial class AchievementEditorDock : Control
     private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
     private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
 
+    // Track last known database path for change detection
+    private string _lastKnownDatabasePath = string.Empty;
+
     public override void _Ready()
     {
         // Create confirmation dialog for removing achievements
@@ -139,21 +142,17 @@ public partial class AchievementEditorDock : Control
         UpdateButtonStates();
 
         // Set platform section visibility based on project settings
-        if (DetailsPanel != null)
-        {
-            if (DetailsPanel.SteamVBox != null)
-                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(STEAM_ENABLED_SETTING);
-            if (DetailsPanel.GameCenterVBox != null)
-                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
-            if (DetailsPanel.GooglePlayVBox != null)
-                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
-        }
+        UpdatePlatformVisibility();
+
+        // Listen for project settings changes to update platform visibility
+        ProjectSettings.Singleton.SettingsChanged += OnProjectSettingsChanged;
 
         // Load warning icon from editor theme
         _warningIcon = EditorInterface.Singleton.GetEditorTheme().GetIcon("StatusWarning", "EditorIcons");
 
         // Load database from settings
         var savedPath = LoadDatabasePath();
+        _lastKnownDatabasePath = savedPath;
         LoadDatabase(savedPath);
 
         // Enable shortcut input processing for Ctrl+S
@@ -175,9 +174,39 @@ public partial class AchievementEditorDock : Control
         }
     }
 
+    private void OnProjectSettingsChanged()
+    {
+        UpdatePlatformVisibility();
+        CheckDatabasePathChanged();
+    }
+
+    private void CheckDatabasePathChanged()
+    {
+        var currentPath = LoadDatabasePath();
+        if (currentPath != _lastKnownDatabasePath)
+        {
+            _lastKnownDatabasePath = currentPath;
+            LoadDatabase(currentPath);
+        }
+    }
+
+    private void UpdatePlatformVisibility()
+    {
+        if (DetailsPanel != null)
+        {
+            if (DetailsPanel.SteamVBox != null)
+                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(STEAM_ENABLED_SETTING);
+            if (DetailsPanel.GameCenterVBox != null)
+                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
+            if (DetailsPanel.GooglePlayVBox != null)
+                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
+        }
+    }
+
     public override void _ExitTree()
     {
         // Disconnect signals
+        ProjectSettings.Singleton.SettingsChanged -= OnProjectSettingsChanged;
         VisibilityChanged -= OnVisibilityChanged;
 
         if (DetailsPanel != null)
@@ -297,7 +326,8 @@ public partial class AchievementEditorDock : Control
         else
         {
             var prefix = _hasUnsavedChanges ? "* " : "";
-            DatabasePathLabel.Text = $"{prefix}{_currentDatabasePath}";
+            var displayPath = ResolveUidToPath(_currentDatabasePath);
+            DatabasePathLabel.Text = $"{prefix}{displayPath}";
         }
     }
 
@@ -367,7 +397,7 @@ public partial class AchievementEditorDock : Control
 
     private void LoadDatabase(string path)
     {
-        if (!FileAccess.FileExists(path))
+        if (!ResourceLoader.Exists(path))
         {
             GD.PushWarning($"[Achievements:Editor] Database not found at {path}");
             _currentDatabase = null;
@@ -406,6 +436,7 @@ public partial class AchievementEditorDock : Control
         _currentDatabasePath = path;
         SaveDatabasePath(path);
         ClearDirty();
+        UpdateDatabasePathLabel();
         RefreshAchievementList();
 
         GD.Print($"[Achievements:Editor] Loaded database from {path}");
@@ -429,7 +460,8 @@ public partial class AchievementEditorDock : Control
             }
         }
 
-        var saveError = ResourceSaver.Save(_currentDatabase, _currentDatabasePath);
+        var savePath = ResolveUidToPath(_currentDatabasePath);
+        var saveError = ResourceSaver.Save(_currentDatabase, savePath);
         if (saveError != Error.Ok)
         {
             GD.PushError($"[Achievements:Editor] Failed to save database: {saveError}");
@@ -437,17 +469,36 @@ public partial class AchievementEditorDock : Control
         }
 
         ClearDirty();
-        GD.Print($"[Achievements:Editor] Database saved to {_currentDatabasePath}");
+        GD.Print($"[Achievements:Editor] Database saved to {savePath}");
+
+        // Refresh the Inspector if it's showing this resource
+        _currentDatabase.EmitChanged();
+        _currentDatabase.NotifyPropertyListChanged();
     }
 
     private string LoadDatabasePath()
     {
-        if (ProjectSettings.HasSetting(DATABASE_PATH_SETTING))
+        var hasSetting = ProjectSettings.HasSetting(DATABASE_PATH_SETTING);
+
+        if (hasSetting)
         {
             var path = ProjectSettings.GetSetting(DATABASE_PATH_SETTING).AsString();
             return string.IsNullOrEmpty(path) ? DEFAULT_DATABASE_PATH : path;
         }
         return DEFAULT_DATABASE_PATH;
+    }
+
+    private static string ResolveUidToPath(string path)
+    {
+        if (path.StartsWith("uid://"))
+        {
+            var uid = ResourceUid.TextToId(path);
+            if (ResourceUid.HasId(uid))
+            {
+                return ResourceUid.GetIdPath(uid);
+            }
+        }
+        return path;
     }
 
     private void SaveDatabasePath(string path)
@@ -502,11 +553,11 @@ public partial class AchievementEditorDock : Control
         ItemList.Visible = true;
         ItemListScrollContainer.Visible = true;
 
-        var searchText = SearchLineEdit.Text.ToLower();
+        var searchText = SearchLineEdit.Text?.ToLower() ?? string.Empty;
         var filteredAchievements = _currentDatabase.Achievements
             .Where(a => string.IsNullOrEmpty(searchText)
-                || a.DisplayName.ToLower().Contains(searchText)
-                || a.Id.ToLower().Contains(searchText))
+                || (a.DisplayName?.ToLower().Contains(searchText) ?? false)
+                || (a.Id?.ToLower().Contains(searchText) ?? false))
             .ToList();
 
         if (filteredAchievements.Count == 0)
@@ -858,27 +909,30 @@ public partial class AchievementEditorDock : Control
             return;
         }
 
+        var databasePath = ResolveUidToPath(_currentDatabasePath);
+
         // Check if the achievement has its own resource path (saved as external file)
+        // Sub-resources have paths like "res://file.tres::Resource_id" - these are NOT external
         var achievementPath = achievement.ResourcePath;
+        var isSubResource = !string.IsNullOrEmpty(achievementPath) && achievementPath.Contains("::");
         var isExternalResource = !string.IsNullOrEmpty(achievementPath)
-            && FileAccess.FileExists(achievementPath)
-            && achievementPath != _currentDatabasePath;
+            && !isSubResource
+            && ResourceLoader.Exists(achievementPath)
+            && achievementPath != databasePath;
 
         if (isExternalResource)
         {
             // Achievement is saved as its own file - navigate to it
-            editorInterface.GetFileSystemDock().NavigateToPath(achievementPath);
             editorInterface.SelectFile(achievementPath);
             GD.Print($"[Achievements:Editor] Showing achievement file: {achievementPath}");
         }
         else
         {
             // Achievement is internal to the database - show the database file
-            if (!string.IsNullOrEmpty(_currentDatabasePath) && FileAccess.FileExists(_currentDatabasePath))
+            if (!string.IsNullOrEmpty(databasePath) && ResourceLoader.Exists(databasePath))
             {
-                editorInterface.GetFileSystemDock().NavigateToPath(_currentDatabasePath);
-                editorInterface.SelectFile(_currentDatabasePath);
-                GD.Print($"[Achievements:Editor] Achievement is internal - showing database file: {_currentDatabasePath}");
+                editorInterface.SelectFile(databasePath);
+                GD.Print($"[Achievements:Editor] Achievement is internal - showing database file: {databasePath}");
             }
             else
             {

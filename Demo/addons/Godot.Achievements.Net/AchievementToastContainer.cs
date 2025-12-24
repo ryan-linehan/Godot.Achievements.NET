@@ -11,6 +11,7 @@ public partial class AchievementToastContainer : CanvasLayer
     private const string SettingScenePath = "addons/achievements/toast/scene_path";
     private const string SettingPosition = "addons/achievements/toast/position";
     private const string SettingDisplayDuration = "addons/achievements/toast/display_duration";
+    private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
 
     private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
     private const float DefaultDisplayDuration = 5.0f;
@@ -27,6 +28,8 @@ public partial class AchievementToastContainer : CanvasLayer
     private float _displayDuration = DefaultDisplayDuration;
     private PackedScene? _toastScene;
     private readonly List<ToastEntry> _activeToasts = new();
+    private AudioStreamPlayer? _audioPlayer;
+    private AudioStream? _unlockSound;
 
     private class ToastEntry
     {
@@ -91,6 +94,22 @@ public partial class AchievementToastContainer : CanvasLayer
         if (ProjectSettings.HasSetting(SettingDisplayDuration))
         {
             _displayDuration = (float)ProjectSettings.GetSetting(SettingDisplayDuration).AsDouble();
+        }
+
+        // Load unlock sound if configured
+        if (ProjectSettings.HasSetting(SettingUnlockSound))
+        {
+            var soundPath = ProjectSettings.GetSetting(SettingUnlockSound).AsString();
+            if (!string.IsNullOrEmpty(soundPath) && ResourceLoader.Exists(soundPath))
+            {
+                _unlockSound = GD.Load<AudioStream>(soundPath);
+                if (_unlockSound != null)
+                {
+                    _audioPlayer = new AudioStreamPlayer();
+                    _audioPlayer.Stream = _unlockSound;
+                    AddChild(_audioPlayer);
+                }
+            }
         }
     }
 
@@ -168,6 +187,9 @@ public partial class AchievementToastContainer : CanvasLayer
 
     private void OnAchievementUnlocked(string achievementId, Achievement achievement)
     {
+        // Play unlock sound if configured
+        _audioPlayer?.Play();
+
         ShowToast(achievement);
     }
 
