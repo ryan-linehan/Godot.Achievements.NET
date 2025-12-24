@@ -14,6 +14,7 @@ achievements/toast/position=5
 achievements/toast/display_duration=0.5
 achievements/database_path="uid://ddebvxw8oopod"
 achievements/toast/scene_path="uid://betgshcwd2vle"
+achievements/platforms/googleplay_enabled=true
 
 [application]
 
@@ -26,6 +27,7 @@ config/icon="res://icon.svg"
 
 Achievements="*res://addons/Godot.Achievements.Net/AchievementManager.cs"
 AchievementToasts="*res://addons/Godot.Achievements.Net/AchievementToastContainer.tscn"
+GooglePlayAchievements="*res://addons/Godot.Achievements.Net/GooglePlay/GooglePlayAchievementAutoload.cs"
 
 [dotnet]
 

@@ -1,4 +1,3 @@
-#if GODOT_IOS
 using Godot;
 using Godot.Achievements.Core;
 
@@ -10,6 +9,8 @@ namespace Godot.Achievements.iOS;
 /// </summary>
 public partial class GameCenterAchievementAutoload : Node
 {
+#if GODOT_IOS
+
     public override void _Ready()
     {
         // Get the achievement manager
@@ -31,6 +32,7 @@ public partial class GameCenterAchievementAutoload : Node
         manager.RegisterProvider(gameCenterProvider);
 
         GD.Print("[GameCenter] GameCenterAchievementProvider registered");
+
     }
-}
 #endif
+}

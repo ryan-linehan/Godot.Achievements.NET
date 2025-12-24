@@ -1,4 +1,3 @@
-#if GODOT_ANDROID
 using Godot;
 using Godot.Achievements.Core;
 
@@ -10,6 +9,8 @@ namespace Godot.Achievements.Android;
 /// </summary>
 public partial class GooglePlayAchievementAutoload : Node
 {
+#if GODOT_ANDROID
+
     public override void _Ready()
     {
         // Get the achievement manager
@@ -31,6 +32,6 @@ public partial class GooglePlayAchievementAutoload : Node
         manager.RegisterProvider(googlePlayProvider);
 
         GD.Print("[GooglePlay] GooglePlayAchievementProvider registered");
-    }
 }
 #endif
+}
