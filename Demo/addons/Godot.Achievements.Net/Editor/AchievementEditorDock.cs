@@ -1,6 +1,7 @@
 #if TOOLS
 using System;
 using System.Linq;
+using System.Text.Json;
 
 namespace Godot.Achievements.Core.Editor;
 
@@ -36,9 +37,9 @@ public partial class AchievementEditorDock : Control
     [Export]
     private Label DatabasePathLabel = null!;
     [Export]
-    private Button ImportCSVButton = null!;
+    private MenuButton ImportMenuButton = null!;
     [Export]
-    private Button ExportCSVButton = null!;
+    private MenuButton ExportMenuButton = null!;
 
     // Private Fields
     private AchievementDatabase? _currentDatabase;
@@ -47,6 +48,8 @@ public partial class AchievementEditorDock : Control
     private int _selectedIndex = -1;
     private EditorFileDialog? _importCSVFileDialog;
     private EditorFileDialog? _exportCSVFileDialog;
+    private EditorFileDialog? _importJSONFileDialog;
+    private EditorFileDialog? _exportJSONFileDialog;
     private ConfirmationDialog? _removeConfirmDialog;
     private AcceptDialog? _unsavedChangesDialog;
     private PopupMenu? _contextMenu;
@@ -119,6 +122,36 @@ public partial class AchievementEditorDock : Control
         _exportCSVFileDialog.FileSelected += OnExportCSVFileSelected;
         AddChild(_exportCSVFileDialog);
 
+        // Create import JSON file dialog
+        _importJSONFileDialog = new EditorFileDialog();
+        _importJSONFileDialog.FileMode = EditorFileDialog.FileModeEnum.OpenFile;
+        _importJSONFileDialog.AddFilter("*.json", "JSON Files");
+        _importJSONFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
+        _importJSONFileDialog.Title = "Import Achievements from JSON";
+        _importJSONFileDialog.FileSelected += OnImportJSONFileSelected;
+        AddChild(_importJSONFileDialog);
+
+        // Create export JSON file dialog
+        _exportJSONFileDialog = new EditorFileDialog();
+        _exportJSONFileDialog.FileMode = EditorFileDialog.FileModeEnum.SaveFile;
+        _exportJSONFileDialog.AddFilter("*.json", "JSON Files");
+        _exportJSONFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
+        _exportJSONFileDialog.Title = "Export Achievements to JSON";
+        _exportJSONFileDialog.FileSelected += OnExportJSONFileSelected;
+        AddChild(_exportJSONFileDialog);
+
+        // Setup import menu button
+        var importPopup = ImportMenuButton.GetPopup();
+        importPopup.AddItem("CSV", 0);
+        importPopup.AddItem("JSON", 1);
+        importPopup.IdPressed += OnImportMenuItemPressed;
+
+        // Setup export menu button
+        var exportPopup = ExportMenuButton.GetPopup();
+        exportPopup.AddItem("CSV", 0);
+        exportPopup.AddItem("JSON", 1);
+        exportPopup.IdPressed += OnExportMenuItemPressed;
+
         // Connect UI signals
         AddAchievementButton.Pressed += OnAddAchievementPressed;
         RemoveButton.Pressed += OnRemovePressed;
@@ -126,8 +159,6 @@ public partial class AchievementEditorDock : Control
         SearchLineEdit.TextChanged += OnSearchTextChanged;
         ItemList.ItemSelected += OnItemSelected;
         ItemList.ItemClicked += OnItemListClicked;
-        ImportCSVButton.Pressed += OnImportCSVPressed;
-        ExportCSVButton.Pressed += OnExportCSVPressed;
 
         // Connect details panel signals
         if (DetailsPanel != null)
@@ -232,6 +263,33 @@ public partial class AchievementEditorDock : Control
             _exportCSVFileDialog.QueueFree();
         }
 
+        if (_importJSONFileDialog != null)
+        {
+            _importJSONFileDialog.FileSelected -= OnImportJSONFileSelected;
+            _importJSONFileDialog.QueueFree();
+        }
+
+        if (_exportJSONFileDialog != null)
+        {
+            _exportJSONFileDialog.FileSelected -= OnExportJSONFileSelected;
+            _exportJSONFileDialog.QueueFree();
+        }
+
+        // Disconnect menu button popup signals
+        if (ImportMenuButton != null)
+        {
+            var importPopup = ImportMenuButton.GetPopup();
+            if (importPopup != null)
+                importPopup.IdPressed -= OnImportMenuItemPressed;
+        }
+
+        if (ExportMenuButton != null)
+        {
+            var exportPopup = ExportMenuButton.GetPopup();
+            if (exportPopup != null)
+                exportPopup.IdPressed -= OnExportMenuItemPressed;
+        }
+
         if (_removeConfirmDialog != null)
         {
             _removeConfirmDialog.Confirmed -= ConfirmRemoveAchievement;
@@ -264,10 +322,6 @@ public partial class AchievementEditorDock : Control
             ItemList.ItemSelected -= OnItemSelected;
             ItemList.ItemClicked -= OnItemListClicked;
         }
-        if (ImportCSVButton != null)
-            ImportCSVButton.Pressed -= OnImportCSVPressed;
-        if (ExportCSVButton != null)
-            ExportCSVButton.Pressed -= OnExportCSVPressed;
     }
 
     private void OnVisibilityChanged()
@@ -998,9 +1052,9 @@ public partial class AchievementEditorDock : Control
 
     #endregion
 
-    #region CSV Import/Export
+    #region Import/Export
 
-    private void OnImportCSVPressed()
+    private void OnImportMenuItemPressed(long id)
     {
         if (_currentDatabase == null)
         {
@@ -1011,14 +1065,26 @@ public partial class AchievementEditorDock : Control
             return;
         }
 
-        if (_importCSVFileDialog != null)
+        switch (id)
         {
-            _importCSVFileDialog.CurrentPath = "achievements.csv";
-            _importCSVFileDialog.PopupCentered(new Vector2I(800, 600));
+            case 0: // CSV
+                if (_importCSVFileDialog != null)
+                {
+                    _importCSVFileDialog.CurrentPath = "achievements.csv";
+                    _importCSVFileDialog.PopupCentered(new Vector2I(800, 600));
+                }
+                break;
+            case 1: // JSON
+                if (_importJSONFileDialog != null)
+                {
+                    _importJSONFileDialog.CurrentPath = "achievements.json";
+                    _importJSONFileDialog.PopupCentered(new Vector2I(800, 600));
+                }
+                break;
         }
     }
 
-    private void OnExportCSVPressed()
+    private void OnExportMenuItemPressed(long id)
     {
         if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
         {
@@ -1029,10 +1095,22 @@ public partial class AchievementEditorDock : Control
             return;
         }
 
-        if (_exportCSVFileDialog != null)
+        switch (id)
         {
-            _exportCSVFileDialog.CurrentPath = "achievements.csv";
-            _exportCSVFileDialog.PopupCentered(new Vector2I(800, 600));
+            case 0: // CSV
+                if (_exportCSVFileDialog != null)
+                {
+                    _exportCSVFileDialog.CurrentPath = "achievements.csv";
+                    _exportCSVFileDialog.PopupCentered(new Vector2I(800, 600));
+                }
+                break;
+            case 1: // JSON
+                if (_exportJSONFileDialog != null)
+                {
+                    _exportJSONFileDialog.CurrentPath = "achievements.json";
+                    _exportJSONFileDialog.PopupCentered(new Vector2I(800, 600));
+                }
+                break;
         }
     }
 
@@ -1249,6 +1327,284 @@ public partial class AchievementEditorDock : Control
             ShowErrorDialog($"Failed to export CSV: {ex.Message}");
             GD.PushError($"[Achievements:Editor] CSV export error: {ex}");
         }
+    }
+
+    private void OnImportJSONFileSelected(string path)
+    {
+        if (_currentDatabase == null)
+            return;
+
+        try
+        {
+            var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+            if (file == null)
+            {
+                ShowErrorDialog($"Failed to open file: {FileAccess.GetOpenError()}");
+                return;
+            }
+
+            var jsonContent = file.GetAsText();
+            file.Close();
+
+            if (string.IsNullOrWhiteSpace(jsonContent))
+            {
+                ShowErrorDialog("JSON file is empty.");
+                return;
+            }
+
+            // Parse JSON
+            JsonDocument? doc;
+            try
+            {
+                doc = JsonDocument.Parse(jsonContent);
+            }
+            catch (JsonException ex)
+            {
+                ShowErrorDialog($"Invalid JSON format: {ex.Message}");
+                return;
+            }
+
+            var root = doc.RootElement;
+            JsonElement achievementsArray;
+
+            // Support both { "achievements": [...] } and direct array [...]
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                achievementsArray = root;
+            }
+            else if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("achievements", out var achProp))
+            {
+                achievementsArray = achProp;
+            }
+            else
+            {
+                ShowErrorDialog("JSON must be an array of achievements or an object with an 'achievements' array.");
+                return;
+            }
+
+            int importedCount = 0;
+            int updatedCount = 0;
+            int skippedCount = 0;
+
+            foreach (var item in achievementsArray.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                    continue;
+
+                // Get Id (required)
+                if (!item.TryGetProperty("Id", out var idProp) && !item.TryGetProperty("id", out idProp))
+                    continue;
+
+                var id = idProp.GetString();
+                if (string.IsNullOrWhiteSpace(id))
+                    continue;
+
+                // Check if achievement already exists
+                var existing = _currentDatabase.GetById(id);
+                bool isNew = existing == null;
+
+                var achievement = existing ?? new Achievement { Id = id };
+                bool hasChanges = false;
+
+                // Update fields from JSON, tracking if any changes occur
+                if (TryGetJsonString(item, "DisplayName", out var displayName) || TryGetJsonString(item, "displayName", out displayName))
+                {
+                    if (achievement.DisplayName != displayName)
+                    {
+                        achievement.DisplayName = displayName;
+                        hasChanges = true;
+                    }
+                }
+
+                if (TryGetJsonString(item, "Description", out var description) || TryGetJsonString(item, "description", out description))
+                {
+                    if (achievement.Description != description)
+                    {
+                        achievement.Description = description;
+                        hasChanges = true;
+                    }
+                }
+
+                if (TryGetJsonString(item, "SteamId", out var steamId) || TryGetJsonString(item, "steamId", out steamId))
+                {
+                    if (achievement.SteamId != steamId)
+                    {
+                        achievement.SteamId = steamId;
+                        hasChanges = true;
+                    }
+                }
+
+                if (TryGetJsonString(item, "GameCenterId", out var gameCenterId) || TryGetJsonString(item, "gameCenterId", out gameCenterId))
+                {
+                    if (achievement.GameCenterId != gameCenterId)
+                    {
+                        achievement.GameCenterId = gameCenterId;
+                        hasChanges = true;
+                    }
+                }
+
+                if (TryGetJsonString(item, "GooglePlayId", out var googlePlayId) || TryGetJsonString(item, "googlePlayId", out googlePlayId))
+                {
+                    if (achievement.GooglePlayId != googlePlayId)
+                    {
+                        achievement.GooglePlayId = googlePlayId;
+                        hasChanges = true;
+                    }
+                }
+
+                if (TryGetJsonBool(item, "IsIncremental", out var isIncremental) || TryGetJsonBool(item, "isIncremental", out isIncremental))
+                {
+                    if (achievement.IsIncremental != isIncremental)
+                    {
+                        achievement.IsIncremental = isIncremental;
+                        hasChanges = true;
+                    }
+                }
+
+                if (TryGetJsonInt(item, "MaxProgress", out var maxProgress) || TryGetJsonInt(item, "maxProgress", out maxProgress))
+                {
+                    if (achievement.MaxProgress != maxProgress)
+                    {
+                        achievement.MaxProgress = maxProgress;
+                        hasChanges = true;
+                    }
+                }
+
+                if (isNew)
+                {
+                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
+                    achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
+                    _currentDatabase.AddAchievement(achievement);
+                    importedCount++;
+                }
+                else if (hasChanges)
+                {
+                    updatedCount++;
+                }
+                else
+                {
+                    skippedCount++;
+                }
+            }
+
+            doc.Dispose();
+
+            MarkDirty();
+            SaveDatabase();
+            RefreshAchievementList(preserveSelection: true);
+
+            var resultDialog = new AcceptDialog();
+            resultDialog.DialogText = $"JSON Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}\nSkipped (unchanged): {skippedCount}";
+            resultDialog.Title = "Import Successful";
+            AddChild(resultDialog);
+            resultDialog.PopupCentered();
+
+            GD.Print($"[Achievements:Editor] Imported JSON from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
+        }
+        catch (Exception ex)
+        {
+            ShowErrorDialog($"Failed to import JSON: {ex.Message}");
+            GD.PushError($"[Achievements:Editor] JSON import error: {ex}");
+        }
+    }
+
+    private void OnExportJSONFileSelected(string path)
+    {
+        if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
+            return;
+
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = null // Keep PascalCase for compatibility with Godot conventions
+            };
+
+            // Build achievements list for JSON
+            var achievementsList = new System.Collections.Generic.List<object>();
+            foreach (var achievement in _currentDatabase.Achievements)
+            {
+                achievementsList.Add(new
+                {
+                    Id = achievement.Id ?? "",
+                    DisplayName = achievement.DisplayName ?? "",
+                    Description = achievement.Description ?? "",
+                    SteamId = achievement.SteamId ?? "",
+                    GameCenterId = achievement.GameCenterId ?? "",
+                    GooglePlayId = achievement.GooglePlayId ?? "",
+                    IsIncremental = achievement.IsIncremental,
+                    MaxProgress = achievement.MaxProgress
+                });
+            }
+
+            var exportObject = new { achievements = achievementsList };
+            var jsonContent = JsonSerializer.Serialize(exportObject, options);
+
+            var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
+            if (file == null)
+            {
+                ShowErrorDialog($"Failed to create file: {FileAccess.GetOpenError()}");
+                return;
+            }
+
+            file.StoreString(jsonContent);
+            file.Close();
+
+            var resultDialog = new AcceptDialog();
+            resultDialog.DialogText = $"Successfully exported {_currentDatabase.Achievements.Count} achievements to:\n\n{path}";
+            resultDialog.Title = "Export Successful";
+            AddChild(resultDialog);
+            resultDialog.PopupCentered();
+
+            GD.Print($"[Achievements:Editor] Exported {_currentDatabase.Achievements.Count} achievements to JSON: {path}");
+        }
+        catch (Exception ex)
+        {
+            ShowErrorDialog($"Failed to export JSON: {ex.Message}");
+            GD.PushError($"[Achievements:Editor] JSON export error: {ex}");
+        }
+    }
+
+    private static bool TryGetJsonString(JsonElement element, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String)
+        {
+            value = prop.GetString() ?? string.Empty;
+            return true;
+        }
+        return false;
+    }
+
+    private static bool TryGetJsonBool(JsonElement element, string propertyName, out bool value)
+    {
+        value = false;
+        if (element.TryGetProperty(propertyName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.True)
+            {
+                value = true;
+                return true;
+            }
+            if (prop.ValueKind == JsonValueKind.False)
+            {
+                value = false;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool TryGetJsonInt(JsonElement element, string propertyName, out int value)
+    {
+        value = 0;
+        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number)
+        {
+            if (prop.TryGetInt32(out value))
+                return true;
+        }
+        return false;
     }
 
     private static string? GetCSVValue(string[] values, System.Collections.Generic.Dictionary<string, int> columnMap, string columnName)
