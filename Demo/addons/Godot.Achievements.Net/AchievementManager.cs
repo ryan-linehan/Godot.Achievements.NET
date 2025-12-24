@@ -297,7 +297,7 @@ public partial class AchievementManager : Node
             return;
         }
 
-        var achievement = await _localProvider.GetAchievement(achievementId);
+        var achievement = Database?.GetById(achievementId);
 
         // Suppress signals and UI notifications for achievements that were already unlocked
         // This prevents duplicate toasts when syncing across platforms or reloading state
@@ -330,7 +330,7 @@ public partial class AchievementManager : Node
         var oldProgress = await _localProvider.GetProgress(achievementId);
         await _localProvider.SetProgress(achievementId, currentProgress);
 
-        var achievement = await _localProvider.GetAchievement(achievementId);
+        var achievement = Database?.GetById(achievementId);
 
         // Emit progress changed signal
         if (achievement != null)
@@ -354,10 +354,7 @@ public partial class AchievementManager : Node
     /// </summary>
     public Achievement? GetAchievement(string achievementId)
     {
-        if (_localProvider == null)
-            return null;
-
-        return _localProvider.GetAchievement(achievementId).Result;
+        return Database?.GetById(achievementId);
     }
 
     /// <summary>
@@ -365,10 +362,10 @@ public partial class AchievementManager : Node
     /// </summary>
     public Achievement[] GetAllAchievements()
     {
-        if (_localProvider == null)
+        if (Database == null)
             return Array.Empty<Achievement>();
 
-        return _localProvider.GetAllAchievements().Result;
+        return Database.Achievements.ToArray();
     }
 
     /// <summary>
@@ -558,11 +555,10 @@ public partial class AchievementManager : Node
     /// </summary>
     private async void SyncLocalToPlatforms()
     {
-        if (_localProvider == null || _platformProviders.Count == 0)
+        if (Database == null || _platformProviders.Count == 0)
             return;
 
-        var allAchievements = await _localProvider.GetAllAchievements();
-        var unlockedAchievements = allAchievements.Where(a => a.IsUnlocked).ToArray();
+        var unlockedAchievements = Database.Achievements.Where(a => a.IsUnlocked).ToArray();
 
         if (unlockedAchievements.Length == 0)
             return;

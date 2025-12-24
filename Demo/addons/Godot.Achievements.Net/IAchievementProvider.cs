@@ -43,11 +43,11 @@ public readonly struct AchievementUnlockResult
 /// Interface for platform-specific achievement providers (Steam, Game Center, Google Play, etc.)
 /// </summary>
 public interface IAchievementProvider
-{
+{    
     /// <summary>
     /// Whether this provider is supported on the current platform (compile-time check)
     /// </summary>
-    static abstract bool IsPlatformSupported { get; }
+    static virtual bool IsPlatformSupported => false;
 
     /// <summary>
     /// Name of the provider (e.g., "Steam", "Game Center", "Local")
