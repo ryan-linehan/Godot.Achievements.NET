@@ -62,6 +62,9 @@ public partial class AchievementEditorDock : Control
     private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
     private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
 
+    // Track last known database path for change detection
+    private string _lastKnownDatabasePath = string.Empty;
+
     public override void _Ready()
     {
         // Create confirmation dialog for removing achievements
@@ -134,18 +137,14 @@ public partial class AchievementEditorDock : Control
         UpdateButtonStates();
 
         // Set platform section visibility based on project settings
-        if (DetailsPanel != null)
-        {
-            if (DetailsPanel.SteamVBox != null)
-                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(STEAM_ENABLED_SETTING);
-            if (DetailsPanel.GameCenterVBox != null)
-                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
-            if (DetailsPanel.GooglePlayVBox != null)
-                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
-        }
+        UpdatePlatformVisibility();
+
+        // Listen for project settings changes to update platform visibility
+        ProjectSettings.Singleton.SettingsChanged += OnProjectSettingsChanged;
 
         // Load database from settings
         var savedPath = LoadDatabasePath();
+        _lastKnownDatabasePath = savedPath;
         LoadDatabase(savedPath);
 
         // Enable shortcut input processing for Ctrl+S
@@ -167,9 +166,39 @@ public partial class AchievementEditorDock : Control
         }
     }
 
+    private void OnProjectSettingsChanged()
+    {
+        UpdatePlatformVisibility();
+        CheckDatabasePathChanged();
+    }
+
+    private void CheckDatabasePathChanged()
+    {
+        var currentPath = LoadDatabasePath();
+        if (currentPath != _lastKnownDatabasePath)
+        {
+            _lastKnownDatabasePath = currentPath;
+            LoadDatabase(currentPath);
+        }
+    }
+
+    private void UpdatePlatformVisibility()
+    {
+        if (DetailsPanel != null)
+        {
+            if (DetailsPanel.SteamVBox != null)
+                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(STEAM_ENABLED_SETTING);
+            if (DetailsPanel.GameCenterVBox != null)
+                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
+            if (DetailsPanel.GooglePlayVBox != null)
+                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
+        }
+    }
+
     public override void _ExitTree()
     {
         // Disconnect signals
+        ProjectSettings.Singleton.SettingsChanged -= OnProjectSettingsChanged;
         VisibilityChanged -= OnVisibilityChanged;
 
         if (DetailsPanel != null)
@@ -499,11 +528,11 @@ public partial class AchievementEditorDock : Control
         ItemList.Visible = true;
         ItemListScrollContainer.Visible = true;
 
-        var searchText = SearchLineEdit.Text.ToLower();
+        var searchText = SearchLineEdit.Text?.ToLower() ?? string.Empty;
         var filteredAchievements = _currentDatabase.Achievements
             .Where(a => string.IsNullOrEmpty(searchText)
-                || a.DisplayName.ToLower().Contains(searchText)
-                || a.Id.ToLower().Contains(searchText))
+                || (a.DisplayName?.ToLower().Contains(searchText) ?? false)
+                || (a.Id?.ToLower().Contains(searchText) ?? false))
             .ToList();
 
         if (filteredAchievements.Count == 0)

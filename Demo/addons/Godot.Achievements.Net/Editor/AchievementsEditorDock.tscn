@@ -72,6 +72,7 @@ text = "🔍"
 [node name="SearchLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "Search by id or name"
 placeholder_text = "Search achievements..."
 clear_button_enabled = true
 
@@ -135,9 +136,11 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-item_count = 2
-item_0/text = "catment"
-item_1/text = "New Achievement"
+item_count = 4
+item_0/text = "Beat a boss!"
+item_1/text = "Have 20 hearts at once!"
+item_2/text = "Hit a max combo!"
+item_3/text = "Take no damage for a whole level!"
 
 [node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_ova2g")]
 visible = false
