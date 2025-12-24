@@ -7,6 +7,11 @@ namespace Godot.Achievements.Core;
 [Tool]
 public partial class AchievementPlugin : EditorPlugin
 {
+    /// <summary>
+    /// Gets the EditorUndoRedoManager for history-aware operations in the editor
+    /// </summary>
+    public EditorUndoRedoManager UndoRedoManager => GetUndoRedo();
+
     public PackedScene AchievementEditorDockScene = GD.Load<PackedScene>("res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDock.tscn");
     private const string AutoloadName = "Achievements";
     private const string AutoloadPath = "res://addons/Godot.Achievements.Net/AchievementManager.cs";
@@ -39,6 +44,7 @@ public partial class AchievementPlugin : EditorPlugin
         // Create and add the achievement editor dock
         _dock = AchievementEditorDockScene.Instantiate<Editor.AchievementEditorDock>();
         _dock.Name = "Achievements";
+        _dock.SetUndoRedoManager(UndoRedoManager);
         AddControlToBottomPanel(_dock, "Achievements");
     }
 
