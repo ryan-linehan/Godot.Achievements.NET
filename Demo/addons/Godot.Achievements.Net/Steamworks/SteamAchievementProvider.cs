@@ -1,6 +1,5 @@
 #if GODOT_PC || GODOT_WINDOWS || GODOT_LINUX || GODOT_MACOS || GODOT_X11 || GODOT_OSX
 using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 using Steamworks;
@@ -9,11 +8,13 @@ namespace Godot.Achievements.Steam;
 
 /// <summary>
 /// Steam achievement provider for PC/Desktop platforms.
-/// Automatically uses Godot.Steamworks.Net if available, otherwise falls back to direct Steamworks.NET calls.
+/// Automatically uses Godot.Steamworks.Net if available as an autoload, otherwise falls back to direct Steamworks.NET calls.
 /// </summary>
 public class SteamAchievementProvider : IAchievementProvider
 {
     public static bool IsPlatformSupported => true;
+
+    private const string GodotSteamworksAutoloadPath = "/root/GodotSteamworks";
 
     private readonly AchievementDatabase _database;
     private bool _isInitialized;
@@ -21,13 +22,9 @@ public class SteamAchievementProvider : IAchievementProvider
     private bool _useGodotSteamworks;
     private TaskCompletionSource<bool>? _statsReceivedTcs;
 
-    // Reflection-based access to Godot.Steamworks.Net
-    private object? _godotSteamworksInstance;
-    private object? _achievementsManager;
-    private MethodInfo? _unlockMethod;
-    private MethodInfo? _isUnlockedMethod;
-    private MethodInfo? _resetMethod;
-    private MethodInfo? _resetAllMethod;
+    // Reference to Godot.Steamworks.Net autoload (if available)
+    private GodotObject? _godotSteamworks;
+    private GodotObject? _achievementsManager;
 
     // Callback for when stats are received from Steam (used in fallback mode)
     private Callback<UserStatsReceived_t>? _userStatsReceivedCallback;
@@ -42,7 +39,7 @@ public class SteamAchievementProvider : IAchievementProvider
 
     private void Initialize()
     {
-        // First, try to use Godot.Steamworks.Net if available
+        // First, try to use Godot.Steamworks.Net if available as an autoload
         if (TryInitializeGodotSteamworks())
         {
             _useGodotSteamworks = true;
@@ -57,53 +54,39 @@ public class SteamAchievementProvider : IAchievementProvider
     }
 
     /// <summary>
-    /// Try to initialize using Godot.Steamworks.Net via reflection
+    /// Try to find and use Godot.Steamworks.Net autoload singleton
     /// </summary>
     private bool TryInitializeGodotSteamworks()
     {
         try
         {
-            // Look for GodotSteamworks type
-            var godotSteamworksType = Type.GetType("Godot.Steamworks.GodotSteamworks, Godot.Steamworks.Net");
-            if (godotSteamworksType == null)
-            {
-                // Try alternative assembly names
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    godotSteamworksType = assembly.GetType("Godot.Steamworks.GodotSteamworks");
-                    if (godotSteamworksType != null) break;
-                }
-            }
-
-            if (godotSteamworksType == null)
+            // Get the scene tree
+            var mainLoop = Engine.GetMainLoop();
+            if (mainLoop is not SceneTree sceneTree)
                 return false;
 
-            // Get the Instance property
-            var instanceProperty = godotSteamworksType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
-            if (instanceProperty == null)
+            // Check if GodotSteamworks autoload exists
+            if (!sceneTree.Root.HasNode("GodotSteamworks"))
                 return false;
 
-            _godotSteamworksInstance = instanceProperty.GetValue(null);
-            if (_godotSteamworksInstance == null)
+            _godotSteamworks = sceneTree.Root.GetNode("GodotSteamworks");
+            if (_godotSteamworks == null)
                 return false;
 
-            // Get the Achievements property
-            var achievementsProperty = godotSteamworksType.GetProperty("Achievements", BindingFlags.Public | BindingFlags.Instance);
-            if (achievementsProperty == null)
-                return false;
-
-            _achievementsManager = achievementsProperty.GetValue(_godotSteamworksInstance);
+            // Get the Achievements manager
+            _achievementsManager = _godotSteamworks.Get("Achievements").AsGodotObject();
             if (_achievementsManager == null)
                 return false;
 
-            // Cache the methods we need
-            var achievementsType = _achievementsManager.GetType();
-            _unlockMethod = achievementsType.GetMethod("Unlock", new[] { typeof(string) });
-            _isUnlockedMethod = achievementsType.GetMethod("IsUnlocked", new[] { typeof(string) });
-            _resetMethod = achievementsType.GetMethod("Reset", new[] { typeof(string) });
-            _resetAllMethod = achievementsType.GetMethod("ResetAll", Type.EmptyTypes);
+            // Verify the singleton is initialized
+            var isInitialized = _godotSteamworks.Get("IsInitialized").AsBool();
+            if (!isInitialized)
+            {
+                this.LogWarning("Godot.Steamworks.Net found but not initialized");
+                return false;
+            }
 
-            return _unlockMethod != null;
+            return true;
         }
         catch (Exception ex)
         {
@@ -204,21 +187,18 @@ public class SteamAchievementProvider : IAchievementProvider
 
         try
         {
-            if (_useGodotSteamworks && _achievementsManager != null && _unlockMethod != null)
+            if (_useGodotSteamworks && _achievementsManager != null)
             {
                 // Check if already unlocked
-                if (_isUnlockedMethod != null)
+                var isUnlocked = _achievementsManager.Call("IsUnlocked", steamId).AsBool();
+                if (isUnlocked)
                 {
-                    var isUnlocked = (bool?)_isUnlockedMethod.Invoke(_achievementsManager, new object[] { steamId });
-                    if (isUnlocked == true)
-                    {
-                        this.Log($"Achievement '{steamId}' was already unlocked");
-                        return AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true);
-                    }
+                    this.Log($"Achievement '{steamId}' was already unlocked");
+                    return AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true);
                 }
 
                 // Unlock via Godot.Steamworks.Net
-                _unlockMethod.Invoke(_achievementsManager, new object[] { steamId });
+                _achievementsManager.Call("Unlock", steamId);
                 this.Log($"Unlocked Steam achievement via Godot.Steamworks.Net: {steamId}");
                 return AchievementUnlockResult.SuccessResult();
             }
@@ -376,10 +356,10 @@ public class SteamAchievementProvider : IAchievementProvider
 
         try
         {
-            if (_useGodotSteamworks && _achievementsManager != null && _resetMethod != null)
+            if (_useGodotSteamworks && _achievementsManager != null)
             {
                 // Reset via Godot.Steamworks.Net
-                _resetMethod.Invoke(_achievementsManager, new object[] { achievement.SteamId });
+                _achievementsManager.Call("Reset", achievement.SteamId);
                 this.Log($"Reset Steam achievement via Godot.Steamworks.Net: {achievement.SteamId}");
                 return SyncResult.SuccessResult();
             }
@@ -427,10 +407,10 @@ public class SteamAchievementProvider : IAchievementProvider
 
         try
         {
-            if (_useGodotSteamworks && _achievementsManager != null && _resetAllMethod != null)
+            if (_useGodotSteamworks && _achievementsManager != null)
             {
                 // Reset via Godot.Steamworks.Net
-                _resetAllMethod.Invoke(_achievementsManager, null);
+                _achievementsManager.Call("ResetAll");
                 this.Log("Reset all Steam achievements via Godot.Steamworks.Net");
                 return SyncResult.SuccessResult();
             }
