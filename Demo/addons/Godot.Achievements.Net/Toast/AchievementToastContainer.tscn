@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://blfoqo5sedf1a"]
 
-[ext_resource type="Script" uid="uid://725252buf37a" path="res://addons/Godot.Achievements.Net/AchievementToastContainer.cs" id="1_script"]
+[ext_resource type="Script" uid="uid://725252buf37a" path="res://addons/Godot.Achievements.Net/Toast/AchievementToastContainer.cs" id="1_script"]
 
 [node name="AchievementToastContainer" type="CanvasLayer" node_paths=PackedStringArray("MarginContainer", "ToastVBox")]
 layer = 100

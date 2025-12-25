@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
+using Godot.Achievements.Core;
 
-namespace Godot.Achievements.Core;
+namespace Godot.Achievements.Providers;
 
 /// <summary>
 /// Extension methods for provider logging with consistent [Achievements] [ProviderName] format
