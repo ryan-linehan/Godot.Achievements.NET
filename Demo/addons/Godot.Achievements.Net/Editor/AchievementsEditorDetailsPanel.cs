@@ -851,9 +851,12 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
             var achievement = _currentAchievement;
 
             _undoRedoManager.CreateAction("Change Achievement Icon");
-            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementIcon), achievement, texture);
-            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementIcon), achievement, oldIcon);
-            _undoRedoManager.CommitAction(false);
+            if (texture != null && oldIcon != null)
+            {
+                _undoRedoManager.AddDoMethod(this, nameof(SetAchievementIcon), achievement, texture);
+                _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementIcon), achievement, oldIcon);
+                _undoRedoManager.CommitAction(false);
+            }            
         }
 
         EmitSignal(SignalName.AchievementDisplayNameChanged, _currentAchievement);

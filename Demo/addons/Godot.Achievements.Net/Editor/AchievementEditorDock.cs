@@ -1495,7 +1495,6 @@ public partial class AchievementEditorDock : Control
 
             doc.Dispose();
 
-            MarkDirty();
             SaveDatabase();
             RefreshAchievementList(preserveSelection: true);
 
