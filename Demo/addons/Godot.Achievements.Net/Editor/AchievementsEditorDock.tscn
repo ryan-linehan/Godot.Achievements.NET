@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://da1r4drkeycjw" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.cs" id="1_hvk53"]
 [ext_resource type="PackedScene" uid="uid://cjc02uatgibsf" path="res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDetailsPanel.tscn" id="2_ova2g"]
 
-[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportCSVButton", "ExportCSVButton")]
+[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportMenuButton", "ExportMenuButton")]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 3
 anchors_preset = 15
@@ -22,8 +22,8 @@ ItemListScrollContainer = NodePath("VBoxContainer/HSplitContainer/ListPanel/Marg
 DetailsPanel = NodePath("VBoxContainer/HSplitContainer/DetailsPanel")
 NoItemSelectedScroll = NodePath("VBoxContainer/HSplitContainer/NoItemSelectedScroll")
 DatabasePathLabel = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/DatabaseInfo/DatabasePath")
-ImportCSVButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ImportCSVButton")
-ExportCSVButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ExportCSVButton")
+ImportMenuButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ImportMenuButton")
+ExportMenuButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ExportMenuButton")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -202,10 +202,10 @@ text = "res://demo_achievements.tres"
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="ImportCSVButton" type="Button" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
+[node name="ImportMenuButton" type="MenuButton" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
 layout_mode = 2
-text = "📥 Import CSV"
+text = "Import"
 
-[node name="ExportCSVButton" type="Button" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
+[node name="ExportMenuButton" type="MenuButton" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
 layout_mode = 2
-text = "📤 Export CSV"
+text = "Export"
