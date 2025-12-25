@@ -1,8 +1,9 @@
 #if !(GODOT_PC || GODOT_WINDOWS || GODOT_LINUX || GODOT_MACOS || GODOT_X11 || GODOT_OSX)
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
+using Godot.Achievements.Providers;
 
-namespace Godot.Achievements.Steamworks;
+namespace Godot.Achievements.Providers.Steamworks;
 
 /// <summary>
 /// Stub implementation for non-desktop platforms

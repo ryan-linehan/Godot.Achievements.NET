@@ -1,8 +1,9 @@
 #if !GODOT_IOS
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
+using Godot.Achievements.Providers;
 
-namespace Godot.Achievements.GameCenter;
+namespace Godot.Achievements.Providers.GameCenter;
 
 /// <summary>
 /// Stub implementation for non-iOS platforms

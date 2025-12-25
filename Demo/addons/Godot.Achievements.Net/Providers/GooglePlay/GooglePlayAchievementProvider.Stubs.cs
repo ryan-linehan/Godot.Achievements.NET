@@ -1,8 +1,9 @@
 #if !GODOT_ANDROID
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
+using Godot.Achievements.Providers;
 
-namespace Godot.Achievements.GooglePlay;
+namespace Godot.Achievements.Providers.GooglePlay;
 
 /// <summary>
 /// Stub implementation for non-Android platforms
