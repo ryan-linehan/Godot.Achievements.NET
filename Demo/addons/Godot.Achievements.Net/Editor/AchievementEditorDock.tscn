@@ -1,9 +1,9 @@
 [gd_scene load_steps=3 format=3 uid="uid://uqr6iihjft3j"]
 
 [ext_resource type="Script" uid="uid://da1r4drkeycjw" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.cs" id="1_hvk53"]
-[ext_resource type="PackedScene" uid="uid://cjc02uatgibsf" path="res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDetailsPanel.tscn" id="2_ova2g"]
+[ext_resource type="PackedScene" uid="uid://cjc02uatgibsf" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDetailsPanel.tscn" id="2_ova2g"]
 
-[node name="AchievementsEditorDock" type="Control" node_paths=PackedStringArray("SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportMenuButton", "ExportMenuButton")]
+[node name="AchievementEditorDock" type="Control" node_paths=PackedStringArray("SearchLineEdit", "AddAchievementButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "DatabasePathLabel", "ImportMenuButton", "ExportMenuButton")]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 3
 anchors_preset = 15

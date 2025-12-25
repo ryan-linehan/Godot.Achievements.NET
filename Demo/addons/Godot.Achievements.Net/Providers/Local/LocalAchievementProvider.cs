@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Godot.Achievements.Core;
 
-namespace Godot.Achievements.Core;
+namespace Godot.Achievements.Providers.Local;
 
 /// <summary>
 /// Local achievement provider that persists achievement state to user://achievements.json
