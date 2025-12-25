@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 
-namespace Godot.Achievements.Android;
+namespace Godot.Achievements.GooglePlay;
 
 /// <summary>
 /// Stub implementation for non-Android platforms

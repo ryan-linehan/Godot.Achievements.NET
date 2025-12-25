@@ -12,7 +12,7 @@ public partial class AchievementPlugin : EditorPlugin
     /// </summary>
     public EditorUndoRedoManager UndoRedoManager => GetUndoRedo();
 
-    public PackedScene AchievementEditorDockScene = GD.Load<PackedScene>("res://addons/Godot.Achievements.Net/Editor/AchievementsEditorDock.tscn");
+    public PackedScene AchievementEditorDockScene = GD.Load<PackedScene>("res://addons/Godot.Achievements.Net/Editor/AchievementEditorDock.tscn");
     private const string AutoloadName = "Achievements";
     private const string AutoloadPath = "res://addons/Godot.Achievements.Net/AchievementManager.cs";
     private const string ToastAutoloadName = "AchievementToasts";

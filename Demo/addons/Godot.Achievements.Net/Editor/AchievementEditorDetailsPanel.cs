@@ -9,7 +9,7 @@ namespace Godot.Achievements.Core.Editor;
 /// Details panel for editing individual achievement properties
 /// </summary>
 [Tool]
-public partial class AchievementsEditorDetailsPanel : PanelContainer
+public partial class AchievementEditorDetailsPanel : PanelContainer
 {
     // Basic Info Controls
     [Export]

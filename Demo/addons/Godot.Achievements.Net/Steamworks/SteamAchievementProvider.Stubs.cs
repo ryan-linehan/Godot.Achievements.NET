@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 
-namespace Godot.Achievements.Steam;
+namespace Godot.Achievements.Steamworks;
 
 /// <summary>
 /// Stub implementation for non-desktop platforms

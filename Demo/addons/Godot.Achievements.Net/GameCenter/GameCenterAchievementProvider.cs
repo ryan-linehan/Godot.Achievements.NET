@@ -3,7 +3,7 @@ using System;
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 
-namespace Godot.Achievements.iOS;
+namespace Godot.Achievements.GameCenter;
 
 /// <summary>
 /// iOS Game Center achievement provider

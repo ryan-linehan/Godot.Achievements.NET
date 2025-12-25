@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 
-namespace Godot.Achievements.iOS;
+namespace Godot.Achievements.GameCenter;
 
 /// <summary>
 /// Stub implementation for non-iOS platforms

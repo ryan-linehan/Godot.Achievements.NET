@@ -3,7 +3,7 @@ using System;
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 
-namespace Godot.Achievements.Steam;
+namespace Godot.Achievements.Steamworks;
 
 /// <summary>
 /// Steam achievement provider for PC/Desktop platforms
