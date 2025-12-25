@@ -37,7 +37,10 @@ public partial class AchievementToastItem : PanelContainer
     /// </summary>
     public void Setup(Achievement achievement)
     {
-        TitleLabel.Text = $"{Tr("ACHIEVEMENT_UNLOCKED")}: {Tr(achievement.DisplayName ?? string.Empty)}";
+        var translatedText = Tr("ACHIEVEMENT_UNLOCKED") == "ACHIEVEMENT_UNLOCKED"
+            ? "Achievement Unlocked"
+            : Tr("ACHIEVEMENT_UNLOCKED");
+        TitleLabel.Text = $"{translatedText}: {Tr(achievement.DisplayName ?? string.Empty)}";
         DescriptionLabel.Text = Tr(achievement.Description ?? string.Empty);
 
         if (achievement.Icon != null)

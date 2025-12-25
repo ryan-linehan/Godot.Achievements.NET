@@ -1,6 +1,7 @@
 #if TOOLS
 using Godot;
 using Godot.Achievements.Core;
+using Godot.Achievements.Providers;
 using System;
 
 namespace Godot.Achievements.Core.Editor;
