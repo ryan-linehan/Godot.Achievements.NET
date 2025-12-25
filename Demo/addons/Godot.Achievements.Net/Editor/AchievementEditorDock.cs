@@ -70,10 +70,7 @@ public partial class AchievementEditorDock : Control
     public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
     {
         _undoRedoManager = undoRedoManager;
-        if (DetailsPanel != null)
-        {
-            DetailsPanel.SetUndoRedoManager(undoRedoManager);
-        }
+        DetailsPanel.SetUndoRedoManager(undoRedoManager);
     }
 
     public override void _Ready()
@@ -149,17 +146,14 @@ public partial class AchievementEditorDock : Control
         ItemList.ItemClicked += OnItemListClicked;
 
         // Connect details panel signals
-        if (DetailsPanel != null)
-        {
-            DetailsPanel.AchievementIdChanged += OnAchievementIdChanged;
-            DetailsPanel.AchievementDisplayNameChanged += OnAchievementDisplayNameChanged;
-            DetailsPanel.AchievementChanged += OnAchievementChanged;
+        DetailsPanel.AchievementIdChanged += OnAchievementIdChanged;
+        DetailsPanel.AchievementDisplayNameChanged += OnAchievementDisplayNameChanged;
+        DetailsPanel.AchievementChanged += OnAchievementChanged;
 
-            // Pass undo/redo manager if already set
-            if (_undoRedoManager != null)
-            {
-                DetailsPanel.SetUndoRedoManager(_undoRedoManager);
-            }
+        // Pass undo/redo manager if already set
+        if (_undoRedoManager != null)
+        {
+            DetailsPanel.SetUndoRedoManager(_undoRedoManager);
         }
 
         // Connect visibility change
@@ -203,15 +197,9 @@ public partial class AchievementEditorDock : Control
 
     private void UpdatePlatformVisibility()
     {
-        if (DetailsPanel != null)
-        {
-            if (DetailsPanel.SteamVBox != null)
-                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(AchievementSettings.SteamEnabled);
-            if (DetailsPanel.GameCenterVBox != null)
-                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(AchievementSettings.GameCenterEnabled);
-            if (DetailsPanel.GooglePlayVBox != null)
-                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(AchievementSettings.GooglePlayEnabled);
-        }
+        DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(AchievementSettings.SteamEnabled);
+        DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(AchievementSettings.GameCenterEnabled);
+        DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(AchievementSettings.GooglePlayEnabled);
     }
 
     public override void _ExitTree()
@@ -220,12 +208,9 @@ public partial class AchievementEditorDock : Control
         ProjectSettings.Singleton.SettingsChanged -= OnProjectSettingsChanged;
         VisibilityChanged -= OnVisibilityChanged;
 
-        if (DetailsPanel != null)
-        {
-            DetailsPanel.AchievementIdChanged -= OnAchievementIdChanged;
-            DetailsPanel.AchievementDisplayNameChanged -= OnAchievementDisplayNameChanged;
-            DetailsPanel.AchievementChanged -= OnAchievementChanged;
-        }
+        DetailsPanel.AchievementIdChanged -= OnAchievementIdChanged;
+        DetailsPanel.AchievementDisplayNameChanged -= OnAchievementDisplayNameChanged;
+        DetailsPanel.AchievementChanged -= OnAchievementChanged;
 
         if (_importCSVFileDialog != null)
         {
@@ -252,19 +237,11 @@ public partial class AchievementEditorDock : Control
         }
 
         // Disconnect menu button popup signals
-        if (ImportMenuButton != null)
-        {
-            var importPopup = ImportMenuButton.GetPopup();
-            if (importPopup != null)
-                importPopup.IdPressed -= OnImportMenuItemPressed;
-        }
+        var importPopup = ImportMenuButton.GetPopup();
+        importPopup.IdPressed -= OnImportMenuItemPressed;
 
-        if (ExportMenuButton != null)
-        {
-            var exportPopup = ExportMenuButton.GetPopup();
-            if (exportPopup != null)
-                exportPopup.IdPressed -= OnExportMenuItemPressed;
-        }
+        var exportPopup = ExportMenuButton.GetPopup();
+        exportPopup.IdPressed -= OnExportMenuItemPressed;
 
         if (_removeConfirmDialog != null)
         {
@@ -278,19 +255,12 @@ public partial class AchievementEditorDock : Control
             _contextMenu.QueueFree();
         }
 
-        if (AddAchievementButton != null)
-            AddAchievementButton.Pressed -= OnAddAchievementPressed;
-        if (RemoveButton != null)
-            RemoveButton.Pressed -= OnRemovePressed;
-        if (DuplicateButton != null)
-            DuplicateButton.Pressed -= OnDuplicatePressed;
-        if (SearchLineEdit != null)
-            SearchLineEdit.TextChanged -= OnSearchTextChanged;
-        if (ItemList != null)
-        {
-            ItemList.ItemSelected -= OnItemSelected;
-            ItemList.ItemClicked -= OnItemListClicked;
-        }
+        AddAchievementButton.Pressed -= OnAddAchievementPressed;
+        RemoveButton.Pressed -= OnRemovePressed;
+        DuplicateButton.Pressed -= OnDuplicatePressed;
+        SearchLineEdit.TextChanged -= OnSearchTextChanged;
+        ItemList.ItemSelected -= OnItemSelected;
+        ItemList.ItemClicked -= OnItemListClicked;
     }
 
     private void OnVisibilityChanged()

@@ -35,27 +35,17 @@ public partial class AchievementToastItem : PanelContainer
     /// </summary>
     public void Setup(Achievement achievement)
     {
-        if (TitleLabel != null)
-        {
-            TitleLabel.Text = $"{Tr("ACHIEVEMENT_UNLOCKED")}: {Tr(achievement.DisplayName)}";
-        }
+        TitleLabel.Text = $"{Tr("ACHIEVEMENT_UNLOCKED")}: {Tr(achievement.DisplayName ?? string.Empty)}";
+        DescriptionLabel.Text = Tr(achievement.Description ?? string.Empty);
 
-        if (DescriptionLabel != null)
+        if (achievement.Icon != null)
         {
-            DescriptionLabel.Text = Tr(achievement.Description ?? string.Empty);
+            IconRect.Texture = achievement.Icon;
+            IconRect.Visible = true;
         }
-
-        if (IconRect != null)
+        else
         {
-            if (achievement.Icon != null)
-            {
-                IconRect.Texture = achievement.Icon;
-                IconRect.Visible = true;
-            }
-            else
-            {
-                IconRect.Visible = false;
-            }
+            IconRect.Visible = false;
         }
     }
 }

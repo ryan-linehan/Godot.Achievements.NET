@@ -106,8 +106,6 @@ public partial class AchievementToastContainer : CanvasLayer
 
     private void ApplyPosition()
     {
-        if (MarginContainer == null) return;
-
         // Reset anchors and margins
         MarginContainer.AnchorLeft = 0;
         MarginContainer.AnchorTop = 0;
