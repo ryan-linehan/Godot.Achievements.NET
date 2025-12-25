@@ -3,9 +3,10 @@ using System;
 using System.Threading.Tasks;
 using Godot;
 using Godot.Achievements.Core;
+using Godot.Achievements.Providers;
 using Godot.Collections;
 
-namespace Godot.Achievements.iOS;
+namespace Godot.Achievements.Providers.GameCenter;
 
 /// <summary>
 /// iOS Game Center achievement provider using GodotApplePlugins

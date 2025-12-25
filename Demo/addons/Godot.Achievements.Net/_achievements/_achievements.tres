@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="AchievementDatabase" load_steps=3 format=3 uid="uid://b8fyif8xe7vdu"]
 
-[ext_resource type="Script" uid="uid://dsqo75ulogvcd" path="res://addons/Godot.Achievements.Net/Achievement.cs" id="1_u6cic"]
-[ext_resource type="Script" uid="uid://b5jk8htcq1rfi" path="res://addons/Godot.Achievements.Net/AchievementDatabase.cs" id="2_xwse6"]
+[ext_resource type="Script" uid="uid://dsqo75ulogvcd" path="res://addons/Godot.Achievements.Net/Core/Achievement.cs" id="1_u6cic"]
+[ext_resource type="Script" uid="uid://b5jk8htcq1rfi" path="res://addons/Godot.Achievements.Net/Core/AchievementDatabase.cs" id="2_xwse6"]
 
 [resource]
 script = ExtResource("2_xwse6")

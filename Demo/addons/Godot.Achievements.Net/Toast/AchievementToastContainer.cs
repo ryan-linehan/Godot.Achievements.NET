@@ -1,6 +1,7 @@
 using System.Collections.Generic;
+using Godot.Achievements.Core;
 
-namespace Godot.Achievements.Core;
+namespace Godot.Achievements.Toast;
 
 /// <summary>
 /// Container that manages multiple achievement toast notifications.

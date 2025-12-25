@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Godot.Achievements.Steam;
-using Godot.Achievements.iOS;
-using Godot.Achievements.Android;
+using Godot.Achievements.Providers;
+using Godot.Achievements.Providers.Local;
+using Godot.Achievements.Providers.Steamworks;
+using Godot.Achievements.Providers.GooglePlay;
+using Godot.Achievements.Providers.GameCenter;
 
 namespace Godot.Achievements.Core;
 
