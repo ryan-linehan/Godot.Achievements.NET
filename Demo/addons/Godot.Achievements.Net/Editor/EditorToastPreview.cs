@@ -1,6 +1,7 @@
 #if TOOLS
 using System.Collections.Generic;
 using Godot.Achievements.Core;
+using Godot.Achievements.Toast;
 
 namespace Godot.Achievements.Core.Editor;
 
@@ -207,14 +208,18 @@ public partial class EditorToastPreview : CanvasLayer
             return;
         }
 
-        // Call Setup method on the toast
-        if (toast.HasMethod("Setup"))
+        // Call Setup on the toast via interface or fallback to reflection
+        if (toast is IAchievementToastItem toastItem)
+        {
+            toastItem.Setup(achievement);
+        }
+        else if (toast.HasMethod("Setup"))
         {
             toast.Call("Setup", achievement);
         }
         else
         {
-            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "Toast scene does not have a Setup method.");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"Toast scene does not implement {nameof(IAchievementToastItem)} or have a Setup method.");
         }
 
         // For bottom positions, add at the beginning so newest appears at bottom

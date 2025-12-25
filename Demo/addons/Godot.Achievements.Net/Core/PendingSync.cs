@@ -1,3 +1,5 @@
+using Godot.Achievements.Providers;
+
 namespace Godot.Achievements.Core;
 
 /// <summary>
