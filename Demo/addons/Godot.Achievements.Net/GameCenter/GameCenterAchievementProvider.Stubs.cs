@@ -11,13 +11,12 @@ public class GameCenterAchievementProvider : IAchievementProvider
 {
     public static bool IsPlatformSupported => false;
 
-    private readonly AchievementDatabase _database;
-
     public string ProviderName => ProviderNames.GameCenter;
 
     public GameCenterAchievementProvider(AchievementDatabase database)
     {
-        _database = database;
+        // Database not used in stub - platform not supported
+        _ = database;
     }
 
     public bool IsAvailable => false;
