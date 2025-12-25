@@ -313,7 +313,7 @@ public partial class AchievementEditorDock : Control
     {
         // Just refresh the list to show the updated ID
         // No file renaming needed since achievements are stored inline in the database
-        GD.Print($"[Achievements:Editor] Achievement ID changed: {oldId} -> {newId}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Achievement ID changed: {oldId} -> {newId}");
     }
 
     private void OnAchievementDisplayNameChanged(Achievement achievement)
@@ -373,7 +373,7 @@ public partial class AchievementEditorDock : Control
     {
         if (!ResourceLoader.Exists(path))
         {
-            GD.PushWarning($"[Achievements:Editor] Database not found at {path}");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"Database not found at {path}");
             _currentDatabase = null;
             _currentDatabasePath = string.Empty;
             DatabasePathLabel.Text = "No database loaded";
@@ -388,7 +388,7 @@ public partial class AchievementEditorDock : Control
         }
         catch (System.InvalidCastException ex)
         {
-            GD.PushError($"[Achievements:Editor] Resource at {path} is not an AchievementDatabase: {ex.Message}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"Resource at {path} is not an AchievementDatabase: {ex.Message}");
             var dialog = new AcceptDialog();
             dialog.DialogText = $"The file at:\n{path}\n\nis not a valid AchievementDatabase resource.\n\nPlease select a valid AchievementDatabase (.tres) file.";
             AddChild(dialog);
@@ -398,7 +398,7 @@ public partial class AchievementEditorDock : Control
 
         if (resource == null)
         {
-            GD.PushError($"[Achievements:Editor] Failed to load database from {path}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"Failed to load database from {path}");
             var dialog = new AcceptDialog();
             dialog.DialogText = $"Failed to load database from:\n{path}\n\nPlease select a valid AchievementDatabase resource.";
             AddChild(dialog);
@@ -412,24 +412,24 @@ public partial class AchievementEditorDock : Control
         UpdateDatabasePathLabel();
         RefreshAchievementList();
 
-        GD.Print($"[Achievements:Editor] Loaded database from {path}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Loaded database from {path}");
     }
 
     private void SaveDatabase()
     {
         if (_currentDatabase == null)
         {
-            GD.PushWarning("[Achievements:Editor] No database loaded to save");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "No database loaded to save");
             return;
         }
 
         var validationErrors = _currentDatabase.Validate();
         if (validationErrors.Length > 0)
         {
-            GD.PushWarning("[Achievements:Editor] Database validation warnings:");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "Database validation warnings:");
             foreach (var validationError in validationErrors)
             {
-                GD.PushWarning($"  - {validationError}");
+                AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"  - {validationError}");
             }
         }
 
@@ -437,11 +437,11 @@ public partial class AchievementEditorDock : Control
         var saveError = ResourceSaver.Save(_currentDatabase, savePath);
         if (saveError != Error.Ok)
         {
-            GD.PushError($"[Achievements:Editor] Failed to save database: {saveError}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"Failed to save database: {saveError}");
             return;
         }
 
-        GD.Print($"[Achievements:Editor] Database saved to {savePath}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Database saved to {savePath}");
 
         // Refresh the Inspector if it's showing this resource
         _currentDatabase.EmitChanged();
@@ -479,7 +479,7 @@ public partial class AchievementEditorDock : Control
         var saveError = ProjectSettings.Save();
         if (saveError != Error.Ok)
         {
-            GD.PushWarning($"[Achievements:Editor] Failed to save project settings: {saveError}");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"Failed to save project settings: {saveError}");
         }
     }
 
@@ -651,7 +651,7 @@ public partial class AchievementEditorDock : Control
     {
         if (_currentDatabase == null)
         {
-            GD.PushWarning("[Achievements:Editor] Cannot add achievement - no database loaded");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "Cannot add achievement - no database loaded");
             return;
         }
 
@@ -693,7 +693,7 @@ public partial class AchievementEditorDock : Control
         RefreshAchievementList();
         SelectAchievementById(achievement.Id);
 
-        GD.Print($"[Achievements:Editor] Created new achievement: {achievement.Id}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Created new achievement: {achievement.Id}");
     }
 
     private void UndoAddAchievement(Achievement achievement)
@@ -704,7 +704,7 @@ public partial class AchievementEditorDock : Control
         SaveDatabase();
         RefreshAchievementList();
 
-        GD.Print($"[Achievements:Editor] Undid add achievement: {achievement.Id}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Undid add achievement: {achievement.Id}");
     }
 
     private void SelectAchievementById(string id)
@@ -725,7 +725,7 @@ public partial class AchievementEditorDock : Control
     {
         if (_selectedAchievement == null)
         {
-            GD.PushWarning("[Achievements:Editor] No achievement selected to remove");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "No achievement selected to remove");
             return;
         }
 
@@ -768,7 +768,7 @@ public partial class AchievementEditorDock : Control
         _selectedIndex = -1;
         RefreshAchievementList();
 
-        GD.Print($"[Achievements:Editor] Removed achievement: {achievement.Id}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Removed achievement: {achievement.Id}");
     }
 
     private void UndoRemoveAchievement(Achievement achievement, int originalIndex)
@@ -788,14 +788,14 @@ public partial class AchievementEditorDock : Control
         RefreshAchievementList();
         SelectAchievementById(achievement.Id);
 
-        GD.Print($"[Achievements:Editor] Undid remove achievement: {achievement.Id}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Undid remove achievement: {achievement.Id}");
     }
 
     private void OnDuplicatePressed()
     {
         if (_selectedAchievement == null || _currentDatabase == null)
         {
-            GD.PushWarning("[Achievements:Editor] No achievement selected to duplicate");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "No achievement selected to duplicate");
             return;
         }
 
@@ -833,7 +833,7 @@ public partial class AchievementEditorDock : Control
         RefreshAchievementList();
         SelectAchievementById(duplicate.Id);
 
-        GD.Print($"[Achievements:Editor] Duplicated achievement: {sourceId} -> {duplicate.Id}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Duplicated achievement: {sourceId} -> {duplicate.Id}");
     }
 
     private void UndoDuplicateAchievement(Achievement duplicate)
@@ -844,7 +844,7 @@ public partial class AchievementEditorDock : Control
         SaveDatabase();
         RefreshAchievementList();
 
-        GD.Print($"[Achievements:Editor] Undid duplicate achievement: {duplicate.Id}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Undid duplicate achievement: {duplicate.Id}");
     }
 
     private Achievement DuplicateAchievement(Achievement original)
@@ -954,7 +954,7 @@ public partial class AchievementEditorDock : Control
         var editorInterface = EditorInterface.Singleton;
         if (editorInterface == null)
         {
-            GD.PushError("[Achievements:Editor] EditorInterface not available");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, "EditorInterface not available");
             return;
         }
 
@@ -973,7 +973,7 @@ public partial class AchievementEditorDock : Control
         {
             // Achievement is saved as its own file - navigate to it
             editorInterface.SelectFile(achievementPath);
-            GD.Print($"[Achievements:Editor] Showing achievement file: {achievementPath}");
+            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Showing achievement file: {achievementPath}");
         }
         else
         {
@@ -981,11 +981,11 @@ public partial class AchievementEditorDock : Control
             if (!string.IsNullOrEmpty(databasePath) && ResourceLoader.Exists(databasePath))
             {
                 editorInterface.SelectFile(databasePath);
-                GD.Print($"[Achievements:Editor] Achievement is internal - showing database file: {databasePath}");
+                AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Achievement is internal - showing database file: {databasePath}");
             }
             else
             {
-                GD.PushWarning("[Achievements:Editor] No database path available to show");
+                AchievementLogger.Warning(AchievementLogger.Areas.Editor, "No database path available to show");
             }
         }
     }
@@ -1046,7 +1046,7 @@ public partial class AchievementEditorDock : Control
 
         SaveDatabase();
         RefreshAchievementList(preserveSelection: true);
-        GD.Print($"[Achievements:Editor] Moved achievement: {achievement.DisplayName}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Moved achievement: {achievement.DisplayName}");
     }
 
     #endregion
@@ -1268,12 +1268,12 @@ public partial class AchievementEditorDock : Control
             AddChild(resultDialog);
             resultDialog.PopupCentered();
 
-            GD.Print($"[Achievements:Editor] Imported CSV from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
+            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Imported CSV from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
         }
         catch (Exception ex)
         {
             ShowErrorDialog($"Failed to import CSV: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] CSV import error: {ex}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"CSV import error: {ex}");
         }
     }
 
@@ -1318,12 +1318,12 @@ public partial class AchievementEditorDock : Control
             AddChild(resultDialog);
             resultDialog.PopupCentered();
 
-            GD.Print($"[Achievements:Editor] Exported {_currentDatabase.Achievements.Count} achievements to {path}");
+            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Exported {_currentDatabase.Achievements.Count} achievements to {path}");
         }
         catch (Exception ex)
         {
             ShowErrorDialog($"Failed to export CSV: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] CSV export error: {ex}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"CSV export error: {ex}");
         }
     }
 
@@ -1496,12 +1496,12 @@ public partial class AchievementEditorDock : Control
             AddChild(resultDialog);
             resultDialog.PopupCentered();
 
-            GD.Print($"[Achievements:Editor] Imported JSON from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
+            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Imported JSON from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
         }
         catch (Exception ex)
         {
             ShowErrorDialog($"Failed to import JSON: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] JSON import error: {ex}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"JSON import error: {ex}");
         }
     }
 
@@ -1554,12 +1554,12 @@ public partial class AchievementEditorDock : Control
             AddChild(resultDialog);
             resultDialog.PopupCentered();
 
-            GD.Print($"[Achievements:Editor] Exported {_currentDatabase.Achievements.Count} achievements to JSON: {path}");
+            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Exported {_currentDatabase.Achievements.Count} achievements to JSON: {path}");
         }
         catch (Exception ex)
         {
             ShowErrorDialog($"Failed to export JSON: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] JSON export error: {ex}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"JSON export error: {ex}");
         }
     }
 

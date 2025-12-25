@@ -44,7 +44,7 @@ public partial class AchievementManager : Node
     {
         if (Instance != null)
         {
-            GD.PushWarning("[Achievements] Multiple AchievementManager instances detected. Using first instance.");
+            AchievementLogger.Warning(AchievementLogger.Areas.Core, "Multiple AchievementManager instances detected. Using first instance.");
             QueueFree();
             return;
         }
@@ -65,7 +65,7 @@ public partial class AchievementManager : Node
 
         if (Database == null)
         {
-            GD.PushError("[Achievements] No AchievementDatabase found! Set one via the editor or call SetDatabase() at runtime.");
+            AchievementLogger.Error(AchievementLogger.Areas.Database, "No AchievementDatabase found! Set one via the editor or call SetDatabase() at runtime.");
             return;
         }
 
@@ -102,14 +102,14 @@ public partial class AchievementManager : Node
 
         if (!ResourceLoader.Exists(path))
         {
-            GD.PushWarning($"[Achievements] Database not found at: {path}");
+            AchievementLogger.Warning(AchievementLogger.Areas.Database, $"Database not found at: {path}");
             return null;
         }
 
         var database = GD.Load<AchievementDatabase>(path);
         if (database != null)
         {
-            GD.Print($"[Achievements] Loaded database from: {path}");
+            AchievementLogger.Log(AchievementLogger.Areas.Database, $"Loaded database from: {path}");
         }
 
         return database;
@@ -133,7 +133,7 @@ public partial class AchievementManager : Node
         var errors = Database.Validate();
         if (errors.Length > 0)
         {
-            GD.PushError("[Achievements] Database validation failed:");
+            AchievementLogger.Error(AchievementLogger.Areas.Database, "Database validation failed:");
             foreach (var error in errors)
             {
                 GD.PushError($"  - {error}");
@@ -143,7 +143,7 @@ public partial class AchievementManager : Node
 
         // Initialize local provider
         _localProvider = new LocalAchievementProvider(Database);
-        GD.Print("[Achievements] Initialized LocalAchievementProvider");
+        AchievementLogger.Log(AchievementLogger.Areas.Core, "Initialized LocalAchievementProvider");
 
         // Sync local achievements to platforms on startup
         CallDeferred(nameof(SyncLocalToPlatforms));
@@ -162,21 +162,21 @@ public partial class AchievementManager : Node
         {
             var steamProvider = new SteamAchievementProvider(Database);
             RegisterProvider(steamProvider);
-            GD.Print("[Achievements] Steam provider initialized from settings");
+            AchievementLogger.Log(AchievementLogger.Areas.Sync, "Steam provider initialized from settings");
         }
 
         if (GameCenterAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.GameCenterEnabled))
         {
             var gameCenterProvider = new GameCenterAchievementProvider(Database);
             RegisterProvider(gameCenterProvider);
-            GD.Print("[Achievements] Game Center provider initialized from settings");
+            AchievementLogger.Log(AchievementLogger.Areas.Sync, "Game Center provider initialized from settings");
         }
 
         if (GooglePlayAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.GooglePlayEnabled))
         {
             var googlePlayProvider = new GooglePlayAchievementProvider(Database);
             RegisterProvider(googlePlayProvider);
-            GD.Print("[Achievements] Google Play provider initialized from settings");
+            AchievementLogger.Log(AchievementLogger.Areas.Sync, "Google Play provider initialized from settings");
         }
     }
 
@@ -199,7 +199,7 @@ public partial class AchievementManager : Node
     {
         if (database == null)
         {
-            GD.PushError("[Achievements] Cannot set null database");
+            AchievementLogger.Error(AchievementLogger.Areas.Database, "Cannot set null database");
             return false;
         }
 
@@ -211,7 +211,7 @@ public partial class AchievementManager : Node
         }
 
         EmitSignal(SignalName.DatabaseChanged, database);
-        GD.Print("[Achievements] Database changed at runtime");
+        AchievementLogger.Log(AchievementLogger.Areas.Database, "Database changed at runtime");
 
         return true;
     }
@@ -247,12 +247,12 @@ public partial class AchievementManager : Node
     {
         if (_platformProviders.Any(p => p.ProviderName == provider.ProviderName))
         {
-            GD.PushWarning($"[Achievements] Provider '{provider.ProviderName}' is already registered");
+            AchievementLogger.Warning(AchievementLogger.Areas.Core, $"Provider '{provider.ProviderName}' is already registered");
             return;
         }
 
         _platformProviders.Add(provider);
-        GD.Print($"[Achievements] Registered provider: {provider.ProviderName} (Available: {provider.IsAvailable})");
+        AchievementLogger.Log(AchievementLogger.Areas.Sync, $"Registered provider: {provider.ProviderName} (Available: {provider.IsAvailable})");
 
         EmitSignal(SignalName.ProviderRegistered, provider.ProviderName);
 
@@ -273,7 +273,7 @@ public partial class AchievementManager : Node
 
         if (_platformProviders.Remove(provider))
         {
-            GD.Print($"[Achievements] Unregistered provider: {provider.ProviderName}");
+            AchievementLogger.Log(AchievementLogger.Areas.Sync, $"Unregistered provider: {provider.ProviderName}");
             EmitSignal(SignalName.ProviderUnregistered, provider.ProviderName);
         }
     }
@@ -297,7 +297,7 @@ public partial class AchievementManager : Node
     {
         if (_localProvider == null)
         {
-            GD.PushError("[Achievements] LocalProvider not initialized");
+            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
             return;
         }
 
@@ -305,7 +305,7 @@ public partial class AchievementManager : Node
         var localResult = await _localProvider.UnlockAchievement(achievementId);
         if (!localResult.Success)
         {
-            GD.PushError($"[Achievements] Failed to unlock '{achievementId}' locally: {localResult.Error}");
+            AchievementLogger.Error(AchievementLogger.Areas.Core, $"Failed to unlock '{achievementId}' locally: {localResult.Error}");
             return;
         }
 
@@ -335,7 +335,7 @@ public partial class AchievementManager : Node
     {
         if (_localProvider == null)
         {
-            GD.PushError("[Achievements] LocalProvider not initialized");
+            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
             return;
         }
 
@@ -411,7 +411,7 @@ public partial class AchievementManager : Node
         if (_localProvider == null)
         {
             var error = "LocalProvider not initialized";
-            GD.PushError($"[Achievements] {error}");
+            AchievementLogger.Error(AchievementLogger.Areas.Core, error);
             return SyncResult.FailureResult(error);
         }
 
@@ -419,7 +419,7 @@ public partial class AchievementManager : Node
         var localResult = await _localProvider.ResetAchievement(achievementId);
         if (!localResult)
         {
-            GD.PushWarning($"[Achievements] Failed to reset '{achievementId}' locally: {localResult.Message}");
+            AchievementLogger.Warning(AchievementLogger.Areas.Core, $"Failed to reset '{achievementId}' locally: {localResult.Message}");
             return localResult;
         }
 
@@ -435,7 +435,7 @@ public partial class AchievementManager : Node
 
         await Task.WhenAll(tasks);
 
-        GD.Print($"[Achievements] Reset achievement: {achievementId}");
+        AchievementLogger.Log(AchievementLogger.Areas.Core, $"Reset achievement: {achievementId}");
         return SyncResult.SuccessResult();
     }
 
@@ -447,7 +447,7 @@ public partial class AchievementManager : Node
         if (_localProvider == null)
         {
             var error = "LocalProvider not initialized";
-            GD.PushError($"[Achievements] {error}");
+            AchievementLogger.Error(AchievementLogger.Areas.Core, error);
             return SyncResult.FailureResult(error);
         }
 
@@ -455,7 +455,7 @@ public partial class AchievementManager : Node
         var localResult = await _localProvider.ResetAllAchievements();
         if (!localResult)
         {
-            GD.PushWarning($"[Achievements] Failed to reset all achievements locally: {localResult.Message}");
+            AchievementLogger.Warning(AchievementLogger.Areas.Core, $"Failed to reset all achievements locally: {localResult.Message}");
             return localResult;
         }
 
@@ -471,7 +471,7 @@ public partial class AchievementManager : Node
 
         await Task.WhenAll(tasks);
 
-        GD.Print("[Achievements] Reset all achievements");
+        AchievementLogger.Log(AchievementLogger.Areas.Core, "Reset all achievements");
         return SyncResult.SuccessResult();
     }
 
@@ -521,7 +521,7 @@ public partial class AchievementManager : Node
             var result = await provider.UnlockAchievement(achievementId);
             if (!result.Success && !result.WasAlreadyUnlocked)
             {
-                GD.PushWarning($"[Achievements] Failed to sync '{achievementId}' to {provider.ProviderName}: {result.Error}");
+                AchievementLogger.Warning(AchievementLogger.Areas.Sync, $"Failed to sync '{achievementId}' to {provider.ProviderName}: {result.Error}");
                 QueueSync(new PendingSync
                 {
                     AchievementId = achievementId,
@@ -532,7 +532,7 @@ public partial class AchievementManager : Node
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Achievements] Exception syncing '{achievementId}' to {provider.ProviderName}: {ex.Message}");
+            AchievementLogger.Error(AchievementLogger.Areas.Sync, $"Exception syncing '{achievementId}' to {provider.ProviderName}: {ex.Message}");
             QueueSync(new PendingSync
             {
                 AchievementId = achievementId,
@@ -552,7 +552,7 @@ public partial class AchievementManager : Node
             var result = await provider.SetProgress(achievementId, currentProgress);
             if (!result)
             {
-                GD.PushWarning($"[Achievements] Failed to sync progress for '{achievementId}' to {provider.ProviderName}: {result.Message}");
+                AchievementLogger.Warning(AchievementLogger.Areas.Sync, $"Failed to sync progress for '{achievementId}' to {provider.ProviderName}: {result.Message}");
                 QueueSync(new PendingSync
                 {
                     AchievementId = achievementId,
@@ -564,7 +564,7 @@ public partial class AchievementManager : Node
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Achievements] Exception syncing progress for '{achievementId}' to {provider.ProviderName}: {ex.Message}");
+            AchievementLogger.Error(AchievementLogger.Areas.Sync, $"Exception syncing progress for '{achievementId}' to {provider.ProviderName}: {ex.Message}");
             QueueSync(new PendingSync
             {
                 AchievementId = achievementId,
@@ -588,7 +588,7 @@ public partial class AchievementManager : Node
         if (unlockedAchievements.Length == 0)
             return;
 
-        GD.Print($"[Achievements] Syncing {unlockedAchievements.Length} unlocked achievements to {_platformProviders.Count} platform(s)");
+        AchievementLogger.Log(AchievementLogger.Areas.Sync, $"Syncing {unlockedAchievements.Length} unlocked achievements to {_platformProviders.Count} platform(s)");
 
         foreach (var achievement in unlockedAchievements)
         {
@@ -613,7 +613,7 @@ public partial class AchievementManager : Node
             return;
 
         _syncQueue.Enqueue(sync);
-        GD.Print($"[Achievements] Queued {sync.Type} sync for '{sync.AchievementId}' to {sync.Provider.ProviderName} (queue size: {_syncQueue.Count})");
+        AchievementLogger.Log(AchievementLogger.Areas.Sync, $"Queued {sync.Type} sync for '{sync.AchievementId}' to {sync.Provider.ProviderName} (queue size: {_syncQueue.Count})");
     }
 
     /// <summary>
@@ -626,7 +626,7 @@ public partial class AchievementManager : Node
         if (_syncQueue.Count == 0)
             return;
 
-        GD.Print($"[Achievements] Processing {_syncQueue.Count} pending syncs...");
+        AchievementLogger.Log(AchievementLogger.Areas.Sync, $"Processing {_syncQueue.Count} pending syncs...");
 
         var successCount = 0;
         var failCount = 0;
@@ -686,7 +686,7 @@ public partial class AchievementManager : Node
                 if (MaxRetryCount > 0 && sync.RetryCount >= MaxRetryCount)
                 {
                     abandonedCount++;
-                    GD.PushWarning($"[Achievements] Abandoning {sync.Type} sync for '{sync.AchievementId}' to {sync.Provider.ProviderName} after {sync.RetryCount} attempts");
+                    AchievementLogger.Warning(AchievementLogger.Areas.Sync, $"Abandoning {sync.Type} sync for '{sync.AchievementId}' to {sync.Provider.ProviderName} after {sync.RetryCount} attempts");
                     EmitSignal(SignalName.SyncAbandoned, sync.AchievementId, sync.Provider.ProviderName, sync.Type.ToString(), sync.RetryCount);
                 }
                 else
@@ -697,7 +697,7 @@ public partial class AchievementManager : Node
             }
         }
 
-        GD.Print($"[Achievements] Sync complete: {successCount} succeeded, {failCount} failed, {abandonedCount} abandoned (queue size: {_syncQueue.Count})");
+        AchievementLogger.Log(AchievementLogger.Areas.Sync, $"Sync complete: {successCount} succeeded, {failCount} failed, {abandonedCount} abandoned (queue size: {_syncQueue.Count})");
     }
 
 }

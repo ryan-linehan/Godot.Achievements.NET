@@ -9,17 +9,17 @@ public static class ProviderLogExtensions
 {
     public static void Log(this IAchievementProvider provider, string message)
     {
-        GD.Print($"[Achievements] [{provider.ProviderName}] {message}");
+        AchievementLogger.Log(provider.ProviderName, message);
     }
 
     public static void LogWarning(this IAchievementProvider provider, string message)
     {
-        GD.PushWarning($"[Achievements] [{provider.ProviderName}] {message}");
+        AchievementLogger.Warning(provider.ProviderName, message);
     }
 
     public static void LogError(this IAchievementProvider provider, string message)
     {
-        GD.PushError($"[Achievements] [{provider.ProviderName}] {message}");
+        AchievementLogger.Error(provider.ProviderName, message);
     }
 }
 

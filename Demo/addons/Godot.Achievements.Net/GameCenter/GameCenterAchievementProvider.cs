@@ -41,12 +41,12 @@ public class GameCenterAchievementProvider : IAchievementProvider
             //     }
             // });
 
-            GD.Print("[Achievements] [Game Center] Initialized (iOS bindings required)");
+            this.Log("Initialized (iOS bindings required)");
             _isAuthenticated = false;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Achievements] [Game Center] Failed to initialize: {ex.Message}");
+            this.LogError($"Failed to initialize: {ex.Message}");
             _isAuthenticated = false;
         }
     }

@@ -45,7 +45,7 @@ public partial class EditorToastPreview : CanvasLayer
         _toastScene = GD.Load<PackedScene>(_toastScenePath);
         if (_toastScene == null)
         {
-            GD.PushError($"[Achievements:Editor] Failed to load toast scene: {_toastScenePath}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"Failed to load toast scene: {_toastScenePath}");
             return;
         }
 
@@ -203,7 +203,7 @@ public partial class EditorToastPreview : CanvasLayer
         var toast = _toastScene.Instantiate<Control>();
         if (toast == null)
         {
-            GD.PushError("[Achievements:Editor] Failed to instantiate toast scene.");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, "Failed to instantiate toast scene.");
             return;
         }
 
@@ -214,7 +214,7 @@ public partial class EditorToastPreview : CanvasLayer
         }
         else
         {
-            GD.PushWarning("[Achievements:Editor] Toast scene does not have a Setup method.");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "Toast scene does not have a Setup method.");
         }
 
         // For bottom positions, add at the beginning so newest appears at bottom

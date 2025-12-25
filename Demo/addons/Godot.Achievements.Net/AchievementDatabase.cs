@@ -27,7 +27,7 @@ public partial class AchievementDatabase : Resource
     {
         if (GetById(achievement.Id) != null)
         {
-            GD.PushWarning($"[Achievements] Achievement with ID '{achievement.Id}' already exists");
+            AchievementLogger.Warning(AchievementLogger.Areas.Database, $"Achievement with ID '{achievement.Id}' already exists");
             return;
         }
 

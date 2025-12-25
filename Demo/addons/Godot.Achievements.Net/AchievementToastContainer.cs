@@ -37,21 +37,21 @@ public partial class AchievementToastContainer : CanvasLayer
         // If scene path is empty, toast system is disabled
         if (string.IsNullOrEmpty(_toastScenePath))
         {
-            GD.Print("[Achievements:Toast] Toast system disabled (empty scene path).");
+            AchievementLogger.Log(AchievementLogger.Areas.Toast, "Toast system disabled (empty scene path).");
             return;
         }
 
         // Load the toast scene
         if (!ResourceLoader.Exists(_toastScenePath))
         {
-            GD.PushError($"[Achievements:Toast] Toast scene not found: {_toastScenePath}");
+            AchievementLogger.Error(AchievementLogger.Areas.Toast, $"Toast scene not found: {_toastScenePath}");
             return;
         }
 
         _toastScene = GD.Load<PackedScene>(_toastScenePath);
         if (_toastScene == null)
         {
-            GD.PushError($"[Achievements:Toast] Failed to load toast scene: {_toastScenePath}");
+            AchievementLogger.Error(AchievementLogger.Areas.Toast, $"Failed to load toast scene: {_toastScenePath}");
             return;
         }
 
@@ -66,7 +66,7 @@ public partial class AchievementToastContainer : CanvasLayer
         }
         else
         {
-            GD.PushWarning("[Achievements:Toast] AchievementManager not found. Toasts will not be displayed.");
+            AchievementLogger.Warning(AchievementLogger.Areas.Toast, "AchievementManager not found. Toasts will not be displayed.");
         }
     }
 
@@ -194,7 +194,7 @@ public partial class AchievementToastContainer : CanvasLayer
         var toast = _toastScene.Instantiate<Control>();
         if (toast == null)
         {
-            GD.PushError("[Achievements:Toast] Failed to instantiate toast scene.");
+            AchievementLogger.Error(AchievementLogger.Areas.Toast, "Failed to instantiate toast scene.");
             return;
         }
 
@@ -205,7 +205,7 @@ public partial class AchievementToastContainer : CanvasLayer
         }
         else
         {
-            GD.PushWarning("[Achievements:Toast] Toast scene does not have a Setup method.");
+            AchievementLogger.Warning(AchievementLogger.Areas.Toast, "Toast scene does not have a Setup method.");
         }
 
         // For bottom positions, add at the beginning so newest appears at bottom

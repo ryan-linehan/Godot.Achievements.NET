@@ -51,7 +51,7 @@ public partial class AchievementPlugin : EditorPlugin
         // Add autoload singletons (only runs once when plugin is first enabled)
         AddAutoloadSingleton(AutoloadName, AutoloadPath);
         AddAutoloadSingleton(ToastAutoloadName, ToastAutoloadPath);
-        GD.Print("[Achievements] Plugin enabled, autoloads registered");
+        AchievementLogger.Log("Plugin enabled, autoloads registered");
     }
 
     private void RegisterSettings()
@@ -188,7 +188,7 @@ public partial class AchievementPlugin : EditorPlugin
         RemoveAutoloadSingleton(AutoloadName);
         RemoveAutoloadSingleton(ToastAutoloadName);
 
-        GD.Print("[Achievements] Plugin disabled, autoloads removed");
+        AchievementLogger.Log("Plugin disabled, autoloads removed");
     }
 }
 #endif

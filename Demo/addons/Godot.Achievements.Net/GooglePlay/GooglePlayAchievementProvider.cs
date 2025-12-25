@@ -34,12 +34,12 @@ public class GooglePlayAchievementProvider : IAchievementProvider
             //     _isSignedIn = success;
             // });
 
-            GD.Print("[Achievements] [Google Play Games] Initialized (Play Games Services integration required)");
+            this.Log("Initialized (Play Games Services integration required)");
             _isSignedIn = false;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Achievements] [Google Play Games] Failed to initialize: {ex.Message}");
+            this.LogError($"Failed to initialize: {ex.Message}");
             _isSignedIn = false;
         }
     }

@@ -35,12 +35,12 @@ public class SteamAchievementProvider : IAchievementProvider
             // }
             // _isInitialized = SteamAPI.Init();
 
-            GD.Print("[Achievements] [Steam] Initialized (Steamworks.NET integration required)");
+            this.Log("Initialized (Steamworks.NET integration required)");
             _isInitialized = false;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Achievements] [Steam] Failed to initialize: {ex.Message}");
+            this.LogError($"Failed to initialize: {ex.Message}");
             _isInitialized = false;
         }
     }
