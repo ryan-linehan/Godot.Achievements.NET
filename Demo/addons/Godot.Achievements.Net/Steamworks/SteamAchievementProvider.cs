@@ -15,7 +15,7 @@ public class SteamAchievementProvider : IAchievementProvider
     private readonly AchievementDatabase _database;
     private bool _isInitialized;
 
-    public string ProviderName => "Steam";
+    public string ProviderName => ProviderNames.Steam;
 
     public SteamAchievementProvider(AchievementDatabase database)
     {
@@ -35,12 +35,12 @@ public class SteamAchievementProvider : IAchievementProvider
             // }
             // _isInitialized = SteamAPI.Init();
 
-            GD.Print("[Achievements] [Steam] Initialized (Steamworks.NET integration required)");
+            this.Log("Initialized (Steamworks.NET integration required)");
             _isInitialized = false;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Achievements] [Steam] Failed to initialize: {ex.Message}");
+            this.LogError($"Failed to initialize: {ex.Message}");
             _isInitialized = false;
         }
     }
@@ -100,45 +100,52 @@ public class SteamAchievementProvider : IAchievementProvider
         return 0;
     }
 
-    public async Task SetProgress(string achievementId, int currentProgress)
+    public async Task<SyncResult> SetProgress(string achievementId, int currentProgress)
     {
         if (!IsAvailable)
-            return;
+            return SyncResult.FailureResult("Steam is not available");
 
         var achievement = _database.GetById(achievementId);
-        if (achievement == null || string.IsNullOrEmpty(achievement.SteamId))
-            return;
+        if (achievement == null)
+            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
+
+        if (string.IsNullOrEmpty(achievement.SteamId))
+            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
 
         // UNCOMMENT: Report progress to Steamworks
         float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
         this.Log($"Would set progress for {achievement.SteamId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
         await Task.CompletedTask;
+        return SyncResult.SuccessResult();
     }
 
-    public async Task<bool> ResetAchievement(string achievementId)
+    public async Task<SyncResult> ResetAchievement(string achievementId)
     {
         if (!IsAvailable)
-            return false;
+            return SyncResult.FailureResult("Steam is not available");
 
         var achievement = _database.GetById(achievementId);
-        if (achievement == null || string.IsNullOrEmpty(achievement.SteamId))
-            return false;
+        if (achievement == null)
+            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
+
+        if (string.IsNullOrEmpty(achievement.SteamId))
+            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
 
         // UNCOMMENT: SteamUserStats.ClearAchievement(achievement.SteamId);
         this.Log($"Would reset achievement: {achievement.SteamId}");
         await Task.CompletedTask;
-        return true;
+        return SyncResult.SuccessResult();
     }
 
-    public async Task<bool> ResetAllAchievements()
+    public async Task<SyncResult> ResetAllAchievements()
     {
         if (!IsAvailable)
-            return false;
+            return SyncResult.FailureResult("Steam is not available");
 
         // UNCOMMENT: SteamUserStats.ResetAllStats(true);
         this.Log("Would reset all achievements");
         await Task.CompletedTask;
-        return true;
+        return SyncResult.SuccessResult();
     }
 }
 #endif

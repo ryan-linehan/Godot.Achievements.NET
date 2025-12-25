@@ -1,7 +1,6 @@
 #if TOOLS
 using System;
 using System.Linq;
-using System.Text.Json;
 
 namespace Godot.Achievements.Core.Editor;
 
@@ -46,14 +45,14 @@ public partial class AchievementEditorDock : Control
     private string _currentDatabasePath = string.Empty;
     private Achievement? _selectedAchievement;
     private int _selectedIndex = -1;
-    private EditorFileDialog? _importCSVFileDialog;
-    private EditorFileDialog? _exportCSVFileDialog;
-    private EditorFileDialog? _importJSONFileDialog;
-    private EditorFileDialog? _exportJSONFileDialog;
     private ConfirmationDialog? _removeConfirmDialog;
     private PopupMenu? _contextMenu;
-    private int _contextMenuTargetIndex = -1;
     private EditorUndoRedoManager? _undoRedoManager;
+
+    // Composed Components
+    private AchievementCrudOperations? _crudOperations;
+    private AchievementListContextMenu? _contextMenuHandler;
+    private AchievementImportExportHandler? _importExportHandler;
 
     // Validation
     private System.Collections.Generic.Dictionary<Achievement, AchievementValidationResult> _validationResults = new();
@@ -62,28 +61,8 @@ public partial class AchievementEditorDock : Control
     private const string WARNING_PREFIX = "\u26a0 "; // ⚠ Unicode warning sign
     private const string ERROR_PREFIX = "\u274c "; // ❌ Unicode cross mark
 
-    private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
-    private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
-
-    // Platform settings keys
-    private const string STEAM_ENABLED_SETTING = "addons/achievements/platforms/steam_enabled";
-    private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
-    private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
-
     // Track last known database path for change detection
-    private string _lastKnownDatabasePath = string.Empty;
-
-    /// <summary>
-    /// Sets the undo/redo manager for editor history support
-    /// </summary>
-    public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
-    {
-        _undoRedoManager = undoRedoManager;
-        if (DetailsPanel != null)
-        {
-            DetailsPanel.SetUndoRedoManager(undoRedoManager);
-        }
-    }
+    private string _lastKnownDatabasePath = string.Empty;    
 
     public override void _Ready()
     {
@@ -92,62 +71,34 @@ public partial class AchievementEditorDock : Control
         _removeConfirmDialog.Confirmed += ConfirmRemoveAchievement;
         AddChild(_removeConfirmDialog);
 
-        // Create context menu for list items
-        _contextMenu = new PopupMenu();
-        _contextMenu.AddItem("Move Up", 0);
-        _contextMenu.AddItem("Move Down", 1);
-        _contextMenu.AddSeparator();
-        _contextMenu.AddItem("Show in File", 2);
-        _contextMenu.IdPressed += OnContextMenuItemPressed;
-        AddChild(_contextMenu);
+        // Initialize CRUD operations component
+        _crudOperations = new AchievementCrudOperations(
+            getDatabaseFunc: () => _currentDatabase,
+            saveDatabase: SaveDatabase,
+            refreshList: RefreshAchievementList,
+            selectAchievementById: SelectAchievementById
+        );
 
-        // Create import CSV file dialog
-        _importCSVFileDialog = new EditorFileDialog();
-        _importCSVFileDialog.FileMode = EditorFileDialog.FileModeEnum.OpenFile;
-        _importCSVFileDialog.AddFilter("*.csv", "CSV Files");
-        _importCSVFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
-        _importCSVFileDialog.Title = "Import Achievements from CSV";
-        _importCSVFileDialog.FileSelected += OnImportCSVFileSelected;
-        AddChild(_importCSVFileDialog);
+        // Initialize context menu handler
+        _contextMenuHandler = new AchievementListContextMenu(
+            itemList: ItemList,
+            getDatabaseFunc: () => _currentDatabase,
+            getDatabasePathFunc: () => _currentDatabasePath,
+            getSearchTextFunc: () => SearchLineEdit.Text ?? string.Empty
+        );
+        _contextMenu = _contextMenuHandler.CreateContextMenu(this);
+        _contextMenuHandler.MoveUpRequested += OnContextMenuMoveUpRequested;
+        _contextMenuHandler.MoveDownRequested += OnContextMenuMoveDownRequested;
 
-        // Create export CSV file dialog
-        _exportCSVFileDialog = new EditorFileDialog();
-        _exportCSVFileDialog.FileMode = EditorFileDialog.FileModeEnum.SaveFile;
-        _exportCSVFileDialog.AddFilter("*.csv", "CSV Files");
-        _exportCSVFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
-        _exportCSVFileDialog.Title = "Export Achievements to CSV";
-        _exportCSVFileDialog.FileSelected += OnExportCSVFileSelected;
-        AddChild(_exportCSVFileDialog);
-
-        // Create import JSON file dialog
-        _importJSONFileDialog = new EditorFileDialog();
-        _importJSONFileDialog.FileMode = EditorFileDialog.FileModeEnum.OpenFile;
-        _importJSONFileDialog.AddFilter("*.json", "JSON Files");
-        _importJSONFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
-        _importJSONFileDialog.Title = "Import Achievements from JSON";
-        _importJSONFileDialog.FileSelected += OnImportJSONFileSelected;
-        AddChild(_importJSONFileDialog);
-
-        // Create export JSON file dialog
-        _exportJSONFileDialog = new EditorFileDialog();
-        _exportJSONFileDialog.FileMode = EditorFileDialog.FileModeEnum.SaveFile;
-        _exportJSONFileDialog.AddFilter("*.json", "JSON Files");
-        _exportJSONFileDialog.Access = EditorFileDialog.AccessEnum.Filesystem;
-        _exportJSONFileDialog.Title = "Export Achievements to JSON";
-        _exportJSONFileDialog.FileSelected += OnExportJSONFileSelected;
-        AddChild(_exportJSONFileDialog);
-
-        // Setup import menu button
-        var importPopup = ImportMenuButton.GetPopup();
-        importPopup.AddItem("CSV", 0);
-        importPopup.AddItem("JSON", 1);
-        importPopup.IdPressed += OnImportMenuItemPressed;
-
-        // Setup export menu button
-        var exportPopup = ExportMenuButton.GetPopup();
-        exportPopup.AddItem("CSV", 0);
-        exportPopup.AddItem("JSON", 1);
-        exportPopup.IdPressed += OnExportMenuItemPressed;
+        // Initialize import/export handler
+        _importExportHandler = new AchievementImportExportHandler(
+            getDatabaseFunc: () => _currentDatabase,
+            saveDatabase: SaveDatabase,
+            refreshList: RefreshAchievementList,
+            getParentNodeFunc: () => this
+        );
+        _importExportHandler.SetupMenuButtons(ImportMenuButton, ExportMenuButton);
+        _importExportHandler.CreateFileDialogs(this);
 
         // Connect UI signals
         AddAchievementButton.Pressed += OnAddAchievementPressed;
@@ -155,20 +106,17 @@ public partial class AchievementEditorDock : Control
         DuplicateButton.Pressed += OnDuplicatePressed;
         SearchLineEdit.TextChanged += OnSearchTextChanged;
         ItemList.ItemSelected += OnItemSelected;
-        ItemList.ItemClicked += OnItemListClicked;
+        ItemList.ItemClicked += OnItemListClicked;  // Delegates to _contextMenuHandler
 
         // Connect details panel signals
-        if (DetailsPanel != null)
-        {
-            DetailsPanel.AchievementIdChanged += OnAchievementIdChanged;
-            DetailsPanel.AchievementDisplayNameChanged += OnAchievementDisplayNameChanged;
-            DetailsPanel.AchievementChanged += OnAchievementChanged;
+        DetailsPanel.AchievementDisplayNameChanged += OnAchievementDisplayNameChanged;
+        DetailsPanel.AchievementChanged += OnAchievementChanged;
 
-            // Pass undo/redo manager if already set
-            if (_undoRedoManager != null)
-            {
-                DetailsPanel.SetUndoRedoManager(_undoRedoManager);
-            }
+        // Pass undo/redo manager if already set
+        if (_undoRedoManager != null)
+        {
+            DetailsPanel.SetUndoRedoManager(_undoRedoManager);
+            _crudOperations.SetUndoRedoManager(_undoRedoManager);
         }
 
         // Connect visibility change
@@ -192,6 +140,16 @@ public partial class AchievementEditorDock : Control
         LoadDatabase(savedPath);
     }
 
+    /// <summary>
+    /// Sets the undo/redo manager for editor history support
+    /// </summary>
+    public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
+    {
+        _undoRedoManager = undoRedoManager;
+        DetailsPanel.SetUndoRedoManager(undoRedoManager);
+        _crudOperations?.SetUndoRedoManager(undoRedoManager);
+    }
+
     private void OnProjectSettingsChanged()
     {
         UpdatePlatformVisibility();
@@ -212,15 +170,9 @@ public partial class AchievementEditorDock : Control
 
     private void UpdatePlatformVisibility()
     {
-        if (DetailsPanel != null)
-        {
-            if (DetailsPanel.SteamVBox != null)
-                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(STEAM_ENABLED_SETTING);
-            if (DetailsPanel.GameCenterVBox != null)
-                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
-            if (DetailsPanel.GooglePlayVBox != null)
-                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
-        }
+        DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(AchievementSettings.SteamEnabled);
+        DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(AchievementSettings.GameCenterEnabled);
+        DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(AchievementSettings.GooglePlayEnabled);
     }
 
     public override void _ExitTree()
@@ -229,51 +181,10 @@ public partial class AchievementEditorDock : Control
         ProjectSettings.Singleton.SettingsChanged -= OnProjectSettingsChanged;
         VisibilityChanged -= OnVisibilityChanged;
 
-        if (DetailsPanel != null)
-        {
-            DetailsPanel.AchievementIdChanged -= OnAchievementIdChanged;
-            DetailsPanel.AchievementDisplayNameChanged -= OnAchievementDisplayNameChanged;
-            DetailsPanel.AchievementChanged -= OnAchievementChanged;
-        }
+        DetailsPanel.AchievementDisplayNameChanged -= OnAchievementDisplayNameChanged;
+        DetailsPanel.AchievementChanged -= OnAchievementChanged;
 
-        if (_importCSVFileDialog != null)
-        {
-            _importCSVFileDialog.FileSelected -= OnImportCSVFileSelected;
-            _importCSVFileDialog.QueueFree();
-        }
-
-        if (_exportCSVFileDialog != null)
-        {
-            _exportCSVFileDialog.FileSelected -= OnExportCSVFileSelected;
-            _exportCSVFileDialog.QueueFree();
-        }
-
-        if (_importJSONFileDialog != null)
-        {
-            _importJSONFileDialog.FileSelected -= OnImportJSONFileSelected;
-            _importJSONFileDialog.QueueFree();
-        }
-
-        if (_exportJSONFileDialog != null)
-        {
-            _exportJSONFileDialog.FileSelected -= OnExportJSONFileSelected;
-            _exportJSONFileDialog.QueueFree();
-        }
-
-        // Disconnect menu button popup signals
-        if (ImportMenuButton != null)
-        {
-            var importPopup = ImportMenuButton.GetPopup();
-            if (importPopup != null)
-                importPopup.IdPressed -= OnImportMenuItemPressed;
-        }
-
-        if (ExportMenuButton != null)
-        {
-            var exportPopup = ExportMenuButton.GetPopup();
-            if (exportPopup != null)
-                exportPopup.IdPressed -= OnExportMenuItemPressed;
-        }
+        _importExportHandler?.Cleanup(ImportMenuButton, ExportMenuButton);
 
         if (_removeConfirmDialog != null)
         {
@@ -281,25 +192,19 @@ public partial class AchievementEditorDock : Control
             _removeConfirmDialog.QueueFree();
         }
 
-        if (_contextMenu != null)
+        if (_contextMenuHandler != null)
         {
-            _contextMenu.IdPressed -= OnContextMenuItemPressed;
-            _contextMenu.QueueFree();
+            _contextMenuHandler.MoveUpRequested -= OnContextMenuMoveUpRequested;
+            _contextMenuHandler.MoveDownRequested -= OnContextMenuMoveDownRequested;
+            _contextMenuHandler.Cleanup();
         }
 
-        if (AddAchievementButton != null)
-            AddAchievementButton.Pressed -= OnAddAchievementPressed;
-        if (RemoveButton != null)
-            RemoveButton.Pressed -= OnRemovePressed;
-        if (DuplicateButton != null)
-            DuplicateButton.Pressed -= OnDuplicatePressed;
-        if (SearchLineEdit != null)
-            SearchLineEdit.TextChanged -= OnSearchTextChanged;
-        if (ItemList != null)
-        {
-            ItemList.ItemSelected -= OnItemSelected;
-            ItemList.ItemClicked -= OnItemListClicked;
-        }
+        AddAchievementButton.Pressed -= OnAddAchievementPressed;
+        RemoveButton.Pressed -= OnRemovePressed;
+        DuplicateButton.Pressed -= OnDuplicatePressed;
+        SearchLineEdit.TextChanged -= OnSearchTextChanged;
+        ItemList.ItemSelected -= OnItemSelected;
+        ItemList.ItemClicked -= OnItemListClicked;
     }
 
     private void OnVisibilityChanged()
@@ -315,13 +220,6 @@ public partial class AchievementEditorDock : Control
         var hasSelection = _selectedAchievement != null;
         RemoveButton.Disabled = !hasSelection;
         DuplicateButton.Disabled = !hasSelection;
-    }
-
-    private void OnAchievementIdChanged(Achievement achievement, string oldId, string newId)
-    {
-        // Just refresh the list to show the updated ID
-        // No file renaming needed since achievements are stored inline in the database
-        GD.Print($"[Achievements:Editor] Achievement ID changed: {oldId} -> {newId}");
     }
 
     private void OnAchievementDisplayNameChanged(Achievement achievement)
@@ -348,7 +246,7 @@ public partial class AchievementEditorDock : Control
         }
     }
 
-    private void UpdateListItemForAchievement(Achievement achievement)
+    private void UpdateListItemForAchievement(Achievement? achievement)
     {
         if (achievement == null) return;
 
@@ -381,7 +279,7 @@ public partial class AchievementEditorDock : Control
     {
         if (!ResourceLoader.Exists(path))
         {
-            GD.PushWarning($"[Achievements:Editor] Database not found at {path}");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"Database not found at {path}");
             _currentDatabase = null;
             _currentDatabasePath = string.Empty;
             DatabasePathLabel.Text = "No database loaded";
@@ -396,7 +294,7 @@ public partial class AchievementEditorDock : Control
         }
         catch (System.InvalidCastException ex)
         {
-            GD.PushError($"[Achievements:Editor] Resource at {path} is not an AchievementDatabase: {ex.Message}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"Resource at {path} is not an AchievementDatabase: {ex.Message}");
             var dialog = new AcceptDialog();
             dialog.DialogText = $"The file at:\n{path}\n\nis not a valid AchievementDatabase resource.\n\nPlease select a valid AchievementDatabase (.tres) file.";
             AddChild(dialog);
@@ -406,7 +304,7 @@ public partial class AchievementEditorDock : Control
 
         if (resource == null)
         {
-            GD.PushError($"[Achievements:Editor] Failed to load database from {path}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"Failed to load database from {path}");
             var dialog = new AcceptDialog();
             dialog.DialogText = $"Failed to load database from:\n{path}\n\nPlease select a valid AchievementDatabase resource.";
             AddChild(dialog);
@@ -420,24 +318,24 @@ public partial class AchievementEditorDock : Control
         UpdateDatabasePathLabel();
         RefreshAchievementList();
 
-        GD.Print($"[Achievements:Editor] Loaded database from {path}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Loaded database from {path}");
     }
 
     private void SaveDatabase()
     {
         if (_currentDatabase == null)
         {
-            GD.PushWarning("[Achievements:Editor] No database loaded to save");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "No database loaded to save");
             return;
         }
 
         var validationErrors = _currentDatabase.Validate();
         if (validationErrors.Length > 0)
         {
-            GD.PushWarning("[Achievements:Editor] Database validation warnings:");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "Database validation warnings:");
             foreach (var validationError in validationErrors)
             {
-                GD.PushWarning($"  - {validationError}");
+                AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"  - {validationError}");
             }
         }
 
@@ -445,11 +343,11 @@ public partial class AchievementEditorDock : Control
         var saveError = ResourceSaver.Save(_currentDatabase, savePath);
         if (saveError != Error.Ok)
         {
-            GD.PushError($"[Achievements:Editor] Failed to save database: {saveError}");
+            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"Failed to save database: {saveError}");
             return;
         }
 
-        GD.Print($"[Achievements:Editor] Database saved to {savePath}");
+        AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Database saved to {savePath}");
 
         // Refresh the Inspector if it's showing this resource
         _currentDatabase.EmitChanged();
@@ -458,14 +356,14 @@ public partial class AchievementEditorDock : Control
 
     private string LoadDatabasePath()
     {
-        var hasSetting = ProjectSettings.HasSetting(DATABASE_PATH_SETTING);
+        var hasSetting = ProjectSettings.HasSetting(AchievementSettings.DatabasePath);
 
         if (hasSetting)
         {
-            var path = ProjectSettings.GetSetting(DATABASE_PATH_SETTING).AsString();
-            return string.IsNullOrEmpty(path) ? DEFAULT_DATABASE_PATH : path;
+            var path = ProjectSettings.GetSetting(AchievementSettings.DatabasePath).AsString();
+            return string.IsNullOrEmpty(path) ? AchievementSettings.DefaultDatabasePath : path;
         }
-        return DEFAULT_DATABASE_PATH;
+        return AchievementSettings.DefaultDatabasePath;
     }
 
     private static string ResolveUidToPath(string path)
@@ -483,11 +381,11 @@ public partial class AchievementEditorDock : Control
 
     private void SaveDatabasePath(string path)
     {
-        ProjectSettings.SetSetting(DATABASE_PATH_SETTING, path);
+        ProjectSettings.SetSetting(AchievementSettings.DatabasePath, path);
         var saveError = ProjectSettings.Save();
         if (saveError != Error.Ok)
         {
-            GD.PushWarning($"[Achievements:Editor] Failed to save project settings: {saveError}");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"Failed to save project settings: {saveError}");
         }
     }
 
@@ -652,67 +550,7 @@ public partial class AchievementEditorDock : Control
 
     private void OnAddAchievementPressed()
     {
-        CreateNewAchievement();
-    }
-
-    private void CreateNewAchievement()
-    {
-        if (_currentDatabase == null)
-        {
-            GD.PushWarning("[Achievements:Editor] Cannot add achievement - no database loaded");
-            return;
-        }
-
-        var uniqueId = GenerateUniqueId();
-        var newAchievement = new Achievement
-        {
-            Id = uniqueId,
-            DisplayName = "New Achievement",
-            Description = "Achievement description",
-            Icon = null,
-            SteamId = string.Empty,
-            GameCenterId = string.Empty,
-            GooglePlayId = string.Empty,
-            IsIncremental = false,
-            MaxProgress = 1,
-            CustomPlatformIds = new Godot.Collections.Dictionary<string, string>(),
-            ExtraProperties = new Godot.Collections.Dictionary<string, Variant>()
-        };
-
-        if (_undoRedoManager != null)
-        {
-            _undoRedoManager.CreateAction("Add Achievement");
-            _undoRedoManager.AddDoMethod(this, nameof(DoAddAchievement), newAchievement);
-            _undoRedoManager.AddUndoMethod(this, nameof(UndoAddAchievement), newAchievement);
-            _undoRedoManager.CommitAction();
-        }
-        else
-        {
-            DoAddAchievement(newAchievement);
-        }
-    }
-
-    private void DoAddAchievement(Achievement achievement)
-    {
-        if (_currentDatabase == null) return;
-
-        _currentDatabase.AddAchievement(achievement);
-        SaveDatabase();
-        RefreshAchievementList();
-        SelectAchievementById(achievement.Id);
-
-        GD.Print($"[Achievements:Editor] Created new achievement: {achievement.Id}");
-    }
-
-    private void UndoAddAchievement(Achievement achievement)
-    {
-        if (_currentDatabase == null) return;
-
-        _currentDatabase.RemoveAchievement(achievement.Id);
-        SaveDatabase();
-        RefreshAchievementList();
-
-        GD.Print($"[Achievements:Editor] Undid add achievement: {achievement.Id}");
+        _crudOperations?.CreateNewAchievement();
     }
 
     private void SelectAchievementById(string id)
@@ -733,7 +571,7 @@ public partial class AchievementEditorDock : Control
     {
         if (_selectedAchievement == null)
         {
-            GD.PushWarning("[Achievements:Editor] No achievement selected to remove");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "No achievement selected to remove");
             return;
         }
 
@@ -746,152 +584,24 @@ public partial class AchievementEditorDock : Control
 
     private void ConfirmRemoveAchievement()
     {
-        if (_selectedAchievement == null || _currentDatabase == null)
+        if (_selectedAchievement == null)
             return;
 
         var achievementToRemove = _selectedAchievement;
-        var originalIndex = _currentDatabase.Achievements.IndexOf(achievementToRemove);
-
-        if (_undoRedoManager != null)
-        {
-            _undoRedoManager.CreateAction("Remove Achievement");
-            _undoRedoManager.AddDoMethod(this, nameof(DoRemoveAchievement), achievementToRemove);
-            _undoRedoManager.AddUndoMethod(this, nameof(UndoRemoveAchievement), achievementToRemove, originalIndex);
-            _undoRedoManager.CommitAction();
-        }
-        else
-        {
-            DoRemoveAchievement(achievementToRemove);
-        }
-    }
-
-    private void DoRemoveAchievement(Achievement achievement)
-    {
-        if (_currentDatabase == null) return;
-
-        _currentDatabase.RemoveAchievement(achievement.Id);
-        SaveDatabase();
-
         _selectedAchievement = null;
         _selectedIndex = -1;
-        RefreshAchievementList();
-
-        GD.Print($"[Achievements:Editor] Removed achievement: {achievement.Id}");
-    }
-
-    private void UndoRemoveAchievement(Achievement achievement, int originalIndex)
-    {
-        if (_currentDatabase == null) return;
-
-        if (originalIndex >= 0 && originalIndex <= _currentDatabase.Achievements.Count)
-        {
-            _currentDatabase.Achievements.Insert(originalIndex, achievement);
-        }
-        else
-        {
-            _currentDatabase.Achievements.Add(achievement);
-        }
-
-        SaveDatabase();
-        RefreshAchievementList();
-        SelectAchievementById(achievement.Id);
-
-        GD.Print($"[Achievements:Editor] Undid remove achievement: {achievement.Id}");
+        _crudOperations?.RemoveAchievement(achievementToRemove);
     }
 
     private void OnDuplicatePressed()
     {
-        if (_selectedAchievement == null || _currentDatabase == null)
+        if (_selectedAchievement == null)
         {
-            GD.PushWarning("[Achievements:Editor] No achievement selected to duplicate");
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "No achievement selected to duplicate");
             return;
         }
 
-        var sourceId = _selectedAchievement.Id;
-        var duplicate = DuplicateAchievement(_selectedAchievement);
-
-        // Ensure unique ID
-        var baseId = duplicate.Id;
-        var counter = 1;
-        while (_currentDatabase.GetById(duplicate.Id) != null)
-        {
-            duplicate.Id = counter == 1 ? baseId : $"{baseId.Replace("_copy", "")}_{counter}_copy";
-            counter++;
-        }
-
-        if (_undoRedoManager != null)
-        {
-            _undoRedoManager.CreateAction("Duplicate Achievement");
-            _undoRedoManager.AddDoMethod(this, nameof(DoDuplicateAchievement), duplicate, sourceId);
-            _undoRedoManager.AddUndoMethod(this, nameof(UndoDuplicateAchievement), duplicate);
-            _undoRedoManager.CommitAction();
-        }
-        else
-        {
-            DoDuplicateAchievement(duplicate, sourceId);
-        }
-    }
-
-    private void DoDuplicateAchievement(Achievement duplicate, string sourceId)
-    {
-        if (_currentDatabase == null) return;
-
-        _currentDatabase.AddAchievement(duplicate);
-        SaveDatabase();
-        RefreshAchievementList();
-        SelectAchievementById(duplicate.Id);
-
-        GD.Print($"[Achievements:Editor] Duplicated achievement: {sourceId} -> {duplicate.Id}");
-    }
-
-    private void UndoDuplicateAchievement(Achievement duplicate)
-    {
-        if (_currentDatabase == null) return;
-
-        _currentDatabase.RemoveAchievement(duplicate.Id);
-        SaveDatabase();
-        RefreshAchievementList();
-
-        GD.Print($"[Achievements:Editor] Undid duplicate achievement: {duplicate.Id}");
-    }
-
-    private Achievement DuplicateAchievement(Achievement original)
-    {
-        var duplicate = new Achievement
-        {
-            Id = $"{original.Id}_copy",
-            DisplayName = $"{original.DisplayName} (Copy)",
-            Description = original.Description,
-            Icon = original.Icon,
-            SteamId = original.SteamId,
-            GameCenterId = original.GameCenterId,
-            GooglePlayId = original.GooglePlayId,
-            IsIncremental = original.IsIncremental,
-            MaxProgress = original.MaxProgress,
-            CustomPlatformIds = new Godot.Collections.Dictionary<string, string>(original.CustomPlatformIds),
-            ExtraProperties = new Godot.Collections.Dictionary<string, Variant>(original.ExtraProperties)
-        };
-        return duplicate;
-    }
-
-    private string GenerateUniqueId()
-    {
-        if (_currentDatabase == null)
-            return "achievement_01";
-
-        var counter = 1;
-        string id;
-        do
-        {
-            id = $"achievement_{counter:D2}";
-            counter++;
-            if (counter > 9999) // Safety check
-            {
-                id = $"achievement_{Guid.NewGuid():N}";
-                break;
-            }
-        } while (_currentDatabase.GetById(id) != null);
-        return id;
+        _crudOperations?.DuplicateAchievement(_selectedAchievement);
     }
 
     #endregion
@@ -900,734 +610,20 @@ public partial class AchievementEditorDock : Control
 
     private void OnItemListClicked(long index, Vector2 atPosition, long mouseButtonIndex)
     {
-        // Right-click to show context menu
-        if (mouseButtonIndex == (long)MouseButton.Right)
-        {
-            _contextMenuTargetIndex = (int)index;
-
-            if (_contextMenu != null && _currentDatabase != null && _contextMenuTargetIndex >= 0)
-            {
-                var achievement = ItemList.GetItemMetadata(_contextMenuTargetIndex).As<Achievement>();
-                var databaseIndex = _currentDatabase.Achievements.IndexOf(achievement);
-
-                // Check if filtering is active
-                var isFiltered = !string.IsNullOrEmpty(SearchLineEdit.Text);
-
-                // Note: Item indices are 0=Move Up, 1=Move Down
-                if (isFiltered)
-                {
-                    // Disable move operations when filtered
-                    _contextMenu.SetItemDisabled(0, true); // Move Up
-                    _contextMenu.SetItemDisabled(1, true); // Move Down
-                }
-                else
-                {
-                    // Enable/disable based on actual position in database
-                    var totalCount = _currentDatabase.Achievements.Count;
-                    _contextMenu.SetItemDisabled(0, databaseIndex <= 0); // Move Up
-                    _contextMenu.SetItemDisabled(1, databaseIndex >= totalCount - 1); // Move Down
-                }
-
-                _contextMenu.Position = (Vector2I)(GetGlobalMousePosition());
-                _contextMenu.Popup();
-            }
-        }
+        _contextMenuHandler?.HandleItemListClicked(index, atPosition, mouseButtonIndex);
     }
 
-    private void OnContextMenuItemPressed(long id)
+    private void OnContextMenuMoveUpRequested(Achievement achievement)
     {
-        if (_contextMenuTargetIndex < 0 || _contextMenuTargetIndex >= ItemList.ItemCount)
-            return;
-
-        var achievement = ItemList.GetItemMetadata(_contextMenuTargetIndex).As<Achievement>();
-        if (achievement == null)
-            return;
-
-        switch (id)
-        {
-            case 0: // Move Up
-                MoveAchievementUp(achievement);
-                break;
-            case 1: // Move Down
-                MoveAchievementDown(achievement);
-                break;
-            case 2: // Show in File
-                ShowInFile(achievement);
-                break;
-        }
+        _crudOperations?.MoveAchievementUp(achievement);
     }
 
-    private void ShowInFile(Achievement achievement)
+    private void OnContextMenuMoveDownRequested(Achievement achievement)
     {
-        var editorInterface = EditorInterface.Singleton;
-        if (editorInterface == null)
-        {
-            GD.PushError("[Achievements:Editor] EditorInterface not available");
-            return;
-        }
-
-        var databasePath = ResolveUidToPath(_currentDatabasePath);
-
-        // Check if the achievement has its own resource path (saved as external file)
-        // Sub-resources have paths like "res://file.tres::Resource_id" - these are NOT external
-        var achievementPath = achievement.ResourcePath;
-        var isSubResource = !string.IsNullOrEmpty(achievementPath) && achievementPath.Contains("::");
-        var isExternalResource = !string.IsNullOrEmpty(achievementPath)
-            && !isSubResource
-            && ResourceLoader.Exists(achievementPath)
-            && achievementPath != databasePath;
-
-        if (isExternalResource)
-        {
-            // Achievement is saved as its own file - navigate to it
-            editorInterface.SelectFile(achievementPath);
-            GD.Print($"[Achievements:Editor] Showing achievement file: {achievementPath}");
-        }
-        else
-        {
-            // Achievement is internal to the database - show the database file
-            if (!string.IsNullOrEmpty(databasePath) && ResourceLoader.Exists(databasePath))
-            {
-                editorInterface.SelectFile(databasePath);
-                GD.Print($"[Achievements:Editor] Achievement is internal - showing database file: {databasePath}");
-            }
-            else
-            {
-                GD.PushWarning("[Achievements:Editor] No database path available to show");
-            }
-        }
-    }
-
-    private void MoveAchievementUp(Achievement achievement)
-    {
-        if (_currentDatabase == null)
-            return;
-
-        var currentIndex = _currentDatabase.Achievements.IndexOf(achievement);
-        if (currentIndex <= 0)
-            return;
-
-        if (_undoRedoManager != null)
-        {
-            _undoRedoManager.CreateAction("Move Achievement Up");
-            _undoRedoManager.AddDoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex - 1);
-            _undoRedoManager.AddUndoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex);
-            _undoRedoManager.CommitAction();
-        }
-        else
-        {
-            DoMoveAchievement(achievement, currentIndex - 1);
-        }
-    }
-
-    private void MoveAchievementDown(Achievement achievement)
-    {
-        if (_currentDatabase == null)
-            return;
-
-        var currentIndex = _currentDatabase.Achievements.IndexOf(achievement);
-        if (currentIndex < 0 || currentIndex >= _currentDatabase.Achievements.Count - 1)
-            return;
-
-        if (_undoRedoManager != null)
-        {
-            _undoRedoManager.CreateAction("Move Achievement Down");
-            _undoRedoManager.AddDoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex + 1);
-            _undoRedoManager.AddUndoMethod(this, nameof(DoMoveAchievement), achievement, currentIndex);
-            _undoRedoManager.CommitAction();
-        }
-        else
-        {
-            DoMoveAchievement(achievement, currentIndex + 1);
-        }
-    }
-
-    private void DoMoveAchievement(Achievement achievement, int toIndex)
-    {
-        if (_currentDatabase == null) return;
-
-        var currentIndex = _currentDatabase.Achievements.IndexOf(achievement);
-        if (currentIndex < 0) return;
-
-        _currentDatabase.Achievements.RemoveAt(currentIndex);
-        _currentDatabase.Achievements.Insert(toIndex, achievement);
-
-        SaveDatabase();
-        RefreshAchievementList(preserveSelection: true);
-        GD.Print($"[Achievements:Editor] Moved achievement: {achievement.DisplayName}");
+        _crudOperations?.MoveAchievementDown(achievement);
     }
 
     #endregion
 
-    #region Import/Export
-
-    private void OnImportMenuItemPressed(long id)
-    {
-        if (_currentDatabase == null)
-        {
-            var dialog = new AcceptDialog();
-            dialog.DialogText = "Please load a database first before importing achievements.";
-            AddChild(dialog);
-            dialog.PopupCentered();
-            return;
-        }
-
-        switch (id)
-        {
-            case 0: // CSV
-                if (_importCSVFileDialog != null)
-                {
-                    _importCSVFileDialog.CurrentPath = "achievements.csv";
-                    _importCSVFileDialog.PopupCentered(new Vector2I(800, 600));
-                }
-                break;
-            case 1: // JSON
-                if (_importJSONFileDialog != null)
-                {
-                    _importJSONFileDialog.CurrentPath = "achievements.json";
-                    _importJSONFileDialog.PopupCentered(new Vector2I(800, 600));
-                }
-                break;
-        }
-    }
-
-    private void OnExportMenuItemPressed(long id)
-    {
-        if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
-        {
-            var dialog = new AcceptDialog();
-            dialog.DialogText = "No achievements to export. Please load a database with achievements first.";
-            AddChild(dialog);
-            dialog.PopupCentered();
-            return;
-        }
-
-        switch (id)
-        {
-            case 0: // CSV
-                if (_exportCSVFileDialog != null)
-                {
-                    _exportCSVFileDialog.CurrentPath = "achievements.csv";
-                    _exportCSVFileDialog.PopupCentered(new Vector2I(800, 600));
-                }
-                break;
-            case 1: // JSON
-                if (_exportJSONFileDialog != null)
-                {
-                    _exportJSONFileDialog.CurrentPath = "achievements.json";
-                    _exportJSONFileDialog.PopupCentered(new Vector2I(800, 600));
-                }
-                break;
-        }
-    }
-
-    private void OnImportCSVFileSelected(string path)
-    {
-        if (_currentDatabase == null)
-            return;
-
-        try
-        {
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to open file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            // Use Godot's built-in CSV parsing
-            var header = file.GetCsvLine();
-            if (header.Length == 0)
-            {
-                file.Close();
-                ShowErrorDialog("CSV file is empty.");
-                return;
-            }
-
-            // Build column index map from header
-            var columnMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < header.Length; i++)
-            {
-                columnMap[header[i].Trim()] = i;
-            }
-
-            // Validate required columns
-            if (!columnMap.ContainsKey("Id"))
-            {
-                file.Close();
-                ShowErrorDialog("CSV must contain an 'Id' column.");
-                return;
-            }
-
-            int importedCount = 0;
-            int updatedCount = 0;
-            int skippedCount = 0;
-
-            // Process data rows using Godot's GetCsvLine()
-            while (!file.EofReached())
-            {
-                var values = file.GetCsvLine();
-                if (values.Length == 0 || (values.Length == 1 && string.IsNullOrWhiteSpace(values[0])))
-                    continue;
-
-                var id = GetCSVValue(values, columnMap, "Id");
-                if (string.IsNullOrWhiteSpace(id))
-                    continue;
-
-                // Check if achievement already exists
-                var existing = _currentDatabase.GetById(id);
-                bool isNew = existing == null;
-
-                var achievement = existing ?? new Achievement { Id = id };
-                bool hasChanges = false;
-
-                // Update fields from CSV, tracking if any changes occur
-                if (columnMap.ContainsKey("DisplayName"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "DisplayName") ?? achievement.DisplayName;
-                    if (achievement.DisplayName != newValue)
-                    {
-                        achievement.DisplayName = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("Description"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "Description") ?? achievement.Description;
-                    if (achievement.Description != newValue)
-                    {
-                        achievement.Description = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("SteamId"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "SteamId") ?? achievement.SteamId;
-                    if (achievement.SteamId != newValue)
-                    {
-                        achievement.SteamId = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("GameCenterId"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "GameCenterId") ?? achievement.GameCenterId;
-                    if (achievement.GameCenterId != newValue)
-                    {
-                        achievement.GameCenterId = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("GooglePlayId"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "GooglePlayId") ?? achievement.GooglePlayId;
-                    if (achievement.GooglePlayId != newValue)
-                    {
-                        achievement.GooglePlayId = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("IsIncremental"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "IsIncremental")?.ToLower() == "true";
-                    if (achievement.IsIncremental != newValue)
-                    {
-                        achievement.IsIncremental = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("MaxProgress"))
-                {
-                    if (int.TryParse(GetCSVValue(values, columnMap, "MaxProgress"), out int maxProgress))
-                    {
-                        if (achievement.MaxProgress != maxProgress)
-                        {
-                            achievement.MaxProgress = maxProgress;
-                            hasChanges = true;
-                        }
-                    }
-                }
-
-                if (isNew)
-                {
-                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
-                    achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
-                    _currentDatabase.AddAchievement(achievement);
-                    importedCount++;
-                }
-                else if (hasChanges)
-                {
-                    updatedCount++;
-                }
-                else
-                {
-                    skippedCount++;
-                }
-            }
-
-            file.Close();
-
-            SaveDatabase();
-            RefreshAchievementList(preserveSelection: true);
-
-            var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"CSV Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}\nSkipped (unchanged): {skippedCount}";
-            resultDialog.Title = "Import Successful";
-            AddChild(resultDialog);
-            resultDialog.PopupCentered();
-
-            GD.Print($"[Achievements:Editor] Imported CSV from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
-        }
-        catch (Exception ex)
-        {
-            ShowErrorDialog($"Failed to import CSV: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] CSV import error: {ex}");
-        }
-    }
-
-    private void OnExportCSVFileSelected(string path)
-    {
-        if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
-            return;
-
-        try
-        {
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to create file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            // Write header using Godot's StoreCsvLine
-            file.StoreCsvLine(new string[] { "Id", "DisplayName", "Description", "SteamId", "GameCenterId", "GooglePlayId", "IsIncremental", "MaxProgress" });
-
-            // Write achievement rows using Godot's StoreCsvLine (handles escaping automatically)
-            foreach (var achievement in _currentDatabase.Achievements)
-            {
-                file.StoreCsvLine(new string[]
-                {
-                    achievement.Id ?? "",
-                    achievement.DisplayName ?? "",
-                    achievement.Description ?? "",
-                    achievement.SteamId ?? "",
-                    achievement.GameCenterId ?? "",
-                    achievement.GooglePlayId ?? "",
-                    achievement.IsIncremental.ToString().ToLower(),
-                    achievement.MaxProgress.ToString()
-                });
-            }
-
-            file.Close();
-
-            var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"Successfully exported {_currentDatabase.Achievements.Count} achievements to:\n\n{path}";
-            resultDialog.Title = "Export Successful";
-            AddChild(resultDialog);
-            resultDialog.PopupCentered();
-
-            GD.Print($"[Achievements:Editor] Exported {_currentDatabase.Achievements.Count} achievements to {path}");
-        }
-        catch (Exception ex)
-        {
-            ShowErrorDialog($"Failed to export CSV: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] CSV export error: {ex}");
-        }
-    }
-
-    private void OnImportJSONFileSelected(string path)
-    {
-        if (_currentDatabase == null)
-            return;
-
-        try
-        {
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to open file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            var jsonContent = file.GetAsText();
-            file.Close();
-
-            if (string.IsNullOrWhiteSpace(jsonContent))
-            {
-                ShowErrorDialog("JSON file is empty.");
-                return;
-            }
-
-            // Parse JSON
-            JsonDocument? doc;
-            try
-            {
-                doc = JsonDocument.Parse(jsonContent);
-            }
-            catch (JsonException ex)
-            {
-                ShowErrorDialog($"Invalid JSON format: {ex.Message}");
-                return;
-            }
-
-            var root = doc.RootElement;
-            JsonElement achievementsArray;
-
-            // Support both { "achievements": [...] } and direct array [...]
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                achievementsArray = root;
-            }
-            else if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("achievements", out var achProp))
-            {
-                achievementsArray = achProp;
-            }
-            else
-            {
-                ShowErrorDialog("JSON must be an array of achievements or an object with an 'achievements' array.");
-                return;
-            }
-
-            int importedCount = 0;
-            int updatedCount = 0;
-            int skippedCount = 0;
-
-            foreach (var item in achievementsArray.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Object)
-                    continue;
-
-                // Get Id (required)
-                if (!item.TryGetProperty("Id", out var idProp) && !item.TryGetProperty("id", out idProp))
-                    continue;
-
-                var id = idProp.GetString();
-                if (string.IsNullOrWhiteSpace(id))
-                    continue;
-
-                // Check if achievement already exists
-                var existing = _currentDatabase.GetById(id);
-                bool isNew = existing == null;
-
-                var achievement = existing ?? new Achievement { Id = id };
-                bool hasChanges = false;
-
-                // Update fields from JSON, tracking if any changes occur
-                if (TryGetJsonString(item, "DisplayName", out var displayName) || TryGetJsonString(item, "displayName", out displayName))
-                {
-                    if (achievement.DisplayName != displayName)
-                    {
-                        achievement.DisplayName = displayName;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "Description", out var description) || TryGetJsonString(item, "description", out description))
-                {
-                    if (achievement.Description != description)
-                    {
-                        achievement.Description = description;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "SteamId", out var steamId) || TryGetJsonString(item, "steamId", out steamId))
-                {
-                    if (achievement.SteamId != steamId)
-                    {
-                        achievement.SteamId = steamId;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "GameCenterId", out var gameCenterId) || TryGetJsonString(item, "gameCenterId", out gameCenterId))
-                {
-                    if (achievement.GameCenterId != gameCenterId)
-                    {
-                        achievement.GameCenterId = gameCenterId;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "GooglePlayId", out var googlePlayId) || TryGetJsonString(item, "googlePlayId", out googlePlayId))
-                {
-                    if (achievement.GooglePlayId != googlePlayId)
-                    {
-                        achievement.GooglePlayId = googlePlayId;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonBool(item, "IsIncremental", out var isIncremental) || TryGetJsonBool(item, "isIncremental", out isIncremental))
-                {
-                    if (achievement.IsIncremental != isIncremental)
-                    {
-                        achievement.IsIncremental = isIncremental;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonInt(item, "MaxProgress", out var maxProgress) || TryGetJsonInt(item, "maxProgress", out maxProgress))
-                {
-                    if (achievement.MaxProgress != maxProgress)
-                    {
-                        achievement.MaxProgress = maxProgress;
-                        hasChanges = true;
-                    }
-                }
-
-                if (isNew)
-                {
-                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
-                    achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
-                    _currentDatabase.AddAchievement(achievement);
-                    importedCount++;
-                }
-                else if (hasChanges)
-                {
-                    updatedCount++;
-                }
-                else
-                {
-                    skippedCount++;
-                }
-            }
-
-            doc.Dispose();
-
-            SaveDatabase();
-            RefreshAchievementList(preserveSelection: true);
-
-            var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"JSON Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}\nSkipped (unchanged): {skippedCount}";
-            resultDialog.Title = "Import Successful";
-            AddChild(resultDialog);
-            resultDialog.PopupCentered();
-
-            GD.Print($"[Achievements:Editor] Imported JSON from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
-        }
-        catch (Exception ex)
-        {
-            ShowErrorDialog($"Failed to import JSON: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] JSON import error: {ex}");
-        }
-    }
-
-    private void OnExportJSONFileSelected(string path)
-    {
-        if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
-            return;
-
-        try
-        {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = null // Keep PascalCase for compatibility with Godot conventions
-            };
-
-            // Build achievements list for JSON
-            var achievementsList = new System.Collections.Generic.List<object>();
-            foreach (var achievement in _currentDatabase.Achievements)
-            {
-                achievementsList.Add(new
-                {
-                    Id = achievement.Id ?? "",
-                    DisplayName = achievement.DisplayName ?? "",
-                    Description = achievement.Description ?? "",
-                    SteamId = achievement.SteamId ?? "",
-                    GameCenterId = achievement.GameCenterId ?? "",
-                    GooglePlayId = achievement.GooglePlayId ?? "",
-                    IsIncremental = achievement.IsIncremental,
-                    MaxProgress = achievement.MaxProgress
-                });
-            }
-
-            var exportObject = new { achievements = achievementsList };
-            var jsonContent = JsonSerializer.Serialize(exportObject, options);
-
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to create file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            file.StoreString(jsonContent);
-            file.Close();
-
-            var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"Successfully exported {_currentDatabase.Achievements.Count} achievements to:\n\n{path}";
-            resultDialog.Title = "Export Successful";
-            AddChild(resultDialog);
-            resultDialog.PopupCentered();
-
-            GD.Print($"[Achievements:Editor] Exported {_currentDatabase.Achievements.Count} achievements to JSON: {path}");
-        }
-        catch (Exception ex)
-        {
-            ShowErrorDialog($"Failed to export JSON: {ex.Message}");
-            GD.PushError($"[Achievements:Editor] JSON export error: {ex}");
-        }
-    }
-
-    private static bool TryGetJsonString(JsonElement element, string propertyName, out string value)
-    {
-        value = string.Empty;
-        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String)
-        {
-            value = prop.GetString() ?? string.Empty;
-            return true;
-        }
-        return false;
-    }
-
-    private static bool TryGetJsonBool(JsonElement element, string propertyName, out bool value)
-    {
-        value = false;
-        if (element.TryGetProperty(propertyName, out var prop))
-        {
-            if (prop.ValueKind == JsonValueKind.True)
-            {
-                value = true;
-                return true;
-            }
-            if (prop.ValueKind == JsonValueKind.False)
-            {
-                value = false;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool TryGetJsonInt(JsonElement element, string propertyName, out int value)
-    {
-        value = 0;
-        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number)
-        {
-            if (prop.TryGetInt32(out value))
-                return true;
-        }
-        return false;
-    }
-
-    private static string? GetCSVValue(string[] values, System.Collections.Generic.Dictionary<string, int> columnMap, string columnName)
-    {
-        if (!columnMap.TryGetValue(columnName, out int index) || index >= values.Length)
-            return null;
-        return values[index].Trim();
-    }
-
-    private void ShowErrorDialog(string message)
-    {
-        var dialog = new AcceptDialog();
-        dialog.DialogText = message;
-        dialog.Title = "Error";
-        AddChild(dialog);
-        dialog.PopupCentered();
-    }
-
-    #endregion
 }
 #endif

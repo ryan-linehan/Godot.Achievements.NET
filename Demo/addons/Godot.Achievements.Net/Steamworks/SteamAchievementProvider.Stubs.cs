@@ -13,7 +13,7 @@ public class SteamAchievementProvider : IAchievementProvider
 
     private readonly AchievementDatabase _database;
 
-    public string ProviderName => "Steam";
+    public string ProviderName => ProviderNames.Steam;
 
     public SteamAchievementProvider(AchievementDatabase database)
     {
@@ -28,13 +28,13 @@ public class SteamAchievementProvider : IAchievementProvider
     public Task<int> GetProgress(string achievementId)
         => Task.FromResult(0);
 
-    public Task SetProgress(string achievementId, int currentProgress)
-        => Task.CompletedTask;
+    public Task<SyncResult> SetProgress(string achievementId, int currentProgress)
+        => Task.FromResult(SyncResult.FailureResult("Steam is not supported on this platform"));
 
-    public Task<bool> ResetAchievement(string achievementId)
-        => Task.FromResult(false);
+    public Task<SyncResult> ResetAchievement(string achievementId)
+        => Task.FromResult(SyncResult.FailureResult("Steam is not supported on this platform"));
 
-    public Task<bool> ResetAllAchievements()
-        => Task.FromResult(false);
+    public Task<SyncResult> ResetAllAchievements()
+        => Task.FromResult(SyncResult.FailureResult("Steam is not supported on this platform"));
 }
 #endif

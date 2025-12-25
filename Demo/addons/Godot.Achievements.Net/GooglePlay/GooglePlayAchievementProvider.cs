@@ -15,7 +15,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     private readonly AchievementDatabase _database;
     private bool _isSignedIn;
 
-    public string ProviderName => "Google Play Games";
+    public string ProviderName => ProviderNames.GooglePlay;
 
     public GooglePlayAchievementProvider(AchievementDatabase database)
     {
@@ -34,12 +34,12 @@ public class GooglePlayAchievementProvider : IAchievementProvider
             //     _isSignedIn = success;
             // });
 
-            GD.Print("[Achievements] [Google Play Games] Initialized (Play Games Services integration required)");
+            this.Log("Initialized (Play Games Services integration required)");
             _isSignedIn = false;
         }
         catch (Exception ex)
         {
-            GD.PushError($"[Achievements] [Google Play Games] Failed to initialize: {ex.Message}");
+            this.LogError($"Failed to initialize: {ex.Message}");
             _isSignedIn = false;
         }
     }
@@ -92,43 +92,50 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         return 0;
     }
 
-    public async Task SetProgress(string achievementId, int currentProgress)
+    public async Task<SyncResult> SetProgress(string achievementId, int currentProgress)
     {
         if (!IsAvailable)
-            return;
+            return SyncResult.FailureResult("Google Play Games is not available");
 
         var achievement = _database.GetById(achievementId);
-        if (achievement == null || string.IsNullOrEmpty(achievement.GooglePlayId))
-            return;
+        if (achievement == null)
+            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
+
+        if (string.IsNullOrEmpty(achievement.GooglePlayId))
+            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Google Play ID configured");
 
         // UNCOMMENT: Report progress to Play Games Services
         float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
-        GD.Print($"[GooglePlay] Would set progress for {achievement.GooglePlayId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
+        this.Log($"Would set progress for {achievement.GooglePlayId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
         await Task.CompletedTask;
+        return SyncResult.SuccessResult();
     }
 
-    public async Task<bool> ResetAchievement(string achievementId)
+    public async Task<SyncResult> ResetAchievement(string achievementId)
     {
         if (!IsAvailable)
-            return false;
+            return SyncResult.FailureResult("Google Play Games is not available");
 
         var achievement = _database.GetById(achievementId);
-        if (achievement == null || string.IsNullOrEmpty(achievement.GooglePlayId))
-            return false;
+        if (achievement == null)
+            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
 
-        GD.Print($"[GooglePlay] Would reset achievement: {achievement.GooglePlayId}");
+        if (string.IsNullOrEmpty(achievement.GooglePlayId))
+            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Google Play ID configured");
+
+        this.Log($"Would reset achievement: {achievement.GooglePlayId}");
         await Task.CompletedTask;
-        return true;
+        return SyncResult.SuccessResult();
     }
 
-    public async Task<bool> ResetAllAchievements()
+    public async Task<SyncResult> ResetAllAchievements()
     {
         if (!IsAvailable)
-            return false;
+            return SyncResult.FailureResult("Google Play Games is not available");
 
-        GD.Print("[GooglePlay] Would reset all achievements");
+        this.Log("Would reset all achievements");
         await Task.CompletedTask;
-        return true;
+        return SyncResult.SuccessResult();
     }
 }
 #endif

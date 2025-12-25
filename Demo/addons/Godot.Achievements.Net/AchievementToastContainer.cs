@@ -8,24 +8,15 @@ namespace Godot.Achievements.Core;
 /// </summary>
 public partial class AchievementToastContainer : CanvasLayer
 {
-    private const string SettingScenePath = "addons/achievements/toast/scene_path";
-    private const string SettingPosition = "addons/achievements/toast/position";
-    private const string SettingDisplayDuration = "addons/achievements/toast/display_duration";
-    private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
-
-    private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
-    private const float DefaultDisplayDuration = 5.0f;
-    private const ToastPosition DefaultPosition = ToastPosition.TopRight;
-
     [Export]
     private MarginContainer MarginContainer = null!;
 
     [Export]
     private VBoxContainer ToastVBox = null!;
 
-    private string _toastScenePath = DefaultToastScenePath;
-    private ToastPosition _position = DefaultPosition;
-    private float _displayDuration = DefaultDisplayDuration;
+    private string _toastScenePath = AchievementSettings.DefaultToastScenePath;
+    private ToastPosition _position = ToastPosition.TopRight;
+    private float _displayDuration = AchievementSettings.DefaultToastDisplayDuration;
     private PackedScene? _toastScene;
     private readonly List<ToastEntry> _activeToasts = new();
     private AudioStreamPlayer? _audioPlayer;
@@ -46,21 +37,21 @@ public partial class AchievementToastContainer : CanvasLayer
         // If scene path is empty, toast system is disabled
         if (string.IsNullOrEmpty(_toastScenePath))
         {
-            GD.Print("[AchievementToastContainer] Toast system disabled (empty scene path).");
+            AchievementLogger.Log(AchievementLogger.Areas.Toast, "Toast system disabled (empty scene path).");
             return;
         }
 
         // Load the toast scene
         if (!ResourceLoader.Exists(_toastScenePath))
         {
-            GD.PushError($"[AchievementToastContainer] Toast scene not found: {_toastScenePath}");
+            AchievementLogger.Error(AchievementLogger.Areas.Toast, $"Toast scene not found: {_toastScenePath}");
             return;
         }
 
         _toastScene = GD.Load<PackedScene>(_toastScenePath);
         if (_toastScene == null)
         {
-            GD.PushError($"[AchievementToastContainer] Failed to load toast scene: {_toastScenePath}");
+            AchievementLogger.Error(AchievementLogger.Areas.Toast, $"Failed to load toast scene: {_toastScenePath}");
             return;
         }
 
@@ -75,31 +66,31 @@ public partial class AchievementToastContainer : CanvasLayer
         }
         else
         {
-            GD.PushWarning("[AchievementToastContainer] AchievementManager not found. Toasts will not be displayed.");
+            AchievementLogger.Warning(AchievementLogger.Areas.Toast, "AchievementManager not found. Toasts will not be displayed.");
         }
     }
 
     private void LoadSettings()
     {
-        if (ProjectSettings.HasSetting(SettingScenePath))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastScenePath))
         {
-            _toastScenePath = ProjectSettings.GetSetting(SettingScenePath).AsString();
+            _toastScenePath = ProjectSettings.GetSetting(AchievementSettings.ToastScenePath).AsString();
         }
 
-        if (ProjectSettings.HasSetting(SettingPosition))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastPosition))
         {
-            _position = (ToastPosition)ProjectSettings.GetSetting(SettingPosition).AsInt32();
+            _position = (ToastPosition)ProjectSettings.GetSetting(AchievementSettings.ToastPosition).AsInt32();
         }
 
-        if (ProjectSettings.HasSetting(SettingDisplayDuration))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastDisplayDuration))
         {
-            _displayDuration = (float)ProjectSettings.GetSetting(SettingDisplayDuration).AsDouble();
+            _displayDuration = (float)ProjectSettings.GetSetting(AchievementSettings.ToastDisplayDuration).AsDouble();
         }
 
         // Load unlock sound if configured
-        if (ProjectSettings.HasSetting(SettingUnlockSound))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastUnlockSound))
         {
-            var soundPath = ProjectSettings.GetSetting(SettingUnlockSound).AsString();
+            var soundPath = ProjectSettings.GetSetting(AchievementSettings.ToastUnlockSound).AsString();
             if (!string.IsNullOrEmpty(soundPath) && ResourceLoader.Exists(soundPath))
             {
                 _unlockSound = GD.Load<AudioStream>(soundPath);
@@ -115,8 +106,6 @@ public partial class AchievementToastContainer : CanvasLayer
 
     private void ApplyPosition()
     {
-        if (MarginContainer == null) return;
-
         // Reset anchors and margins
         MarginContainer.AnchorLeft = 0;
         MarginContainer.AnchorTop = 0;
@@ -203,7 +192,7 @@ public partial class AchievementToastContainer : CanvasLayer
         var toast = _toastScene.Instantiate<Control>();
         if (toast == null)
         {
-            GD.PushError("[AchievementToastContainer] Failed to instantiate toast scene.");
+            AchievementLogger.Error(AchievementLogger.Areas.Toast, "Failed to instantiate toast scene.");
             return;
         }
 
@@ -214,7 +203,7 @@ public partial class AchievementToastContainer : CanvasLayer
         }
         else
         {
-            GD.PushWarning("[AchievementToastContainer] Toast scene does not have a Setup method.");
+            AchievementLogger.Warning(AchievementLogger.Areas.Toast, "Toast scene does not have a Setup method.");
         }
 
         // For bottom positions, add at the beginning so newest appears at bottom

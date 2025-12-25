@@ -37,9 +37,6 @@ public class AchievementValidationResult
 /// </summary>
 public static class AchievementValidator
 {
-    private const string STEAM_ENABLED_SETTING = "addons/achievements/platforms/steam_enabled";
-    private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
-    private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
 
     /// <summary>
     /// Validate a single achievement and return validation result with warnings
@@ -61,17 +58,17 @@ public static class AchievementValidator
         }
 
         // Check platform IDs based on enabled integrations
-        if (GetPlatformEnabled(STEAM_ENABLED_SETTING) && string.IsNullOrWhiteSpace(achievement.SteamId))
+        if (GetPlatformEnabled(AchievementSettings.SteamEnabled) && string.IsNullOrWhiteSpace(achievement.SteamId))
         {
             result.AddWarning("Steam integration enabled but Steam ID is missing");
         }
 
-        if (GetPlatformEnabled(GAMECENTER_ENABLED_SETTING) && string.IsNullOrWhiteSpace(achievement.GameCenterId))
+        if (GetPlatformEnabled(AchievementSettings.GameCenterEnabled) && string.IsNullOrWhiteSpace(achievement.GameCenterId))
         {
             result.AddWarning("Game Center integration enabled but Game Center ID is missing");
         }
 
-        if (GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING) && string.IsNullOrWhiteSpace(achievement.GooglePlayId))
+        if (GetPlatformEnabled(AchievementSettings.GooglePlayEnabled) && string.IsNullOrWhiteSpace(achievement.GooglePlayId))
         {
             result.AddWarning("Google Play integration enabled but Google Play ID is missing");
         }
@@ -138,9 +135,9 @@ public static class AchievementValidator
         var gameCenterIds = new Dictionary<string, List<Achievement>>();
         var googlePlayIds = new Dictionary<string, List<Achievement>>();
 
-        bool steamEnabled = GetPlatformEnabled(STEAM_ENABLED_SETTING);
-        bool gameCenterEnabled = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
-        bool googlePlayEnabled = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
+        bool steamEnabled = GetPlatformEnabled(AchievementSettings.SteamEnabled);
+        bool gameCenterEnabled = GetPlatformEnabled(AchievementSettings.GameCenterEnabled);
+        bool googlePlayEnabled = GetPlatformEnabled(AchievementSettings.GooglePlayEnabled);
 
         // Collect all platform IDs
         foreach (var achievement in database.Achievements)

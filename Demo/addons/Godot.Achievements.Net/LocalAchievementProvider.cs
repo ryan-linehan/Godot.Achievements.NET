@@ -19,7 +19,7 @@ public class LocalAchievementProvider : IAchievementProvider
     private readonly AchievementDatabase _database;
     private Dictionary<string, AchievementState> _achievementStates = new();
 
-    public string ProviderName => "Local";
+    public string ProviderName => ProviderNames.Local;
     public bool IsAvailable => true;
 
     public LocalAchievementProvider(AchievementDatabase database)
@@ -73,13 +73,14 @@ public class LocalAchievementProvider : IAchievementProvider
         return Task.FromResult(0);
     }
 
-    public Task SetProgress(string achievementId, int currentProgress)
+    public Task<SyncResult> SetProgress(string achievementId, int currentProgress)
     {
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
         {
-            this.LogWarning($"Achievement '{achievementId}' not found in database");
-            return Task.CompletedTask;
+            var error = $"Achievement '{achievementId}' not found in database";
+            this.LogWarning(error);
+            return Task.FromResult(SyncResult.FailureResult(error));
         }
 
         // Clamp progress to 0 - MaxProgress
@@ -106,16 +107,17 @@ public class LocalAchievementProvider : IAchievementProvider
 
         SaveToDisk();
 
-        return Task.CompletedTask;
+        return Task.FromResult(SyncResult.SuccessResult());
     }
 
-    public Task<bool> ResetAchievement(string achievementId)
+    public Task<SyncResult> ResetAchievement(string achievementId)
     {
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
         {
-            this.LogWarning($"Achievement '{achievementId}' not found in database");
-            return Task.FromResult(false);
+            var error = $"Achievement '{achievementId}' not found in database";
+            this.LogWarning(error);
+            return Task.FromResult(SyncResult.FailureResult(error));
         }
 
         // Remove from state dictionary
@@ -128,13 +130,13 @@ public class LocalAchievementProvider : IAchievementProvider
 
             SaveToDisk();
             this.Log($"Reset achievement: {achievementId}");
-            return Task.FromResult(true);
+            return Task.FromResult(SyncResult.SuccessResult());
         }
 
-        return Task.FromResult(false);
+        return Task.FromResult(SyncResult.FailureResult("Achievement was not in saved state"));
     }
 
-    public Task<bool> ResetAllAchievements()
+    public Task<SyncResult> ResetAllAchievements()
     {
         // Clear all states
         _achievementStates.Clear();
@@ -149,7 +151,7 @@ public class LocalAchievementProvider : IAchievementProvider
 
         SaveToDisk();
         this.Log("Reset all achievements");
-        return Task.FromResult(true);
+        return Task.FromResult(SyncResult.SuccessResult());
     }
 
     /// <summary>

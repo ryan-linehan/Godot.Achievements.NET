@@ -116,54 +116,37 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         _iconPicker.ResourceChanged += OnIconResourceChanged;
 
         // Add icon picker to the container
-        if (IconPickerContainer != null)
-        {
-            IconPickerContainer.AddChild(_iconPicker);
-        }
+        IconPickerContainer.AddChild(_iconPicker);
 
         // Connect field signals
-        if (NameLineEdit != null)
-        {
-            NameLineEdit.TextChanged += OnNameChanged;
-            NameLineEdit.FocusEntered += OnNameFocusEntered;
-            NameLineEdit.FocusExited += OnNameFocusExited;
-        }
-        if (InternalIDLineEdit != null)
-        {
-            InternalIDLineEdit.TextChanged += OnIdTextChanged;
-            InternalIDLineEdit.FocusEntered += OnIdFocusEntered;
-            InternalIDLineEdit.FocusExited += OnIdFocusExited;
-        }
-        if (DescriptionTextBox != null)
-        {
-            DescriptionTextBox.TextChanged += OnDescriptionChanged;
-            DescriptionTextBox.FocusEntered += OnDescriptionFocusEntered;
-            DescriptionTextBox.FocusExited += OnDescriptionFocusExited;
-        }
-        if (TrackProgressCheckBox != null)
-            TrackProgressCheckBox.Toggled += OnTrackProgressToggled;
-        if (TargetValueSpinBox != null)
-            TargetValueSpinBox.ValueChanged += OnTargetValueChanged;
-        if (SteamIDLineEdit != null)
-        {
-            SteamIDLineEdit.TextChanged += OnSteamIdChanged;
-            SteamIDLineEdit.FocusEntered += OnSteamIdFocusEntered;
-            SteamIDLineEdit.FocusExited += OnSteamIdFocusExited;
-        }
-        if (GooglePlayIDLineEdit != null)
-        {
-            GooglePlayIDLineEdit.TextChanged += OnGooglePlayIdChanged;
-            GooglePlayIDLineEdit.FocusEntered += OnGooglePlayIdFocusEntered;
-            GooglePlayIDLineEdit.FocusExited += OnGooglePlayIdFocusExited;
-        }
-        if (GameCenterIDLineEdit != null)
-        {
-            GameCenterIDLineEdit.TextChanged += OnGameCenterIdChanged;
-            GameCenterIDLineEdit.FocusEntered += OnGameCenterIdFocusEntered;
-            GameCenterIDLineEdit.FocusExited += OnGameCenterIdFocusExited;
-        }
-        if (VisualizeUnlockButton != null)
-            VisualizeUnlockButton.Pressed += OnVisualizeUnlockPressed;
+        NameLineEdit.TextChanged += OnNameChanged;
+        NameLineEdit.FocusEntered += OnNameFocusEntered;
+        NameLineEdit.FocusExited += OnNameFocusExited;
+
+        InternalIDLineEdit.TextChanged += OnIdTextChanged;
+        InternalIDLineEdit.FocusEntered += OnIdFocusEntered;
+        InternalIDLineEdit.FocusExited += OnIdFocusExited;
+
+        DescriptionTextBox.TextChanged += OnDescriptionChanged;
+        DescriptionTextBox.FocusEntered += OnDescriptionFocusEntered;
+        DescriptionTextBox.FocusExited += OnDescriptionFocusExited;
+
+        TrackProgressCheckBox.Toggled += OnTrackProgressToggled;
+        TargetValueSpinBox.ValueChanged += OnTargetValueChanged;
+
+        SteamIDLineEdit.TextChanged += OnSteamIdChanged;
+        SteamIDLineEdit.FocusEntered += OnSteamIdFocusEntered;
+        SteamIDLineEdit.FocusExited += OnSteamIdFocusExited;
+
+        GooglePlayIDLineEdit.TextChanged += OnGooglePlayIdChanged;
+        GooglePlayIDLineEdit.FocusEntered += OnGooglePlayIdFocusEntered;
+        GooglePlayIDLineEdit.FocusExited += OnGooglePlayIdFocusExited;
+
+        GameCenterIDLineEdit.TextChanged += OnGameCenterIdChanged;
+        GameCenterIDLineEdit.FocusEntered += OnGameCenterIdFocusEntered;
+        GameCenterIDLineEdit.FocusExited += OnGameCenterIdFocusExited;
+
+        VisualizeUnlockButton.Pressed += OnVisualizeUnlockPressed;
 
         // Create validation labels
         _internalIdErrorLabel = CreateValidationLabel(InternalIDLineEdit, isError: true);
@@ -213,9 +196,9 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         }
 
         // Update platform warning labels based on validation result
-        UpdatePlatformWarningLabel(_steamWarningLabel, validationResult, "Steam");
-        UpdatePlatformWarningLabel(_googlePlayWarningLabel, validationResult, "Google Play");
-        UpdatePlatformWarningLabel(_gameCenterWarningLabel, validationResult, "Game Center");
+        UpdatePlatformWarningLabel(_steamWarningLabel, validationResult, ProviderNames.Steam);
+        UpdatePlatformWarningLabel(_googlePlayWarningLabel, validationResult, ProviderNames.GooglePlay);
+        UpdatePlatformWarningLabel(_gameCenterWarningLabel, validationResult, ProviderNames.GameCenter);
     }
 
     private void UpdatePlatformWarningLabel(Label? label, AchievementValidationResult? validationResult, string platformName)
@@ -272,8 +255,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _nameBeforeEdit = _currentAchievement.DisplayName ?? string.Empty;
-        if (NameLineEdit != null)
-            NameLineEdit.CaretColumn = NameLineEdit.Text.Length;
+        NameLineEdit.CaretColumn = NameLineEdit.Text.Length;
     }
 
     private void OnNameChanged(string newName)
@@ -308,11 +290,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (NameLineEdit != null)
-            {
-                NameLineEdit.Text = name;
-                NameLineEdit.CaretColumn = name.Length;
-            }
+            NameLineEdit.Text = name;
+            NameLineEdit.CaretColumn = name.Length;
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementDisplayNameChanged, achievement);
@@ -327,8 +306,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _idBeforeEdit = _currentAchievement.Id ?? string.Empty;
-        if (InternalIDLineEdit != null)
-            InternalIDLineEdit.CaretColumn = InternalIDLineEdit.Text.Length;
+        InternalIDLineEdit.CaretColumn = InternalIDLineEdit.Text.Length;
     }
 
     private void OnIdTextChanged(string newId)
@@ -368,11 +346,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (InternalIDLineEdit != null)
-            {
-                InternalIDLineEdit.Text = id;
-                InternalIDLineEdit.CaretColumn = id.Length;
-            }
+            InternalIDLineEdit.Text = id;
+            InternalIDLineEdit.CaretColumn = id.Length;
             _isUpdating = false;
         }
         _previousId = id;
@@ -387,17 +362,14 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _descriptionBeforeEdit = _currentAchievement.Description ?? string.Empty;
-        if (DescriptionTextBox != null)
-        {
-            var lastLine = DescriptionTextBox.GetLineCount() - 1;
-            DescriptionTextBox.SetCaretLine(lastLine);
-            DescriptionTextBox.SetCaretColumn(DescriptionTextBox.GetLine(lastLine).Length);
-        }
+        var lastLine = DescriptionTextBox.GetLineCount() - 1;
+        DescriptionTextBox.SetCaretLine(lastLine);
+        DescriptionTextBox.SetCaretColumn(DescriptionTextBox.GetLine(lastLine).Length);
     }
 
     private void OnDescriptionChanged()
     {
-        if (_isUpdating || _currentAchievement == null || DescriptionTextBox == null) return;
+        if (_isUpdating || _currentAchievement == null) return;
 
         _currentAchievement.Description = DescriptionTextBox.Text;
         EmitSignal(SignalName.AchievementChanged);
@@ -405,7 +377,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
 
     private void OnDescriptionFocusExited()
     {
-        if (_currentAchievement == null || DescriptionTextBox == null) return;
+        if (_currentAchievement == null) return;
 
         var newDescription = _currentAchievement.Description ?? string.Empty;
         if (_descriptionBeforeEdit != newDescription && _undoRedoManager != null)
@@ -426,13 +398,10 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (DescriptionTextBox != null)
-            {
-                DescriptionTextBox.Text = description;
-                var lastLine = DescriptionTextBox.GetLineCount() - 1;
-                DescriptionTextBox.SetCaretLine(lastLine);
-                DescriptionTextBox.SetCaretColumn(DescriptionTextBox.GetLine(lastLine).Length);
-            }
+            DescriptionTextBox.Text = description;
+            var lastLine = DescriptionTextBox.GetLineCount() - 1;
+            DescriptionTextBox.SetCaretLine(lastLine);
+            DescriptionTextBox.SetCaretColumn(DescriptionTextBox.GetLine(lastLine).Length);
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -446,8 +415,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _steamIdBeforeEdit = _currentAchievement.SteamId ?? string.Empty;
-        if (SteamIDLineEdit != null)
-            SteamIDLineEdit.CaretColumn = SteamIDLineEdit.Text.Length;
+        SteamIDLineEdit.CaretColumn = SteamIDLineEdit.Text.Length;
     }
 
     private void OnSteamIdChanged(string text)
@@ -481,11 +449,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (SteamIDLineEdit != null)
-            {
-                SteamIDLineEdit.Text = steamId;
-                SteamIDLineEdit.CaretColumn = steamId.Length;
-            }
+            SteamIDLineEdit.Text = steamId;
+            SteamIDLineEdit.CaretColumn = steamId.Length;
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -495,8 +460,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _googlePlayIdBeforeEdit = _currentAchievement.GooglePlayId ?? string.Empty;
-        if (GooglePlayIDLineEdit != null)
-            GooglePlayIDLineEdit.CaretColumn = GooglePlayIDLineEdit.Text.Length;
+        GooglePlayIDLineEdit.CaretColumn = GooglePlayIDLineEdit.Text.Length;
     }
 
     private void OnGooglePlayIdChanged(string text)
@@ -530,11 +494,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (GooglePlayIDLineEdit != null)
-            {
-                GooglePlayIDLineEdit.Text = googlePlayId;
-                GooglePlayIDLineEdit.CaretColumn = googlePlayId.Length;
-            }
+            GooglePlayIDLineEdit.Text = googlePlayId;
+            GooglePlayIDLineEdit.CaretColumn = googlePlayId.Length;
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -544,8 +505,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
     {
         if (_currentAchievement == null) return;
         _gameCenterIdBeforeEdit = _currentAchievement.GameCenterId ?? string.Empty;
-        if (GameCenterIDLineEdit != null)
-            GameCenterIDLineEdit.CaretColumn = GameCenterIDLineEdit.Text.Length;
+        GameCenterIDLineEdit.CaretColumn = GameCenterIDLineEdit.Text.Length;
     }
 
     private void OnGameCenterIdChanged(string text)
@@ -579,11 +539,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (GameCenterIDLineEdit != null)
-            {
-                GameCenterIDLineEdit.Text = gameCenterId;
-                GameCenterIDLineEdit.CaretColumn = gameCenterId.Length;
-            }
+            GameCenterIDLineEdit.Text = gameCenterId;
+            GameCenterIDLineEdit.CaretColumn = gameCenterId.Length;
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -599,8 +556,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
 
         var oldValue = _currentAchievement.IsIncremental;
         _currentAchievement.IsIncremental = enabled;
-        if (TargetValueSpinBox != null)
-            TargetValueSpinBox.Editable = enabled;
+        TargetValueSpinBox.Editable = enabled;
 
         if (_undoRedoManager != null && oldValue != enabled)
         {
@@ -621,10 +577,8 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (TrackProgressCheckBox != null)
-                TrackProgressCheckBox.ButtonPressed = enabled;
-            if (TargetValueSpinBox != null)
-                TargetValueSpinBox.Editable = enabled;
+            TrackProgressCheckBox.ButtonPressed = enabled;
+            TargetValueSpinBox.Editable = enabled;
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -657,8 +611,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (TargetValueSpinBox != null)
-                TargetValueSpinBox.Value = maxProgress;
+            TargetValueSpinBox.Value = maxProgress;
             _isUpdating = false;
         }
         EmitSignal(SignalName.AchievementChanged);
@@ -706,52 +659,42 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         _gameCenterWarningLabel?.QueueFree();
 
         // Disconnect signals
-        if (NameLineEdit != null)
-        {
-            NameLineEdit.TextChanged -= OnNameChanged;
-            NameLineEdit.FocusEntered -= OnNameFocusEntered;
-            NameLineEdit.FocusExited -= OnNameFocusExited;
-        }
-        if (InternalIDLineEdit != null)
-        {
-            InternalIDLineEdit.TextChanged -= OnIdTextChanged;
-            InternalIDLineEdit.FocusEntered -= OnIdFocusEntered;
-            InternalIDLineEdit.FocusExited -= OnIdFocusExited;
-        }
-        if (DescriptionTextBox != null)
-        {
-            DescriptionTextBox.TextChanged -= OnDescriptionChanged;
-            DescriptionTextBox.FocusEntered -= OnDescriptionFocusEntered;
-            DescriptionTextBox.FocusExited -= OnDescriptionFocusExited;
-        }
-        if (TrackProgressCheckBox != null)
-            TrackProgressCheckBox.Toggled -= OnTrackProgressToggled;
-        if (TargetValueSpinBox != null)
-            TargetValueSpinBox.ValueChanged -= OnTargetValueChanged;
-        if (SteamIDLineEdit != null)
-        {
-            SteamIDLineEdit.TextChanged -= OnSteamIdChanged;
-            SteamIDLineEdit.FocusEntered -= OnSteamIdFocusEntered;
-            SteamIDLineEdit.FocusExited -= OnSteamIdFocusExited;
-        }
-        if (GooglePlayIDLineEdit != null)
-        {
-            GooglePlayIDLineEdit.TextChanged -= OnGooglePlayIdChanged;
-            GooglePlayIDLineEdit.FocusEntered -= OnGooglePlayIdFocusEntered;
-            GooglePlayIDLineEdit.FocusExited -= OnGooglePlayIdFocusExited;
-        }
-        if (GameCenterIDLineEdit != null)
-        {
-            GameCenterIDLineEdit.TextChanged -= OnGameCenterIdChanged;
-            GameCenterIDLineEdit.FocusEntered -= OnGameCenterIdFocusEntered;
-            GameCenterIDLineEdit.FocusExited -= OnGameCenterIdFocusExited;
-        }
-        if (VisualizeUnlockButton != null)
-            VisualizeUnlockButton.Pressed -= OnVisualizeUnlockPressed;
+        NameLineEdit.TextChanged -= OnNameChanged;
+        NameLineEdit.FocusEntered -= OnNameFocusEntered;
+        NameLineEdit.FocusExited -= OnNameFocusExited;
+
+        InternalIDLineEdit.TextChanged -= OnIdTextChanged;
+        InternalIDLineEdit.FocusEntered -= OnIdFocusEntered;
+        InternalIDLineEdit.FocusExited -= OnIdFocusExited;
+
+        DescriptionTextBox.TextChanged -= OnDescriptionChanged;
+        DescriptionTextBox.FocusEntered -= OnDescriptionFocusEntered;
+        DescriptionTextBox.FocusExited -= OnDescriptionFocusExited;
+
+        TrackProgressCheckBox.Toggled -= OnTrackProgressToggled;
+        TargetValueSpinBox.ValueChanged -= OnTargetValueChanged;
+
+        SteamIDLineEdit.TextChanged -= OnSteamIdChanged;
+        SteamIDLineEdit.FocusEntered -= OnSteamIdFocusEntered;
+        SteamIDLineEdit.FocusExited -= OnSteamIdFocusExited;
+
+        GooglePlayIDLineEdit.TextChanged -= OnGooglePlayIdChanged;
+        GooglePlayIDLineEdit.FocusEntered -= OnGooglePlayIdFocusEntered;
+        GooglePlayIDLineEdit.FocusExited -= OnGooglePlayIdFocusExited;
+
+        GameCenterIDLineEdit.TextChanged -= OnGameCenterIdChanged;
+        GameCenterIDLineEdit.FocusEntered -= OnGameCenterIdFocusEntered;
+        GameCenterIDLineEdit.FocusExited -= OnGameCenterIdFocusExited;
+
+        VisualizeUnlockButton.Pressed -= OnVisualizeUnlockPressed;
     }
 
     private void LoadAchievementData()
     {
+        // Guard against being called before export fields are initialized
+        if (NameLineEdit == null)
+            return;
+
         if (_currentAchievement == null)
         {
             ClearFields();
@@ -760,80 +703,153 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
 
         _isUpdating = true;
 
-        if (NameLineEdit != null)
-            NameLineEdit.Text = _currentAchievement.DisplayName ?? string.Empty;
-        if (InternalIDLineEdit != null)
-        {
-            InternalIDLineEdit.Text = _currentAchievement.Id ?? string.Empty;
-            _idBeforeEdit = _currentAchievement.Id ?? string.Empty;
-        }
-        if (DescriptionTextBox != null)
-            DescriptionTextBox.Text = _currentAchievement.Description ?? string.Empty;
+        // Replace LineEdits with fresh instances to clear undo history
+        ReplaceNameLineEdit(_currentAchievement.DisplayName ?? string.Empty);
+        ReplaceInternalIdLineEdit(_currentAchievement.Id ?? string.Empty);
+        _idBeforeEdit = _currentAchievement.Id ?? string.Empty;
+        DescriptionTextBox.Text = _currentAchievement.Description ?? string.Empty;
+        DescriptionTextBox.ClearUndoHistory();
 
-        if (TrackProgressCheckBox != null)
-        {
-            TrackProgressCheckBox.ButtonPressed = _currentAchievement.IsIncremental;
-        }
-        if (TargetValueSpinBox != null)
-        {
-            TargetValueSpinBox.Value = _currentAchievement.MaxProgress;
-            TargetValueSpinBox.Editable = _currentAchievement.IsIncremental;
-        }
+        TrackProgressCheckBox.ButtonPressed = _currentAchievement.IsIncremental;
+        TargetValueSpinBox.Value = _currentAchievement.MaxProgress;
+        TargetValueSpinBox.Editable = _currentAchievement.IsIncremental;
 
         if (_currentAchievement.Icon != null)
         {
-            if (AchievementIconButton != null)
-                AchievementIconButton.TextureNormal = _currentAchievement.Icon;
+            AchievementIconButton.TextureNormal = _currentAchievement.Icon;
             if (_iconPicker != null)
                 _iconPicker.EditedResource = _currentAchievement.Icon;
         }
         else
         {
-            if (AchievementIconButton != null)
-                AchievementIconButton.TextureNormal = null;
+            AchievementIconButton.TextureNormal = null;
             if (_iconPicker != null)
                 _iconPicker.EditedResource = null;
         }
 
-        if (SteamIDLineEdit != null)
-            SteamIDLineEdit.Text = _currentAchievement.SteamId ?? string.Empty;
-        if (GooglePlayIDLineEdit != null)
-            GooglePlayIDLineEdit.Text = _currentAchievement.GooglePlayId ?? string.Empty;
-        if (GameCenterIDLineEdit != null)
-            GameCenterIDLineEdit.Text = _currentAchievement.GameCenterId ?? string.Empty;
+        ReplaceSteamIdLineEdit(_currentAchievement.SteamId ?? string.Empty);
+        ReplaceGooglePlayIdLineEdit(_currentAchievement.GooglePlayId ?? string.Empty);
+        ReplaceGameCenterIdLineEdit(_currentAchievement.GameCenterId ?? string.Empty);
 
         _isUpdating = false;
     }
 
     private void ClearFields()
     {
+        if (NameLineEdit == null)
+            return;
+
         _isUpdating = true;
 
-        if (NameLineEdit != null)
-            NameLineEdit.Text = string.Empty;
-        if (InternalIDLineEdit != null)
-            InternalIDLineEdit.Text = string.Empty;
-        if (DescriptionTextBox != null)
-            DescriptionTextBox.Text = string.Empty;
-        if (TrackProgressCheckBox != null)
-            TrackProgressCheckBox.ButtonPressed = false;
-        if (TargetValueSpinBox != null)
-        {
-            TargetValueSpinBox.Value = 1;
-            TargetValueSpinBox.Editable = false;
-        }
-        if (AchievementIconButton != null)
-            AchievementIconButton.TextureNormal = null;
+        ReplaceNameLineEdit(string.Empty);
+        ReplaceInternalIdLineEdit(string.Empty);
+        DescriptionTextBox.Text = string.Empty;
+        DescriptionTextBox.ClearUndoHistory();
+        TrackProgressCheckBox.ButtonPressed = false;
+        TargetValueSpinBox.Value = 1;
+        TargetValueSpinBox.Editable = false;
+        AchievementIconButton.TextureNormal = null;
         if (_iconPicker != null)
             _iconPicker.EditedResource = null;
-        if (SteamIDLineEdit != null)
-            SteamIDLineEdit.Text = string.Empty;
-        if (GooglePlayIDLineEdit != null)
-            GooglePlayIDLineEdit.Text = string.Empty;
-        if (GameCenterIDLineEdit != null)
-            GameCenterIDLineEdit.Text = string.Empty;
+        ReplaceSteamIdLineEdit(string.Empty);
+        ReplaceGooglePlayIdLineEdit(string.Empty);
+        ReplaceGameCenterIdLineEdit(string.Empty);
 
         _isUpdating = false;
+    }
+
+    /// <summary>
+    /// Replaces a LineEdit with a fresh instance to clear undo history.
+    /// Returns the new instance.
+    /// </summary>
+    private static LineEdit ReplaceLineEdit(LineEdit oldLineEdit, string newText)
+    {
+        var parent = oldLineEdit.GetParent();
+        if (parent == null)
+        {
+            oldLineEdit.Text = newText;
+            return oldLineEdit;
+        }
+
+        // Create new LineEdit with same properties
+        var newLineEdit = new LineEdit
+        {
+            Text = newText,
+            Name = oldLineEdit.Name,
+            PlaceholderText = oldLineEdit.PlaceholderText,
+            Editable = oldLineEdit.Editable,
+            CustomMinimumSize = oldLineEdit.CustomMinimumSize,
+            SizeFlagsHorizontal = oldLineEdit.SizeFlagsHorizontal,
+            SizeFlagsVertical = oldLineEdit.SizeFlagsVertical,
+            FocusMode = oldLineEdit.FocusMode,
+            ExpandToTextLength = oldLineEdit.ExpandToTextLength,
+            MaxLength = oldLineEdit.MaxLength,
+            Flat = oldLineEdit.Flat
+        };
+
+        // Replace in tree
+        var index = oldLineEdit.GetIndex();
+        parent.RemoveChild(oldLineEdit);
+        parent.AddChild(newLineEdit);
+        parent.MoveChild(newLineEdit, index);
+        oldLineEdit.QueueFree();
+
+        return newLineEdit;
+    }
+
+    private void ReplaceNameLineEdit(string text)
+    {
+        NameLineEdit.TextChanged -= OnNameChanged;
+        NameLineEdit.FocusEntered -= OnNameFocusEntered;
+        NameLineEdit.FocusExited -= OnNameFocusExited;
+        NameLineEdit = ReplaceLineEdit(NameLineEdit, text);
+        NameLineEdit.TextChanged += OnNameChanged;
+        NameLineEdit.FocusEntered += OnNameFocusEntered;
+        NameLineEdit.FocusExited += OnNameFocusExited;
+    }
+
+    private void ReplaceInternalIdLineEdit(string text)
+    {
+        InternalIDLineEdit.TextChanged -= OnIdTextChanged;
+        InternalIDLineEdit.FocusEntered -= OnIdFocusEntered;
+        InternalIDLineEdit.FocusExited -= OnIdFocusExited;
+        InternalIDLineEdit = ReplaceLineEdit(InternalIDLineEdit, text);
+        InternalIDLineEdit.TextChanged += OnIdTextChanged;
+        InternalIDLineEdit.FocusEntered += OnIdFocusEntered;
+        InternalIDLineEdit.FocusExited += OnIdFocusExited;
+    }
+
+    private void ReplaceSteamIdLineEdit(string text)
+    {
+        SteamIDLineEdit.TextChanged -= OnSteamIdChanged;
+        SteamIDLineEdit.FocusEntered -= OnSteamIdFocusEntered;
+        SteamIDLineEdit.FocusExited -= OnSteamIdFocusExited;
+        SteamIDLineEdit = ReplaceLineEdit(SteamIDLineEdit, text);
+        SteamIDLineEdit.TextChanged += OnSteamIdChanged;
+        SteamIDLineEdit.FocusEntered += OnSteamIdFocusEntered;
+        SteamIDLineEdit.FocusExited += OnSteamIdFocusExited;
+    }
+
+    private void ReplaceGooglePlayIdLineEdit(string text)
+    {
+        GooglePlayIDLineEdit.TextChanged -= OnGooglePlayIdChanged;
+        GooglePlayIDLineEdit.FocusEntered -= OnGooglePlayIdFocusEntered;
+        GooglePlayIDLineEdit.FocusExited -= OnGooglePlayIdFocusExited;
+        GooglePlayIDLineEdit = ReplaceLineEdit(GooglePlayIDLineEdit, text);
+        GooglePlayIDLineEdit.TextChanged += OnGooglePlayIdChanged;
+        GooglePlayIDLineEdit.FocusEntered += OnGooglePlayIdFocusEntered;
+        GooglePlayIDLineEdit.FocusExited += OnGooglePlayIdFocusExited;
+    }
+
+    private void ReplaceGameCenterIdLineEdit(string text)
+    {
+        GameCenterIDLineEdit.TextChanged -= OnGameCenterIdChanged;
+        GameCenterIDLineEdit.FocusEntered -= OnGameCenterIdFocusEntered;
+        GameCenterIDLineEdit.FocusExited -= OnGameCenterIdFocusExited;
+        GameCenterIDLineEdit = ReplaceLineEdit(GameCenterIDLineEdit, text);
+        GameCenterIDLineEdit.TextChanged += OnGameCenterIdChanged;
+        GameCenterIDLineEdit.FocusEntered += OnGameCenterIdFocusEntered;
+        GameCenterIDLineEdit.FocusExited += OnGameCenterIdFocusExited;
     }
 
     private void OnIconResourceChanged(Resource resource)
@@ -869,8 +885,7 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         if (_currentAchievement == achievement)
         {
             _isUpdating = true;
-            if (AchievementIconButton != null)
-                AchievementIconButton.TextureNormal = icon;
+            AchievementIconButton.TextureNormal = icon;
             if (_iconPicker != null)
                 _iconPicker.EditedResource = icon;
             _isUpdating = false;

@@ -18,22 +18,6 @@ public partial class AchievementPlugin : EditorPlugin
     private const string ToastAutoloadName = "AchievementToasts";
     private const string ToastAutoloadPath = "res://addons/Godot.Achievements.Net/AchievementToastContainer.tscn";
 
-    // Database settings
-    private const string SettingDatabasePath = "addons/achievements/database_path";
-    private const string DefaultDatabasePath = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
-
-    // Platform settings (grouped under "Platforms" header)
-    private const string SettingSteamEnabled = "addons/achievements/platforms/steam_enabled";
-    private const string SettingGameCenterEnabled = "addons/achievements/platforms/gamecenter_enabled";
-    private const string SettingGooglePlayEnabled = "addons/achievements/platforms/googleplay_enabled";
-
-    // Toast settings (grouped under "Toast" header)
-    private const string SettingToastScenePath = "addons/achievements/toast/scene_path";
-    private const string SettingToastPosition = "addons/achievements/toast/position";
-    private const string SettingToastDisplayDuration = "addons/achievements/toast/display_duration";
-    private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
-    private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
-
     private Editor.AchievementEditorDock? _dock;
 
     public override void _EnterTree()
@@ -67,118 +51,132 @@ public partial class AchievementPlugin : EditorPlugin
         // Add autoload singletons (only runs once when plugin is first enabled)
         AddAutoloadSingleton(AutoloadName, AutoloadPath);
         AddAutoloadSingleton(ToastAutoloadName, ToastAutoloadPath);
-        GD.Print("[Achievements] Plugin enabled, autoloads registered");
+        AchievementLogger.Log("Plugin enabled, autoloads registered");
     }
 
     private void RegisterSettings()
     {
         // Database path (requires restart so autoload reloads from new path)
-        if (!ProjectSettings.HasSetting(SettingDatabasePath))
+        if (!ProjectSettings.HasSetting(AchievementSettings.DatabasePath))
         {
-            ProjectSettings.SetSetting(SettingDatabasePath, DefaultDatabasePath);
+            ProjectSettings.SetSetting(AchievementSettings.DatabasePath, AchievementSettings.DefaultDatabasePath);
         }
-        ProjectSettings.SetInitialValue(SettingDatabasePath, DefaultDatabasePath);
+        ProjectSettings.SetInitialValue(AchievementSettings.DatabasePath, AchievementSettings.DefaultDatabasePath);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingDatabasePath },
+            { "name", AchievementSettings.DatabasePath },
             { "type", (int)Variant.Type.String },
             { "hint", (int)PropertyHint.File },
             { "hint_string", "*.tres" }
         });
 
         // Platform: Steam enabled
-        if (!ProjectSettings.HasSetting(SettingSteamEnabled))
+        if (!ProjectSettings.HasSetting(AchievementSettings.SteamEnabled))
         {
-            ProjectSettings.SetSetting(SettingSteamEnabled, false);
+            ProjectSettings.SetSetting(AchievementSettings.SteamEnabled, false);
         }
-        ProjectSettings.SetInitialValue(SettingSteamEnabled, false);
+        ProjectSettings.SetInitialValue(AchievementSettings.SteamEnabled, false);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingSteamEnabled },
+            { "name", AchievementSettings.SteamEnabled },
             { "type", (int)Variant.Type.Bool }
         });
 
         // Platform: Game Center enabled
-        if (!ProjectSettings.HasSetting(SettingGameCenterEnabled))
+        if (!ProjectSettings.HasSetting(AchievementSettings.GameCenterEnabled))
         {
-            ProjectSettings.SetSetting(SettingGameCenterEnabled, false);
+            ProjectSettings.SetSetting(AchievementSettings.GameCenterEnabled, false);
         }
-        ProjectSettings.SetInitialValue(SettingGameCenterEnabled, false);
+        ProjectSettings.SetInitialValue(AchievementSettings.GameCenterEnabled, false);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingGameCenterEnabled },
+            { "name", AchievementSettings.GameCenterEnabled },
             { "type", (int)Variant.Type.Bool }
         });
 
         // Platform: Google Play enabled
-        if (!ProjectSettings.HasSetting(SettingGooglePlayEnabled))
+        if (!ProjectSettings.HasSetting(AchievementSettings.GooglePlayEnabled))
         {
-            ProjectSettings.SetSetting(SettingGooglePlayEnabled, false);
+            ProjectSettings.SetSetting(AchievementSettings.GooglePlayEnabled, false);
         }
-        ProjectSettings.SetInitialValue(SettingGooglePlayEnabled, false);
+        ProjectSettings.SetInitialValue(AchievementSettings.GooglePlayEnabled, false);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingGooglePlayEnabled },
+            { "name", AchievementSettings.GooglePlayEnabled },
             { "type", (int)Variant.Type.Bool }
         });
 
         // Toast scene path (default: built-in, empty = disabled)
-        if (!ProjectSettings.HasSetting(SettingToastScenePath) ||
-            ProjectSettings.GetSetting(SettingToastScenePath).VariantType == Variant.Type.Nil)
+        if (!ProjectSettings.HasSetting(AchievementSettings.ToastScenePath) ||
+            ProjectSettings.GetSetting(AchievementSettings.ToastScenePath).VariantType == Variant.Type.Nil)
         {
-            ProjectSettings.SetSetting(SettingToastScenePath, DefaultToastScenePath);
+            ProjectSettings.SetSetting(AchievementSettings.ToastScenePath, AchievementSettings.DefaultToastScenePath);
         }
-        ProjectSettings.SetInitialValue(SettingToastScenePath, DefaultToastScenePath);
+        ProjectSettings.SetInitialValue(AchievementSettings.ToastScenePath, AchievementSettings.DefaultToastScenePath);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingToastScenePath },
+            { "name", AchievementSettings.ToastScenePath },
             { "type", (int)Variant.Type.String },
             { "hint", (int)PropertyHint.File },
             { "hint_string", "*.tscn" }
         });
 
         // Toast position (default: TopRight = 2)
-        if (!ProjectSettings.HasSetting(SettingToastPosition) ||
-            ProjectSettings.GetSetting(SettingToastPosition).VariantType == Variant.Type.Nil)
+        if (!ProjectSettings.HasSetting(AchievementSettings.ToastPosition) ||
+            ProjectSettings.GetSetting(AchievementSettings.ToastPosition).VariantType == Variant.Type.Nil)
         {
-            ProjectSettings.SetSetting(SettingToastPosition, (int)ToastPosition.TopRight);
+            ProjectSettings.SetSetting(AchievementSettings.ToastPosition, (int)Core.ToastPosition.TopRight);
         }
-        ProjectSettings.SetInitialValue(SettingToastPosition, (int)ToastPosition.TopRight);
+        ProjectSettings.SetInitialValue(AchievementSettings.ToastPosition, (int)Core.ToastPosition.TopRight);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingToastPosition },
+            { "name", AchievementSettings.ToastPosition },
             { "type", (int)Variant.Type.Int },
             { "hint", (int)PropertyHint.Enum },
             { "hint_string", "TopLeft,TopCenter,TopRight,BottomLeft,BottomCenter,BottomRight" }
         });
 
         // Toast display duration (default: 5.0 seconds)
-        if (!ProjectSettings.HasSetting(SettingToastDisplayDuration) ||
-            ProjectSettings.GetSetting(SettingToastDisplayDuration).VariantType == Variant.Type.Nil)
+        if (!ProjectSettings.HasSetting(AchievementSettings.ToastDisplayDuration) ||
+            ProjectSettings.GetSetting(AchievementSettings.ToastDisplayDuration).VariantType == Variant.Type.Nil)
         {
-            ProjectSettings.SetSetting(SettingToastDisplayDuration, 5.0f);
+            ProjectSettings.SetSetting(AchievementSettings.ToastDisplayDuration, AchievementSettings.DefaultToastDisplayDuration);
         }
-        ProjectSettings.SetInitialValue(SettingToastDisplayDuration, 5.0f);
+        ProjectSettings.SetInitialValue(AchievementSettings.ToastDisplayDuration, AchievementSettings.DefaultToastDisplayDuration);
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingToastDisplayDuration },
+            { "name", AchievementSettings.ToastDisplayDuration },
             { "type", (int)Variant.Type.Float },
             { "hint", (int)PropertyHint.Range },
             { "hint_string", "0.5,30.0,0.5" }
         });
 
         // Unlock sound (default: empty = no sound)
-        if (!ProjectSettings.HasSetting(SettingUnlockSound))
+        if (!ProjectSettings.HasSetting(AchievementSettings.ToastUnlockSound))
         {
-            ProjectSettings.SetSetting(SettingUnlockSound, "");
+            ProjectSettings.SetSetting(AchievementSettings.ToastUnlockSound, "");
         }
-        ProjectSettings.SetInitialValue(SettingUnlockSound, "");
+        ProjectSettings.SetInitialValue(AchievementSettings.ToastUnlockSound, "");
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
-            { "name", SettingUnlockSound },
+            { "name", AchievementSettings.ToastUnlockSound },
             { "type", (int)Variant.Type.String },
             { "hint", (int)PropertyHint.File },
             { "hint_string", "*.wav,*.ogg,*.mp3" }
+        });
+
+        // Sync: Max retry count (0 = infinite retries)
+        if (!ProjectSettings.HasSetting(AchievementSettings.SyncMaxRetryCount))
+        {
+            ProjectSettings.SetSetting(AchievementSettings.SyncMaxRetryCount, AchievementSettings.DefaultSyncMaxRetryCount);
+        }
+        ProjectSettings.SetInitialValue(AchievementSettings.SyncMaxRetryCount, AchievementSettings.DefaultSyncMaxRetryCount);
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", AchievementSettings.SyncMaxRetryCount },
+            { "type", (int)Variant.Type.Int },
+            { "hint", (int)PropertyHint.Range },
+            { "hint_string", "0,100,1,or_greater" }
         });
 
         ProjectSettings.Save();
@@ -190,7 +188,7 @@ public partial class AchievementPlugin : EditorPlugin
         RemoveAutoloadSingleton(AutoloadName);
         RemoveAutoloadSingleton(ToastAutoloadName);
 
-        GD.Print("[Achievements] Plugin disabled, autoloads removed");
+        AchievementLogger.Log("Plugin disabled, autoloads removed");
     }
 }
 #endif

@@ -9,17 +9,17 @@ public static class ProviderLogExtensions
 {
     public static void Log(this IAchievementProvider provider, string message)
     {
-        GD.Print($"[Achievements] [{provider.ProviderName}] {message}");
+        AchievementLogger.Log(provider.ProviderName, message);
     }
 
     public static void LogWarning(this IAchievementProvider provider, string message)
     {
-        GD.PushWarning($"[Achievements] [{provider.ProviderName}] {message}");
+        AchievementLogger.Warning(provider.ProviderName, message);
     }
 
     public static void LogError(this IAchievementProvider provider, string message)
     {
-        GD.PushError($"[Achievements] [{provider.ProviderName}] {message}");
+        AchievementLogger.Error(provider.ProviderName, message);
     }
 }
 
@@ -40,6 +40,26 @@ public readonly struct AchievementUnlockResult
 }
 
 /// <summary>
+/// Result of a sync operation (progress update, reset, etc.)
+/// </summary>
+public readonly struct SyncResult
+{
+    public bool Success { get; init; }
+    public string? Message { get; init; }
+
+    public static SyncResult SuccessResult(string? message = null) =>
+        new() { Success = true, Message = message };
+
+    public static SyncResult FailureResult(string message) =>
+        new() { Success = false, Message = message };
+
+    /// <summary>
+    /// Implicit conversion to bool for easy success checks
+    /// </summary>
+    public static implicit operator bool(SyncResult result) => result.Success;
+}
+
+/// <summary>
 /// Interface for platform-specific achievement providers (Steam, Game Center, Google Play, etc.)
 /// </summary>
 public interface IAchievementProvider
@@ -50,7 +70,7 @@ public interface IAchievementProvider
     static virtual bool IsPlatformSupported => false;
 
     /// <summary>
-    /// Name of the provider (e.g., "Steam", "Game Center", "Local")
+    /// Name of the provider. Use values from <see cref="ProviderNames"/> for built-in providers.
     /// </summary>
     string ProviderName { get; }
 
@@ -72,15 +92,15 @@ public interface IAchievementProvider
     /// <summary>
     /// Set current progress for a progressive achievement
     /// </summary>
-    Task SetProgress(string achievementId, int currentProgress);
+    Task<SyncResult> SetProgress(string achievementId, int currentProgress);
 
     /// <summary>
     /// Reset a specific achievement (for testing)
     /// </summary>
-    Task<bool> ResetAchievement(string achievementId);
+    Task<SyncResult> ResetAchievement(string achievementId);
 
     /// <summary>
     /// Reset all achievements (for testing)
     /// </summary>
-    Task<bool> ResetAllAchievements();
+    Task<SyncResult> ResetAllAchievements();
 }
