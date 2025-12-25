@@ -28,7 +28,7 @@ public partial class AchievementEditorDock : Control
 
     // Details Panel Component
     [Export]
-    private AchievementsEditorDetailsPanel DetailsPanel = null!;
+    private AchievementEditorDetailsPanel DetailsPanel = null!;
     [Export]
     private ScrollContainer NoItemSelectedScroll = null!;
 

@@ -1,4 +1,6 @@
-namespace Godot.Achievements.Core;
+using Godot.Achievements.Core;
+
+namespace Godot.Achievements.Toast;
 
 /// <summary>
 /// Default toast item for displaying achievement unlock notifications.

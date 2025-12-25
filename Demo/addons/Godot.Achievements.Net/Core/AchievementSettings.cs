@@ -54,7 +54,7 @@ public static class AchievementSettings
     /// <summary>
     /// Default toast scene path
     /// </summary>
-    public const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
+    public const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/Toast/AchievementToastItem.tscn";
 
     /// <summary>
     /// Toast position on screen (enum value)

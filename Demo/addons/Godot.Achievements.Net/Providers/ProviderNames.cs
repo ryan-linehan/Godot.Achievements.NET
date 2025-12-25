@@ -1,4 +1,4 @@
-namespace Godot.Achievements.Core;
+namespace Godot.Achievements.Providers;
 
 /// <summary>
 /// Constants for built-in provider names.

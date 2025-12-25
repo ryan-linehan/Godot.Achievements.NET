@@ -3,8 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
+using Godot.Achievements.Providers;
 
-namespace Godot.Achievements.Android;
+namespace Godot.Achievements.Providers.GooglePlay;
 
 /// <summary>
 /// Google Play Games achievement provider for Android.

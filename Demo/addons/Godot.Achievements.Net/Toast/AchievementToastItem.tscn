@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://betgshcwd2vle"]
 
-[ext_resource type="Script" uid="uid://br07amyr0w43x" path="res://addons/Godot.Achievements.Net/AchievementToastItem.cs" id="1_script"]
+[ext_resource type="Script" uid="uid://br07amyr0w43x" path="res://addons/Godot.Achievements.Net/Toast/AchievementToastItem.cs" id="1_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 content_margin_left = 16.0
