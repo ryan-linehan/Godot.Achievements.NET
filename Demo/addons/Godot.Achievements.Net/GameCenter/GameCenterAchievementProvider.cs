@@ -18,7 +18,6 @@ public class GameCenterAchievementProvider : IAchievementProvider
     private readonly AchievementDatabase _database;
     private bool _isAuthenticated;
     private GodotObject? _localPlayer;
-    private GodotObject? _gkAchievementClass;
 
     public string ProviderName => ProviderNames.GameCenter;
 
@@ -32,34 +31,27 @@ public class GameCenterAchievementProvider : IAchievementProvider
     {
         try
         {
-            // Try to get the GKLocalPlayer singleton from GodotApplePlugins
-            if (Engine.HasSingleton("GKLocalPlayer"))
+            // Get GKLocalPlayer.local to check authentication status
+            if (ClassDB.ClassExists("GKLocalPlayer"))
             {
-                _localPlayer = Engine.GetSingleton("GKLocalPlayer");
-
-                // Check if the local player property is accessible
-                var local = _localPlayer.Get("local");
-                if (local.Obj is GodotObject localPlayerObj)
+                // GKLocalPlayer.local is a static property that returns the local player
+                var localPlayerClass = ClassDB.Instantiate("GKLocalPlayer");
+                if (localPlayerClass.Obj is GodotObject localPlayerObj)
                 {
-                    _isAuthenticated = localPlayerObj.Get("isAuthenticated").AsBool();
+                    _localPlayer = localPlayerObj;
+                    _isAuthenticated = _localPlayer.Get("isAuthenticated").AsBool();
                     this.Log($"Initialized, authenticated: {_isAuthenticated}");
                 }
                 else
                 {
-                    this.LogWarning("Could not access local player object");
+                    this.LogWarning("Could not instantiate GKLocalPlayer");
                     _isAuthenticated = false;
                 }
             }
             else
             {
-                this.LogWarning("GKLocalPlayer singleton not found - ensure GodotApplePlugins is installed");
+                this.LogWarning("GKLocalPlayer class not found - ensure GodotApplePlugins is installed");
                 _isAuthenticated = false;
-            }
-
-            // Get GKAchievement class for static method calls
-            if (Engine.HasSingleton("GKAchievement"))
-            {
-                _gkAchievementClass = Engine.GetSingleton("GKAchievement");
             }
         }
         catch (Exception ex)
@@ -77,18 +69,12 @@ public class GameCenterAchievementProvider : IAchievementProvider
 
         try
         {
-            var local = _localPlayer.Get("local");
-            if (local.Obj is GodotObject localPlayerObj)
-            {
-                return localPlayerObj.Get("isAuthenticated").AsBool();
-            }
+            return _localPlayer.Get("isAuthenticated").AsBool();
         }
         catch
         {
             return false;
         }
-
-        return false;
     }
 
     public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
@@ -116,7 +102,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
             }
 
             // Create array of achievements to report
-            var achievementsArray = new Array<GodotObject> { gcAchievement };
+            var achievementsArray = new Array { gcAchievement };
 
             // Create callback for the async operation
             var callback = Callable.From<Variant>((error) =>
@@ -134,8 +120,9 @@ public class GameCenterAchievementProvider : IAchievementProvider
                 }
             });
 
-            // Call report_achivement (note: typo is intentional - matches GodotApplePlugins API)
-            _gkAchievementClass?.Call("report_achivement", achievementsArray, callback);
+            // Call static method report_achivement on GKAchievement class
+            // Note: typo is intentional - matches GodotApplePlugins API
+            CallGKAchievementStatic("report_achivement", achievementsArray, callback);
 
             // Wait for the callback with timeout
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
@@ -200,7 +187,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
                 tcs.TrySetResult(0);
             });
 
-            _gkAchievementClass?.Call("load_achievements", callback);
+            CallGKAchievementStatic("load_achievements", callback);
 
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
             var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
@@ -250,7 +237,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
                 return SyncResult.FailureResult("Failed to create GKAchievement instance");
             }
 
-            var achievementsArray = new Array<GodotObject> { gcAchievement };
+            var achievementsArray = new Array { gcAchievement };
 
             var callback = Callable.From<Variant>((error) =>
             {
@@ -267,7 +254,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
                 }
             });
 
-            _gkAchievementClass?.Call("report_achivement", achievementsArray, callback);
+            CallGKAchievementStatic("report_achivement", achievementsArray, callback);
 
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
             var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
@@ -329,8 +316,9 @@ public class GameCenterAchievementProvider : IAchievementProvider
                 }
             });
 
-            // Call reset_achivements (note: typo is intentional - matches GodotApplePlugins API)
-            _gkAchievementClass?.Call("reset_achivements", callback);
+            // Call static method reset_achivements on GKAchievement class
+            // Note: typo is intentional - matches GodotApplePlugins API
+            CallGKAchievementStatic("reset_achivements", callback);
 
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
             var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
@@ -355,38 +343,57 @@ public class GameCenterAchievementProvider : IAchievementProvider
     {
         try
         {
-            // Try to instantiate GKAchievement via ClassDB if available
-            if (ClassDB.ClassExists("GKAchievement"))
+            if (!ClassDB.ClassExists("GKAchievement"))
             {
-                var achievement = ClassDB.Instantiate("GKAchievement");
-                if (achievement.Obj is GodotObject gcAchievement)
-                {
-                    gcAchievement.Set("identifier", identifier);
-                    gcAchievement.Set("percentComplete", percentComplete);
-                    gcAchievement.Set("showsCompletionBanner", true);
-                    return gcAchievement;
-                }
+                this.LogError("GKAchievement class not found - ensure GodotApplePlugins is installed");
+                return null;
             }
 
-            // Alternative: Try to create via the singleton if it has a factory method
-            if (_gkAchievementClass != null)
+            // Instantiate GKAchievement via ClassDB
+            var achievement = ClassDB.Instantiate("GKAchievement");
+            if (achievement.Obj is GodotObject gcAchievement)
             {
-                var result = _gkAchievementClass.Call("new", identifier);
-                if (result.Obj is GodotObject gcAchievement)
-                {
-                    gcAchievement.Set("percentComplete", percentComplete);
-                    gcAchievement.Set("showsCompletionBanner", true);
-                    return gcAchievement;
-                }
+                // Set the identifier and progress
+                gcAchievement.Set("identifier", identifier);
+                gcAchievement.Set("percentComplete", percentComplete);
+                gcAchievement.Set("showsCompletionBanner", true);
+                return gcAchievement;
             }
 
-            this.LogError("Failed to create GKAchievement instance - class not available");
+            this.LogError("Failed to instantiate GKAchievement");
             return null;
         }
         catch (Exception ex)
         {
             this.LogError($"Error creating GKAchievement: {ex.Message}");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Calls a static method on the GKAchievement class
+    /// </summary>
+    private void CallGKAchievementStatic(string method, params Variant[] args)
+    {
+        try
+        {
+            // For GDExtension static methods, we need to use an instance to call them
+            // or use the class script. Try instantiating and calling the method.
+            if (ClassDB.ClassExists("GKAchievement"))
+            {
+                var instance = ClassDB.Instantiate("GKAchievement");
+                if (instance.Obj is GodotObject obj)
+                {
+                    obj.Call(method, args);
+                    return;
+                }
+            }
+
+            this.LogError($"Failed to call GKAchievement.{method} - class not available");
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Error calling GKAchievement.{method}: {ex.Message}");
         }
     }
 }
