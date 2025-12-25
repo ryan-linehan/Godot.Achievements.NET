@@ -16,18 +16,6 @@ public partial class AchievementManager : Node
 {
     public static AchievementManager? Instance { get; private set; }
 
-    private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
-    private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
-
-    // Platform settings
-    private const string STEAM_ENABLED_SETTING = "addons/achievements/platforms/steam_enabled";
-    private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
-    private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
-
-    // Sync settings
-    private const string MAX_RETRY_COUNT_SETTING = "addons/achievements/sync/max_retry_count";
-    private const int DEFAULT_MAX_RETRY_COUNT = 5;
-
     /// <summary>
     /// The achievement database. Loaded automatically from project settings, or can be set at runtime using SetDatabase().
     /// </summary>
@@ -37,7 +25,7 @@ public partial class AchievementManager : Node
     /// <summary>
     /// Maximum number of retry attempts before abandoning a sync. 0 = infinite retries.
     /// </summary>
-    public int MaxRetryCount { get; private set; } = DEFAULT_MAX_RETRY_COUNT;
+    public int MaxRetryCount { get; private set; } = AchievementSettings.DefaultSyncMaxRetryCount;
 
     private LocalAchievementProvider? _localProvider;
     private readonly List<IAchievementProvider> _platformProviders = new();
@@ -90,9 +78,9 @@ public partial class AchievementManager : Node
     /// </summary>
     private void LoadSyncSettings()
     {
-        if (ProjectSettings.HasSetting(MAX_RETRY_COUNT_SETTING))
+        if (ProjectSettings.HasSetting(AchievementSettings.SyncMaxRetryCount))
         {
-            MaxRetryCount = ProjectSettings.GetSetting(MAX_RETRY_COUNT_SETTING).AsInt32();
+            MaxRetryCount = ProjectSettings.GetSetting(AchievementSettings.SyncMaxRetryCount).AsInt32();
         }
     }
 
@@ -101,11 +89,11 @@ public partial class AchievementManager : Node
     /// </summary>
     private AchievementDatabase? LoadDatabaseFromSettings()
     {
-        var path = DEFAULT_DATABASE_PATH;
+        var path = AchievementSettings.DefaultDatabasePath;
 
-        if (ProjectSettings.HasSetting(DATABASE_PATH_SETTING))
+        if (ProjectSettings.HasSetting(AchievementSettings.DatabasePath))
         {
-            var settingPath = ProjectSettings.GetSetting(DATABASE_PATH_SETTING).AsString();
+            var settingPath = ProjectSettings.GetSetting(AchievementSettings.DatabasePath).AsString();
             if (!string.IsNullOrEmpty(settingPath))
             {
                 path = settingPath;
@@ -170,21 +158,21 @@ public partial class AchievementManager : Node
     {
         if (Database == null) return;
 
-        if (SteamAchievementProvider.IsPlatformSupported && GetPlatformSetting(STEAM_ENABLED_SETTING))
+        if (SteamAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.SteamEnabled))
         {
             var steamProvider = new SteamAchievementProvider(Database);
             RegisterProvider(steamProvider);
             GD.Print("[Achievements] Steam provider initialized from settings");
         }
 
-        if (GameCenterAchievementProvider.IsPlatformSupported && GetPlatformSetting(GAMECENTER_ENABLED_SETTING))
+        if (GameCenterAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.GameCenterEnabled))
         {
             var gameCenterProvider = new GameCenterAchievementProvider(Database);
             RegisterProvider(gameCenterProvider);
             GD.Print("[Achievements] Game Center provider initialized from settings");
         }
 
-        if (GooglePlayAchievementProvider.IsPlatformSupported && GetPlatformSetting(GOOGLEPLAY_ENABLED_SETTING))
+        if (GooglePlayAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.GooglePlayEnabled))
         {
             var googlePlayProvider = new GooglePlayAchievementProvider(Database);
             RegisterProvider(googlePlayProvider);

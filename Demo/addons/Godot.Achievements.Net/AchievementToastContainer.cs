@@ -8,24 +8,15 @@ namespace Godot.Achievements.Core;
 /// </summary>
 public partial class AchievementToastContainer : CanvasLayer
 {
-    private const string SettingScenePath = "addons/achievements/toast/scene_path";
-    private const string SettingPosition = "addons/achievements/toast/position";
-    private const string SettingDisplayDuration = "addons/achievements/toast/display_duration";
-    private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
-
-    private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
-    private const float DefaultDisplayDuration = 5.0f;
-    private const ToastPosition DefaultPosition = ToastPosition.TopRight;
-
     [Export]
     private MarginContainer MarginContainer = null!;
 
     [Export]
     private VBoxContainer ToastVBox = null!;
 
-    private string _toastScenePath = DefaultToastScenePath;
-    private ToastPosition _position = DefaultPosition;
-    private float _displayDuration = DefaultDisplayDuration;
+    private string _toastScenePath = AchievementSettings.DefaultToastScenePath;
+    private ToastPosition _position = ToastPosition.TopRight;
+    private float _displayDuration = AchievementSettings.DefaultToastDisplayDuration;
     private PackedScene? _toastScene;
     private readonly List<ToastEntry> _activeToasts = new();
     private AudioStreamPlayer? _audioPlayer;
@@ -81,25 +72,25 @@ public partial class AchievementToastContainer : CanvasLayer
 
     private void LoadSettings()
     {
-        if (ProjectSettings.HasSetting(SettingScenePath))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastScenePath))
         {
-            _toastScenePath = ProjectSettings.GetSetting(SettingScenePath).AsString();
+            _toastScenePath = ProjectSettings.GetSetting(AchievementSettings.ToastScenePath).AsString();
         }
 
-        if (ProjectSettings.HasSetting(SettingPosition))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastPosition))
         {
-            _position = (ToastPosition)ProjectSettings.GetSetting(SettingPosition).AsInt32();
+            _position = (ToastPosition)ProjectSettings.GetSetting(AchievementSettings.ToastPosition).AsInt32();
         }
 
-        if (ProjectSettings.HasSetting(SettingDisplayDuration))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastDisplayDuration))
         {
-            _displayDuration = (float)ProjectSettings.GetSetting(SettingDisplayDuration).AsDouble();
+            _displayDuration = (float)ProjectSettings.GetSetting(AchievementSettings.ToastDisplayDuration).AsDouble();
         }
 
         // Load unlock sound if configured
-        if (ProjectSettings.HasSetting(SettingUnlockSound))
+        if (ProjectSettings.HasSetting(AchievementSettings.ToastUnlockSound))
         {
-            var soundPath = ProjectSettings.GetSetting(SettingUnlockSound).AsString();
+            var soundPath = ProjectSettings.GetSetting(AchievementSettings.ToastUnlockSound).AsString();
             if (!string.IsNullOrEmpty(soundPath) && ResourceLoader.Exists(soundPath))
             {
                 _unlockSound = GD.Load<AudioStream>(soundPath);

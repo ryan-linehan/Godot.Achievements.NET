@@ -62,14 +62,6 @@ public partial class AchievementEditorDock : Control
     private const string WARNING_PREFIX = "\u26a0 "; // ⚠ Unicode warning sign
     private const string ERROR_PREFIX = "\u274c "; // ❌ Unicode cross mark
 
-    private const string DATABASE_PATH_SETTING = "addons/achievements/database_path";
-    private const string DEFAULT_DATABASE_PATH = "res://addons/Godot.Achievements.Net/_achievements/_achievements.tres";
-
-    // Platform settings keys
-    private const string STEAM_ENABLED_SETTING = "addons/achievements/platforms/steam_enabled";
-    private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
-    private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
-
     // Track last known database path for change detection
     private string _lastKnownDatabasePath = string.Empty;
 
@@ -215,11 +207,11 @@ public partial class AchievementEditorDock : Control
         if (DetailsPanel != null)
         {
             if (DetailsPanel.SteamVBox != null)
-                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(STEAM_ENABLED_SETTING);
+                DetailsPanel.SteamVBox.Visible = GetPlatformEnabled(AchievementSettings.SteamEnabled);
             if (DetailsPanel.GameCenterVBox != null)
-                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(GAMECENTER_ENABLED_SETTING);
+                DetailsPanel.GameCenterVBox.Visible = GetPlatformEnabled(AchievementSettings.GameCenterEnabled);
             if (DetailsPanel.GooglePlayVBox != null)
-                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(GOOGLEPLAY_ENABLED_SETTING);
+                DetailsPanel.GooglePlayVBox.Visible = GetPlatformEnabled(AchievementSettings.GooglePlayEnabled);
         }
     }
 
@@ -458,14 +450,14 @@ public partial class AchievementEditorDock : Control
 
     private string LoadDatabasePath()
     {
-        var hasSetting = ProjectSettings.HasSetting(DATABASE_PATH_SETTING);
+        var hasSetting = ProjectSettings.HasSetting(AchievementSettings.DatabasePath);
 
         if (hasSetting)
         {
-            var path = ProjectSettings.GetSetting(DATABASE_PATH_SETTING).AsString();
-            return string.IsNullOrEmpty(path) ? DEFAULT_DATABASE_PATH : path;
+            var path = ProjectSettings.GetSetting(AchievementSettings.DatabasePath).AsString();
+            return string.IsNullOrEmpty(path) ? AchievementSettings.DefaultDatabasePath : path;
         }
-        return DEFAULT_DATABASE_PATH;
+        return AchievementSettings.DefaultDatabasePath;
     }
 
     private static string ResolveUidToPath(string path)
@@ -483,7 +475,7 @@ public partial class AchievementEditorDock : Control
 
     private void SaveDatabasePath(string path)
     {
-        ProjectSettings.SetSetting(DATABASE_PATH_SETTING, path);
+        ProjectSettings.SetSetting(AchievementSettings.DatabasePath, path);
         var saveError = ProjectSettings.Save();
         if (saveError != Error.Ok)
         {
