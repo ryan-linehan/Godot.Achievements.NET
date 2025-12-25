@@ -34,6 +34,10 @@ public partial class AchievementPlugin : EditorPlugin
     private const string SettingUnlockSound = "addons/achievements/toast/unlock_sound";
     private const string DefaultToastScenePath = "res://addons/Godot.Achievements.Net/AchievementToastItem.tscn";
 
+    // Sync settings
+    private const string SettingSyncMaxRetryCount = "addons/achievements/sync/max_retry_count";
+    private const int DefaultMaxRetryCount = 5;
+
     private Editor.AchievementEditorDock? _dock;
 
     public override void _EnterTree()
@@ -179,6 +183,20 @@ public partial class AchievementPlugin : EditorPlugin
             { "type", (int)Variant.Type.String },
             { "hint", (int)PropertyHint.File },
             { "hint_string", "*.wav,*.ogg,*.mp3" }
+        });
+
+        // Sync: Max retry count (0 = infinite retries)
+        if (!ProjectSettings.HasSetting(SettingSyncMaxRetryCount))
+        {
+            ProjectSettings.SetSetting(SettingSyncMaxRetryCount, DefaultMaxRetryCount);
+        }
+        ProjectSettings.SetInitialValue(SettingSyncMaxRetryCount, DefaultMaxRetryCount);
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", SettingSyncMaxRetryCount },
+            { "type", (int)Variant.Type.Int },
+            { "hint", (int)PropertyHint.Range },
+            { "hint_string", "0,100,1,or_greater" }
         });
 
         ProjectSettings.Save();

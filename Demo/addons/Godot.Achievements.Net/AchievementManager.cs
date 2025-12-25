@@ -24,11 +24,20 @@ public partial class AchievementManager : Node
     private const string GAMECENTER_ENABLED_SETTING = "addons/achievements/platforms/gamecenter_enabled";
     private const string GOOGLEPLAY_ENABLED_SETTING = "addons/achievements/platforms/googleplay_enabled";
 
+    // Sync settings
+    private const string MAX_RETRY_COUNT_SETTING = "addons/achievements/sync/max_retry_count";
+    private const int DEFAULT_MAX_RETRY_COUNT = 5;
+
     /// <summary>
     /// The achievement database. Loaded automatically from project settings, or can be set at runtime using SetDatabase().
     /// </summary>
     [Export] public AchievementDatabase? Database { get; private set; }
     [Export] public float SyncRetryInterval { get; set; } = 30f; // seconds
+
+    /// <summary>
+    /// Maximum number of retry attempts before abandoning a sync. 0 = infinite retries.
+    /// </summary>
+    public int MaxRetryCount { get; private set; } = DEFAULT_MAX_RETRY_COUNT;
 
     private LocalAchievementProvider? _localProvider;
     private readonly List<IAchievementProvider> _platformProviders = new();
@@ -41,6 +50,7 @@ public partial class AchievementManager : Node
     [Signal] public delegate void ProviderRegisteredEventHandler(string providerName);
     [Signal] public delegate void ProviderUnregisteredEventHandler(string providerName);
     [Signal] public delegate void DatabaseChangedEventHandler(AchievementDatabase database);
+    [Signal] public delegate void SyncAbandonedEventHandler(string achievementId, string providerName, string syncType, int retryCount);
 
     public override void _EnterTree()
     {
@@ -56,6 +66,9 @@ public partial class AchievementManager : Node
 
     public override void _Ready()
     {
+        // Load sync settings
+        LoadSyncSettings();
+
         // If no database was set via Export, load from project settings or use default
         if (Database == null)
         {
@@ -70,6 +83,17 @@ public partial class AchievementManager : Node
 
         InitializeWithDatabase();
         InitializePlatformProviders();
+    }
+
+    /// <summary>
+    /// Load sync-related settings from project settings
+    /// </summary>
+    private void LoadSyncSettings()
+    {
+        if (ProjectSettings.HasSetting(MAX_RETRY_COUNT_SETTING))
+        {
+            MaxRetryCount = ProjectSettings.GetSetting(MAX_RETRY_COUNT_SETTING).AsInt32();
+        }
     }
 
     /// <summary>
@@ -394,24 +418,25 @@ public partial class AchievementManager : Node
     /// <summary>
     /// Reset a specific achievement on all providers (for testing)
     /// </summary>
-    public async Task<bool> ResetAchievement(string achievementId)
+    public async Task<SyncResult> ResetAchievement(string achievementId)
     {
         if (_localProvider == null)
         {
-            GD.PushError("[Achievements] LocalProvider not initialized");
-            return false;
+            var error = "LocalProvider not initialized";
+            GD.PushError($"[Achievements] {error}");
+            return SyncResult.FailureResult(error);
         }
 
         // Reset locally first
-        var localSuccess = await _localProvider.ResetAchievement(achievementId);
-        if (!localSuccess)
+        var localResult = await _localProvider.ResetAchievement(achievementId);
+        if (!localResult)
         {
-            GD.PushWarning($"[Achievements] Failed to reset '{achievementId}' locally");
-            return false;
+            GD.PushWarning($"[Achievements] Failed to reset '{achievementId}' locally: {localResult.Message}");
+            return localResult;
         }
 
         // Reset on all platform providers
-        var tasks = new List<Task<bool>>();
+        var tasks = new List<Task<SyncResult>>();
         foreach (var provider in _platformProviders)
         {
             if (provider.IsAvailable)
@@ -423,30 +448,31 @@ public partial class AchievementManager : Node
         await Task.WhenAll(tasks);
 
         GD.Print($"[Achievements] Reset achievement: {achievementId}");
-        return true;
+        return SyncResult.SuccessResult();
     }
 
     /// <summary>
     /// Reset all achievements on all providers (for testing)
     /// </summary>
-    public async Task<bool> ResetAllAchievements()
+    public async Task<SyncResult> ResetAllAchievements()
     {
         if (_localProvider == null)
         {
-            GD.PushError("[Achievements] LocalProvider not initialized");
-            return false;
+            var error = "LocalProvider not initialized";
+            GD.PushError($"[Achievements] {error}");
+            return SyncResult.FailureResult(error);
         }
 
         // Reset locally first
-        var localSuccess = await _localProvider.ResetAllAchievements();
-        if (!localSuccess)
+        var localResult = await _localProvider.ResetAllAchievements();
+        if (!localResult)
         {
-            GD.PushWarning("[Achievements] Failed to reset all achievements locally");
-            return false;
+            GD.PushWarning($"[Achievements] Failed to reset all achievements locally: {localResult.Message}");
+            return localResult;
         }
 
         // Reset on all platform providers
-        var tasks = new List<Task<bool>>();
+        var tasks = new List<Task<SyncResult>>();
         foreach (var provider in _platformProviders)
         {
             if (provider.IsAvailable)
@@ -458,7 +484,7 @@ public partial class AchievementManager : Node
         await Task.WhenAll(tasks);
 
         GD.Print("[Achievements] Reset all achievements");
-        return true;
+        return SyncResult.SuccessResult();
     }
 
     /// <summary>
@@ -535,7 +561,18 @@ public partial class AchievementManager : Node
     {
         try
         {
-            await provider.SetProgress(achievementId, currentProgress);
+            var result = await provider.SetProgress(achievementId, currentProgress);
+            if (!result)
+            {
+                GD.PushWarning($"[Achievements] Failed to sync progress for '{achievementId}' to {provider.ProviderName}: {result.Message}");
+                QueueSync(new PendingSync
+                {
+                    AchievementId = achievementId,
+                    Provider = provider,
+                    Type = SyncType.Progress,
+                    CurrentProgress = currentProgress
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -605,6 +642,7 @@ public partial class AchievementManager : Node
 
         var successCount = 0;
         var failCount = 0;
+        var abandonedCount = 0;
         var batch = new List<PendingSync>();
 
         // Dequeue all items into a batch to avoid collection modification during iteration
@@ -617,11 +655,14 @@ public partial class AchievementManager : Node
         foreach (var sync in batch)
         {
             // Skip unavailable providers (e.g., Steam not running) and re-queue for later
+            // Don't count this as a retry attempt since we didn't actually try
             if (!sync.Provider.IsAvailable)
             {
                 _syncQueue.Enqueue(sync);
                 continue;
             }
+
+            var succeeded = false;
 
             try
             {
@@ -630,32 +671,45 @@ public partial class AchievementManager : Node
                     var result = await sync.Provider.UnlockAchievement(sync.AchievementId);
 
                     // Consider both Success and WasAlreadyUnlocked as successful syncs
-                    if (result.Success || result.WasAlreadyUnlocked)
-                    {
-                        successCount++;
-                    }
-                    else
-                    {
-                        // Re-queue on failure to retry later
-                        failCount++;
-                        _syncQueue.Enqueue(sync);
-                    }
+                    succeeded = result.Success || result.WasAlreadyUnlocked;
                 }
                 else if (sync.Type == SyncType.Progress)
                 {
-                    await sync.Provider.SetProgress(sync.AchievementId, sync.CurrentProgress);
-                    successCount++;
+                    var result = await sync.Provider.SetProgress(sync.AchievementId, sync.CurrentProgress);
+                    succeeded = result;
                 }
             }
             catch
             {
-                // Re-queue on exception (network error, API error, etc.) for retry
+                // Exception counts as a failure
+                succeeded = false;
+            }
+
+            if (succeeded)
+            {
+                successCount++;
+            }
+            else
+            {
+                sync.RetryCount++;
                 failCount++;
-                _syncQueue.Enqueue(sync);
+
+                // Check if we've exceeded the max retry count (0 = infinite retries)
+                if (MaxRetryCount > 0 && sync.RetryCount >= MaxRetryCount)
+                {
+                    abandonedCount++;
+                    GD.PushWarning($"[Achievements] Abandoning {sync.Type} sync for '{sync.AchievementId}' to {sync.Provider.ProviderName} after {sync.RetryCount} attempts");
+                    EmitSignal(SignalName.SyncAbandoned, sync.AchievementId, sync.Provider.ProviderName, sync.Type.ToString(), sync.RetryCount);
+                }
+                else
+                {
+                    // Re-queue for retry
+                    _syncQueue.Enqueue(sync);
+                }
             }
         }
 
-        GD.Print($"[Achievements] Sync complete: {successCount} succeeded, {failCount} failed (queue size: {_syncQueue.Count})");
+        GD.Print($"[Achievements] Sync complete: {successCount} succeeded, {failCount} failed, {abandonedCount} abandoned (queue size: {_syncQueue.Count})");
     }
 
 }

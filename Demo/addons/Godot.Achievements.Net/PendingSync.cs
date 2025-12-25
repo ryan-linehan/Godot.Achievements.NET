@@ -9,4 +9,9 @@ internal class PendingSync
     public required IAchievementProvider Provider { get; init; }
     public required SyncType Type { get; init; }
     public int CurrentProgress { get; init; }
+
+    /// <summary>
+    /// Number of times this sync has been attempted
+    /// </summary>
+    public int RetryCount { get; set; }
 }

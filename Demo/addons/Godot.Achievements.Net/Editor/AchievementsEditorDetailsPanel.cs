@@ -213,9 +213,9 @@ public partial class AchievementsEditorDetailsPanel : PanelContainer
         }
 
         // Update platform warning labels based on validation result
-        UpdatePlatformWarningLabel(_steamWarningLabel, validationResult, "Steam");
-        UpdatePlatformWarningLabel(_googlePlayWarningLabel, validationResult, "Google Play");
-        UpdatePlatformWarningLabel(_gameCenterWarningLabel, validationResult, "Game Center");
+        UpdatePlatformWarningLabel(_steamWarningLabel, validationResult, ProviderNames.Steam);
+        UpdatePlatformWarningLabel(_googlePlayWarningLabel, validationResult, ProviderNames.GooglePlay);
+        UpdatePlatformWarningLabel(_gameCenterWarningLabel, validationResult, ProviderNames.GameCenter);
     }
 
     private void UpdatePlatformWarningLabel(Label? label, AchievementValidationResult? validationResult, string platformName)
