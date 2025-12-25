@@ -1,7 +1,6 @@
 #if TOOLS
 using System;
 using System.Linq;
-using System.Text.Json;
 
 namespace Godot.Achievements.Core.Editor;
 
@@ -1118,162 +1117,22 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null)
             return;
 
-        try
+        var result = AchievementImportExport.ImportFromCSV(_currentDatabase, path);
+
+        if (result.Success)
         {
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to open file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            // Use Godot's built-in CSV parsing
-            var header = file.GetCsvLine();
-            if (header.Length == 0)
-            {
-                file.Close();
-                ShowErrorDialog("CSV file is empty.");
-                return;
-            }
-
-            // Build column index map from header
-            var columnMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < header.Length; i++)
-            {
-                columnMap[header[i].Trim()] = i;
-            }
-
-            // Validate required columns
-            if (!columnMap.ContainsKey("Id"))
-            {
-                file.Close();
-                ShowErrorDialog("CSV must contain an 'Id' column.");
-                return;
-            }
-
-            int importedCount = 0;
-            int updatedCount = 0;
-            int skippedCount = 0;
-
-            // Process data rows using Godot's GetCsvLine()
-            while (!file.EofReached())
-            {
-                var values = file.GetCsvLine();
-                if (values.Length == 0 || (values.Length == 1 && string.IsNullOrWhiteSpace(values[0])))
-                    continue;
-
-                var id = GetCSVValue(values, columnMap, "Id");
-                if (string.IsNullOrWhiteSpace(id))
-                    continue;
-
-                // Check if achievement already exists
-                var existing = _currentDatabase.GetById(id);
-                bool isNew = existing == null;
-
-                var achievement = existing ?? new Achievement { Id = id };
-                bool hasChanges = false;
-
-                // Update fields from CSV, tracking if any changes occur
-                if (columnMap.ContainsKey("DisplayName"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "DisplayName") ?? achievement.DisplayName;
-                    if (achievement.DisplayName != newValue)
-                    {
-                        achievement.DisplayName = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("Description"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "Description") ?? achievement.Description;
-                    if (achievement.Description != newValue)
-                    {
-                        achievement.Description = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("SteamId"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "SteamId") ?? achievement.SteamId;
-                    if (achievement.SteamId != newValue)
-                    {
-                        achievement.SteamId = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("GameCenterId"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "GameCenterId") ?? achievement.GameCenterId;
-                    if (achievement.GameCenterId != newValue)
-                    {
-                        achievement.GameCenterId = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("GooglePlayId"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "GooglePlayId") ?? achievement.GooglePlayId;
-                    if (achievement.GooglePlayId != newValue)
-                    {
-                        achievement.GooglePlayId = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("IsIncremental"))
-                {
-                    var newValue = GetCSVValue(values, columnMap, "IsIncremental")?.ToLower() == "true";
-                    if (achievement.IsIncremental != newValue)
-                    {
-                        achievement.IsIncremental = newValue;
-                        hasChanges = true;
-                    }
-                }
-                if (columnMap.ContainsKey("MaxProgress"))
-                {
-                    if (int.TryParse(GetCSVValue(values, columnMap, "MaxProgress"), out int maxProgress))
-                    {
-                        if (achievement.MaxProgress != maxProgress)
-                        {
-                            achievement.MaxProgress = maxProgress;
-                            hasChanges = true;
-                        }
-                    }
-                }
-
-                if (isNew)
-                {
-                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
-                    achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
-                    _currentDatabase.AddAchievement(achievement);
-                    importedCount++;
-                }
-                else if (hasChanges)
-                {
-                    updatedCount++;
-                }
-                else
-                {
-                    skippedCount++;
-                }
-            }
-
-            file.Close();
-
             SaveDatabase();
             RefreshAchievementList(preserveSelection: true);
 
             var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"CSV Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}\nSkipped (unchanged): {skippedCount}";
+            resultDialog.DialogText = $"CSV Import Complete!\n\nNew achievements: {result.ImportedCount}\nUpdated achievements: {result.UpdatedCount}\nSkipped (unchanged): {result.SkippedCount}";
             resultDialog.Title = "Import Successful";
             AddChild(resultDialog);
             resultDialog.PopupCentered();
-
-            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Imported CSV from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
         }
-        catch (Exception ex)
+        else
         {
-            ShowErrorDialog($"Failed to import CSV: {ex.Message}");
-            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"CSV import error: {ex}");
+            ShowErrorDialog(result.ErrorMessage ?? "Unknown error");
         }
     }
 
@@ -1282,48 +1141,19 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
             return;
 
-        try
+        var result = AchievementImportExport.ExportToCSV(_currentDatabase, path);
+
+        if (result.Success)
         {
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to create file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            // Write header using Godot's StoreCsvLine
-            file.StoreCsvLine(new string[] { "Id", "DisplayName", "Description", "SteamId", "GameCenterId", "GooglePlayId", "IsIncremental", "MaxProgress" });
-
-            // Write achievement rows using Godot's StoreCsvLine (handles escaping automatically)
-            foreach (var achievement in _currentDatabase.Achievements)
-            {
-                file.StoreCsvLine(new string[]
-                {
-                    achievement.Id ?? "",
-                    achievement.DisplayName ?? "",
-                    achievement.Description ?? "",
-                    achievement.SteamId ?? "",
-                    achievement.GameCenterId ?? "",
-                    achievement.GooglePlayId ?? "",
-                    achievement.IsIncremental.ToString().ToLower(),
-                    achievement.MaxProgress.ToString()
-                });
-            }
-
-            file.Close();
-
             var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"Successfully exported {_currentDatabase.Achievements.Count} achievements to:\n\n{path}";
+            resultDialog.DialogText = $"Successfully exported {result.ExportedCount} achievements to:\n\n{path}";
             resultDialog.Title = "Export Successful";
             AddChild(resultDialog);
             resultDialog.PopupCentered();
-
-            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Exported {_currentDatabase.Achievements.Count} achievements to {path}");
         }
-        catch (Exception ex)
+        else
         {
-            ShowErrorDialog($"Failed to export CSV: {ex.Message}");
-            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"CSV export error: {ex}");
+            ShowErrorDialog(result.ErrorMessage ?? "Unknown error");
         }
     }
 
@@ -1332,176 +1162,22 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null)
             return;
 
-        try
+        var result = AchievementImportExport.ImportFromJSON(_currentDatabase, path);
+
+        if (result.Success)
         {
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to open file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            var jsonContent = file.GetAsText();
-            file.Close();
-
-            if (string.IsNullOrWhiteSpace(jsonContent))
-            {
-                ShowErrorDialog("JSON file is empty.");
-                return;
-            }
-
-            // Parse JSON
-            JsonDocument? doc;
-            try
-            {
-                doc = JsonDocument.Parse(jsonContent);
-            }
-            catch (JsonException ex)
-            {
-                ShowErrorDialog($"Invalid JSON format: {ex.Message}");
-                return;
-            }
-
-            var root = doc.RootElement;
-            JsonElement achievementsArray;
-
-            // Support both { "achievements": [...] } and direct array [...]
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                achievementsArray = root;
-            }
-            else if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("achievements", out var achProp))
-            {
-                achievementsArray = achProp;
-            }
-            else
-            {
-                ShowErrorDialog("JSON must be an array of achievements or an object with an 'achievements' array.");
-                return;
-            }
-
-            int importedCount = 0;
-            int updatedCount = 0;
-            int skippedCount = 0;
-
-            foreach (var item in achievementsArray.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Object)
-                    continue;
-
-                // Get Id (required)
-                if (!item.TryGetProperty("Id", out var idProp) && !item.TryGetProperty("id", out idProp))
-                    continue;
-
-                var id = idProp.GetString();
-                if (string.IsNullOrWhiteSpace(id))
-                    continue;
-
-                // Check if achievement already exists
-                var existing = _currentDatabase.GetById(id);
-                bool isNew = existing == null;
-
-                var achievement = existing ?? new Achievement { Id = id };
-                bool hasChanges = false;
-
-                // Update fields from JSON, tracking if any changes occur
-                if (TryGetJsonString(item, "DisplayName", out var displayName) || TryGetJsonString(item, "displayName", out displayName))
-                {
-                    if (achievement.DisplayName != displayName)
-                    {
-                        achievement.DisplayName = displayName;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "Description", out var description) || TryGetJsonString(item, "description", out description))
-                {
-                    if (achievement.Description != description)
-                    {
-                        achievement.Description = description;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "SteamId", out var steamId) || TryGetJsonString(item, "steamId", out steamId))
-                {
-                    if (achievement.SteamId != steamId)
-                    {
-                        achievement.SteamId = steamId;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "GameCenterId", out var gameCenterId) || TryGetJsonString(item, "gameCenterId", out gameCenterId))
-                {
-                    if (achievement.GameCenterId != gameCenterId)
-                    {
-                        achievement.GameCenterId = gameCenterId;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonString(item, "GooglePlayId", out var googlePlayId) || TryGetJsonString(item, "googlePlayId", out googlePlayId))
-                {
-                    if (achievement.GooglePlayId != googlePlayId)
-                    {
-                        achievement.GooglePlayId = googlePlayId;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonBool(item, "IsIncremental", out var isIncremental) || TryGetJsonBool(item, "isIncremental", out isIncremental))
-                {
-                    if (achievement.IsIncremental != isIncremental)
-                    {
-                        achievement.IsIncremental = isIncremental;
-                        hasChanges = true;
-                    }
-                }
-
-                if (TryGetJsonInt(item, "MaxProgress", out var maxProgress) || TryGetJsonInt(item, "maxProgress", out maxProgress))
-                {
-                    if (achievement.MaxProgress != maxProgress)
-                    {
-                        achievement.MaxProgress = maxProgress;
-                        hasChanges = true;
-                    }
-                }
-
-                if (isNew)
-                {
-                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
-                    achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
-                    _currentDatabase.AddAchievement(achievement);
-                    importedCount++;
-                }
-                else if (hasChanges)
-                {
-                    updatedCount++;
-                }
-                else
-                {
-                    skippedCount++;
-                }
-            }
-
-            doc.Dispose();
-
             SaveDatabase();
             RefreshAchievementList(preserveSelection: true);
 
             var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"JSON Import Complete!\n\nNew achievements: {importedCount}\nUpdated achievements: {updatedCount}\nSkipped (unchanged): {skippedCount}";
+            resultDialog.DialogText = $"JSON Import Complete!\n\nNew achievements: {result.ImportedCount}\nUpdated achievements: {result.UpdatedCount}\nSkipped (unchanged): {result.SkippedCount}";
             resultDialog.Title = "Import Successful";
             AddChild(resultDialog);
             resultDialog.PopupCentered();
-
-            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Imported JSON from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
         }
-        catch (Exception ex)
+        else
         {
-            ShowErrorDialog($"Failed to import JSON: {ex.Message}");
-            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"JSON import error: {ex}");
+            ShowErrorDialog(result.ErrorMessage ?? "Unknown error");
         }
     }
 
@@ -1510,105 +1186,20 @@ public partial class AchievementEditorDock : Control
         if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
             return;
 
-        try
+        var result = AchievementImportExport.ExportToJSON(_currentDatabase, path);
+
+        if (result.Success)
         {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = null // Keep PascalCase for compatibility with Godot conventions
-            };
-
-            // Build achievements list for JSON
-            var achievementsList = new System.Collections.Generic.List<object>();
-            foreach (var achievement in _currentDatabase.Achievements)
-            {
-                achievementsList.Add(new
-                {
-                    Id = achievement.Id ?? "",
-                    DisplayName = achievement.DisplayName ?? "",
-                    Description = achievement.Description ?? "",
-                    SteamId = achievement.SteamId ?? "",
-                    GameCenterId = achievement.GameCenterId ?? "",
-                    GooglePlayId = achievement.GooglePlayId ?? "",
-                    IsIncremental = achievement.IsIncremental,
-                    MaxProgress = achievement.MaxProgress
-                });
-            }
-
-            var exportObject = new { achievements = achievementsList };
-            var jsonContent = JsonSerializer.Serialize(exportObject, options);
-
-            var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
-            if (file == null)
-            {
-                ShowErrorDialog($"Failed to create file: {FileAccess.GetOpenError()}");
-                return;
-            }
-
-            file.StoreString(jsonContent);
-            file.Close();
-
             var resultDialog = new AcceptDialog();
-            resultDialog.DialogText = $"Successfully exported {_currentDatabase.Achievements.Count} achievements to:\n\n{path}";
+            resultDialog.DialogText = $"Successfully exported {result.ExportedCount} achievements to:\n\n{path}";
             resultDialog.Title = "Export Successful";
             AddChild(resultDialog);
             resultDialog.PopupCentered();
-
-            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Exported {_currentDatabase.Achievements.Count} achievements to JSON: {path}");
         }
-        catch (Exception ex)
+        else
         {
-            ShowErrorDialog($"Failed to export JSON: {ex.Message}");
-            AchievementLogger.Error(AchievementLogger.Areas.Editor, $"JSON export error: {ex}");
+            ShowErrorDialog(result.ErrorMessage ?? "Unknown error");
         }
-    }
-
-    private static bool TryGetJsonString(JsonElement element, string propertyName, out string value)
-    {
-        value = string.Empty;
-        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String)
-        {
-            value = prop.GetString() ?? string.Empty;
-            return true;
-        }
-        return false;
-    }
-
-    private static bool TryGetJsonBool(JsonElement element, string propertyName, out bool value)
-    {
-        value = false;
-        if (element.TryGetProperty(propertyName, out var prop))
-        {
-            if (prop.ValueKind == JsonValueKind.True)
-            {
-                value = true;
-                return true;
-            }
-            if (prop.ValueKind == JsonValueKind.False)
-            {
-                value = false;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool TryGetJsonInt(JsonElement element, string propertyName, out int value)
-    {
-        value = 0;
-        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number)
-        {
-            if (prop.TryGetInt32(out value))
-                return true;
-        }
-        return false;
-    }
-
-    private static string? GetCSVValue(string[] values, System.Collections.Generic.Dictionary<string, int> columnMap, string columnName)
-    {
-        if (!columnMap.TryGetValue(columnName, out int index) || index >= values.Length)
-            return null;
-        return values[index].Trim();
     }
 
     private void ShowErrorDialog(string message)
