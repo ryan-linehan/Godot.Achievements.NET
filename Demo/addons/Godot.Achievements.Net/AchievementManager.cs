@@ -44,7 +44,7 @@ public partial class AchievementManager : Node
     {
         if (Instance != null)
         {
-            GD.PushWarning("Multiple AchievementManager instances detected. Using first instance.");
+            GD.PushWarning("[Achievements] Multiple AchievementManager instances detected. Using first instance.");
             QueueFree();
             return;
         }

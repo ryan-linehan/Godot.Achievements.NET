@@ -80,7 +80,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
             // GKAchievement.ReportAchievements(new[] { gcAchievement }, error => tcs.SetResult(error == null));
             // if (!await tcs.Task) return AchievementUnlockResult.FailureResult("Failed to unlock");
 
-            GD.Print($"[GameCenter] Would unlock achievement: {gameCenterId}");
+            this.Log($"Would unlock achievement: {gameCenterId}");
             await Task.Delay(10);
             return AchievementUnlockResult.SuccessResult();
         }
@@ -114,7 +114,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
 
         // UNCOMMENT: Report progress to Game Center
         float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
-        GD.Print($"[GameCenter] Would set progress for {achievement.GameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
+        this.Log($"Would set progress for {achievement.GameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
         await Task.CompletedTask;
         return SyncResult.SuccessResult();
     }
@@ -131,7 +131,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
         if (string.IsNullOrEmpty(achievement.GameCenterId))
             return SyncResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured");
 
-        GD.Print($"[GameCenter] Would reset achievement: {achievement.GameCenterId}");
+        this.Log($"Would reset achievement: {achievement.GameCenterId}");
         await Task.CompletedTask;
         return SyncResult.SuccessResult();
     }
@@ -142,7 +142,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
             return SyncResult.FailureResult("Game Center is not available");
 
         // UNCOMMENT: GKAchievement.ResetAchievements(error => { });
-        GD.Print("[GameCenter] Would reset all achievements");
+        this.Log("Would reset all achievements");
         await Task.CompletedTask;
         return SyncResult.SuccessResult();
     }

@@ -106,7 +106,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
         // UNCOMMENT: Report progress to Play Games Services
         float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
-        GD.Print($"[GooglePlay] Would set progress for {achievement.GooglePlayId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
+        this.Log($"Would set progress for {achievement.GooglePlayId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
         await Task.CompletedTask;
         return SyncResult.SuccessResult();
     }
@@ -123,7 +123,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         if (string.IsNullOrEmpty(achievement.GooglePlayId))
             return SyncResult.FailureResult($"Achievement '{achievementId}' has no Google Play ID configured");
 
-        GD.Print($"[GooglePlay] Would reset achievement: {achievement.GooglePlayId}");
+        this.Log($"Would reset achievement: {achievement.GooglePlayId}");
         await Task.CompletedTask;
         return SyncResult.SuccessResult();
     }
@@ -133,7 +133,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         if (!IsAvailable)
             return SyncResult.FailureResult("Google Play Games is not available");
 
-        GD.Print("[GooglePlay] Would reset all achievements");
+        this.Log("Would reset all achievements");
         await Task.CompletedTask;
         return SyncResult.SuccessResult();
     }
