@@ -42,6 +42,11 @@ public partial class AchievementPlugin : EditorPlugin
             _dock = null;
         }
     }
+    
+    public override void _SaveExternalData()
+    {
+        _dock?.SaveDatabase();
+    }
 
     public override void _EnablePlugin()
     {

@@ -229,8 +229,6 @@ public partial class AchievementEditorDock : Control
 
     private void OnAchievementChanged()
     {
-        // Save the database when any achievement property changes
-        SaveDatabase();
         // Refresh the full list to re-run all validations (including duplicate detection)
         RefreshAchievementList(preserveSelection: true);
     }
@@ -323,7 +321,7 @@ public partial class AchievementEditorDock : Control
         AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Loaded database from {path}");
     }
 
-    private void SaveDatabase()
+    public void SaveDatabase()
     {
         if (_currentDatabase == null)
         {
