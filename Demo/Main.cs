@@ -38,7 +38,7 @@ public partial class Main : CanvasLayer
         RefreshAchievementLists();
     }
 
-    private async void OnUnlockAllPressed()
+    private void OnUnlockAllPressed()
     {
         if (_achievements == null) return;
 
@@ -47,18 +47,18 @@ public partial class Main : CanvasLayer
         {
             if (!achievement.IsUnlocked)
             {
-                await _achievements.Unlock(achievement.Id);
+                _achievements.Unlock(achievement.Id);
             }
         }
 
         RefreshAll();
     }
 
-    private async void OnResetAllPressed()
+    private void OnResetAllPressed()
     {
         if (_achievements == null) return;
 
-        await _achievements.ResetAllAchievements();
+        _achievements.ResetAllAchievements();
         RefreshAll();
     }
 
@@ -124,20 +124,15 @@ public partial class Main : CanvasLayer
         }
     }
 
-    private async void OnIncrementPressed(string achievementId)
+    private void OnIncrementPressed(string achievementId)
     {
         if (_achievements == null) return;
 
-        var achievement = _achievements.GetAchievement(achievementId);
-        if (achievement == null) return;
-
-        var newProgress = achievement.CurrentProgress + 1;
-        await _achievements.SetProgress(achievementId, newProgress);
-
+        _achievements.IncrementProgress(achievementId);
         RefreshAll();
     }
 
-    private async void OnAchievementButtonPressed(string achievementId)
+    private void OnAchievementButtonPressed(string achievementId)
     {
         if (_achievements == null) return;
 
@@ -146,11 +141,11 @@ public partial class Main : CanvasLayer
 
         if (achievement.IsUnlocked)
         {
-            await _achievements.ResetAchievement(achievementId);
+            _achievements.ResetAchievement(achievementId);
         }
         else
         {
-            await _achievements.Unlock(achievementId);
+            _achievements.Unlock(achievementId);
         }
 
         // Refresh button state and lists

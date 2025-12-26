@@ -25,17 +25,12 @@ internal partial class AppResumeListener : Node
 
 /// <summary>
 /// Google Play Games achievement provider for Android.
-/// Integrates with the GodotPlayGameServices addon:
-/// https://github.com/godot-sdk-integrations/godot-play-game-services
+/// Integrates with the GodotPlayGameServices addon.
 ///
-/// Requirements:
-/// 1. Install GodotPlayGameServices addon in your project
-/// 2. Enable the GodotPlayGameServices autoload in Project Settings
-/// 3. Configure Google Play Console with your game and achievements
-/// 4. Set up OAuth credentials matching your package name and SHA-1 certificate
-/// 5. Enable Google Play provider in project settings
+/// Note: Google Play operations are inherently async. Sync methods start the operation
+/// and return immediately. Use async methods if you need to wait for the result.
 /// </summary>
-public class GooglePlayAchievementProvider : IAchievementProvider
+public partial class GooglePlayAchievementProvider : AchievementProviderBase
 {
     public static bool IsPlatformSupported => true;
 
@@ -53,7 +48,11 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     private readonly Dictionary<string, TaskCompletionSource<bool>> _pendingReveals = new();
     private TaskCompletionSource<List<Dictionary<string, object>>>? _pendingLoad;
 
-    public string ProviderName => ProviderNames.GooglePlay;
+    // Track pending sync operations for signal emission (maps googlePlayId -> achievementId)
+    private readonly Dictionary<string, string> _pendingSyncAchievementIds = new();
+    private readonly Dictionary<string, string> _pendingSyncProgressIds = new();
+
+    public override string ProviderName => ProviderNames.GooglePlay;
 
     public GooglePlayAchievementProvider(AchievementDatabase database)
     {
@@ -73,27 +72,23 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 return;
             }
 
-            // Get the GodotPlayGameServices autoload
             _godotPlayGameServices = sceneTree.Root.GetNodeOrNull("GodotPlayGameServices") as Node;
             if (_godotPlayGameServices == null)
             {
-                this.LogWarning("GodotPlayGameServices autoload not found. Make sure it's enabled in Project Settings > Autoload.");
+                this.LogWarning("GodotPlayGameServices autoload not found.");
                 _isInitialized = false;
                 return;
             }
 
-            // Initialize the plugin
             var initResult = _godotPlayGameServices.Call("initialize");
-            if (initResult.AsInt32() != 0) // 0 = OK (PlayGamesPluginError.OK)
+            if (initResult.AsInt32() != 0)
             {
-                this.LogError("Failed to initialize Google Play Games Services plugin. The Android plugin may not be available.");
+                this.LogError("Failed to initialize Google Play Games Services plugin.");
                 _isInitialized = false;
                 return;
             }
 
             this.Log("GodotPlayGameServices plugin initialized");
-
-            // Instance the client nodes into the scene tree
             InstanceClientNodes(sceneTree.Root);
 
             if (_signInClient == null || _achievementsClient == null)
@@ -103,13 +98,11 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 return;
             }
 
-            // Connect to tree exiting for cleanup (tree_exiting is on Node, not SceneTree)
             if (!sceneTree.Root.IsConnected("tree_exiting", Callable.From(Cleanup)))
             {
                 sceneTree.Root.Connect("tree_exiting", Callable.From(Cleanup));
             }
 
-            // Defer signal connections and auth check until nodes are in tree
             Callable.From(ConnectSignals).CallDeferred();
             Callable.From(CheckAuthentication).CallDeferred();
 
@@ -127,7 +120,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     {
         try
         {
-            // Load and instance SignInClient
             var signInScript = GD.Load<Script>("res://addons/GodotPlayGameServices/scripts/sign_in/sign_in_client.gd");
             if (signInScript != null)
             {
@@ -137,12 +129,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 root.CallDeferred("add_child", _signInClient);
                 this.Log("SignInClient node created");
             }
-            else
-            {
-                this.LogWarning("Could not load sign_in_client.gd script");
-            }
 
-            // Load and instance AchievementsClient
             var achievementsScript = GD.Load<Script>("res://addons/GodotPlayGameServices/scripts/achievements/achievements_client.gd");
             if (achievementsScript != null)
             {
@@ -152,12 +139,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 root.CallDeferred("add_child", _achievementsClient);
                 this.Log("AchievementsClient node created");
             }
-            else
-            {
-                this.LogWarning("Could not load achievements_client.gd script");
-            }
 
-            // Create resume listener to detect when app returns from sign-in
             _resumeListener = new AppResumeListener();
             _resumeListener.Name = "GooglePlayResumeListener";
             _resumeListener.OnAppResumed += OnAppResumed;
@@ -171,7 +153,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
     private void OnAppResumed()
     {
-        // When app resumes after sign-in attempt, re-check auth status
         if (_signInAttempted && !_isAuthenticated && _signInClient != null)
         {
             this.Log("App resumed after sign-in, checking auth status...");
@@ -183,7 +164,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     {
         if (_signInClient != null)
         {
-            // Connect to user_authenticated signal
             if (!_signInClient.IsConnected("user_authenticated", Callable.From<bool>(OnUserAuthenticated)))
             {
                 _signInClient.Connect("user_authenticated", Callable.From<bool>(OnUserAuthenticated));
@@ -192,7 +172,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
         if (_achievementsClient != null)
         {
-            // Connect to achievement signals
             if (!_achievementsClient.IsConnected("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked)))
             {
                 _achievementsClient.Connect("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked));
@@ -203,7 +182,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 _achievementsClient.Connect("achievement_revealed", Callable.From<bool, string>(OnAchievementRevealed));
             }
 
-            // The signal emits Array[PlayGamesAchievement] which becomes Godot.Collections.Array in C#
             if (!_achievementsClient.IsConnected("achievements_loaded", Callable.From<Godot.Collections.Array>(OnAchievementsLoaded)))
             {
                 _achievementsClient.Connect("achievements_loaded", Callable.From<Godot.Collections.Array>(OnAchievementsLoaded));
@@ -214,8 +192,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     private void CheckAuthentication()
     {
         if (_signInClient == null) return;
-
-        // The is_authenticated method triggers a check and emits user_authenticated signal
         _signInClient.Call("is_authenticated");
     }
 
@@ -224,7 +200,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         this.Log($"Authentication status changed: {isAuthenticated}");
         _isAuthenticated = isAuthenticated;
 
-        // Auto sign-in if not authenticated (only try once)
         if (!isAuthenticated && !_signInAttempted && _signInClient != null)
         {
             _signInAttempted = true;
@@ -233,20 +208,28 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
-    private void OnAchievementUnlocked(bool isUnlocked, string achievementId)
+    private void OnAchievementUnlocked(bool isUnlocked, string googlePlayId)
     {
-        if (_pendingUnlocks.TryGetValue(achievementId, out var tcs))
+        // Handle async operations
+        if (_pendingUnlocks.TryGetValue(googlePlayId, out var taskResult))
         {
-            tcs.TrySetResult(isUnlocked);
-            _pendingUnlocks.Remove(achievementId);
+            taskResult.TrySetResult(isUnlocked);
+            _pendingUnlocks.Remove(googlePlayId);
+        }
+
+        // Emit signal for sync operations
+        if (_pendingSyncAchievementIds.TryGetValue(googlePlayId, out var achievementId))
+        {
+            EmitAchievementUnlocked(achievementId, isUnlocked, isUnlocked ? null : "Failed to unlock achievement");
+            _pendingSyncAchievementIds.Remove(googlePlayId);
         }
     }
 
     private void OnAchievementRevealed(bool isRevealed, string achievementId)
     {
-        if (_pendingReveals.TryGetValue(achievementId, out var tcs))
+        if (_pendingReveals.TryGetValue(achievementId, out var taskResult))
         {
-            tcs.TrySetResult(isRevealed);
+            taskResult.TrySetResult(isRevealed);
             _pendingReveals.Remove(achievementId);
         }
     }
@@ -256,9 +239,9 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         if (_pendingLoad == null) return;
 
         var result = new List<Dictionary<string, object>>();
+
         foreach (var item in achievements)
         {
-            // Each item is a PlayGamesAchievement object (RefCounted with properties)
             if (item.Obj is GodotObject achievementObj)
             {
                 var dict = new Dictionary<string, object>
@@ -278,9 +261,120 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         _pendingLoad = null;
     }
 
-    public bool IsAvailable => _isInitialized && _isAuthenticated && _achievementsClient != null;
+    public override bool IsAvailable => _isInitialized && _isAuthenticated && _achievementsClient != null;
 
-    public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
+    #region Sync Methods
+
+    public override void UnlockAchievement(string achievementId)
+    {
+        if (!_isInitialized)
+        {
+            this.LogWarning("Google Play Games plugin not initialized");
+            EmitAchievementUnlocked(achievementId, false, "Google Play Games plugin not initialized");
+            return;
+        }
+
+        if (!_isAuthenticated)
+        {
+            this.LogWarning("User not authenticated with Google Play Games");
+            EmitAchievementUnlocked(achievementId, false, "User not authenticated with Google Play Games");
+            return;
+        }
+
+        if (_achievementsClient == null)
+        {
+            this.LogWarning("AchievementsClient not available");
+            EmitAchievementUnlocked(achievementId, false, "AchievementsClient not available");
+            return;
+        }
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found in database");
+            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' not found in database");
+            return;
+        }
+
+        var googlePlayId = achievement.GooglePlayId;
+        if (string.IsNullOrEmpty(googlePlayId))
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Google Play ID configured");
+            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' has no Google Play ID configured");
+            return;
+        }
+
+        // Fire-and-forget: start the operation, signal will be emitted in OnAchievementUnlocked callback
+        _pendingSyncAchievementIds[googlePlayId] = achievementId;
+        _achievementsClient.Call("unlock_achievement", googlePlayId);
+        this.Log($"Unlock started for: {googlePlayId}");
+    }
+
+    public override void IncrementProgress(string achievementId, int amount)
+    {
+        if (!_isInitialized)
+        {
+            this.LogWarning("Google Play Games plugin not initialized");
+            EmitProgressIncremented(achievementId, 0, false, "Google Play Games plugin not initialized");
+            return;
+        }
+
+        if (!_isAuthenticated)
+        {
+            this.LogWarning("User not authenticated with Google Play Games");
+            EmitProgressIncremented(achievementId, 0, false, "User not authenticated with Google Play Games");
+            return;
+        }
+
+        if (_achievementsClient == null)
+        {
+            this.LogWarning("AchievementsClient not available");
+            EmitProgressIncremented(achievementId, 0, false, "AchievementsClient not available");
+            return;
+        }
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found in database");
+            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' not found in database");
+            return;
+        }
+
+        var googlePlayId = achievement.GooglePlayId;
+        if (string.IsNullOrEmpty(googlePlayId))
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Google Play ID configured");
+            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' has no Google Play ID configured");
+            return;
+        }
+
+        // Fire-and-forget: increment steps - signal emitted in OnAchievementUnlocked callback if it auto-unlocks
+        _pendingSyncProgressIds[googlePlayId] = achievementId;
+        _achievementsClient.Call("increment_achievement", googlePlayId, amount);
+        this.Log($"Incremented progress for: {googlePlayId} by {amount}");
+
+        // Emit progress signal immediately since Google Play doesn't have a specific progress callback
+        EmitProgressIncremented(achievementId, amount, true);
+    }
+
+    public override void ResetAchievement(string achievementId)
+    {
+        this.LogWarning("ResetAchievement is not supported on Google Play Games.");
+        EmitAchievementReset(achievementId, false, "ResetAchievement is not supported on Google Play Games");
+    }
+
+    public override void ResetAllAchievements()
+    {
+        this.LogWarning("ResetAllAchievements is not supported on Google Play Games.");
+        EmitAllAchievementsReset(false, "ResetAllAchievements is not supported on Google Play Games");
+    }
+
+    #endregion
+
+    #region Async Methods
+
+    public override async Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId)
     {
         if (!_isInitialized)
             return AchievementUnlockResult.FailureResult("Google Play Games plugin not initialized");
@@ -301,16 +395,13 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
         try
         {
-            // Create a TaskCompletionSource for the async callback
-            var tcs = new TaskCompletionSource<bool>();
-            _pendingUnlocks[googlePlayId] = tcs;
+            var taskResult = new TaskCompletionSource<bool>();
+            _pendingUnlocks[googlePlayId] = taskResult;
 
-            // Call unlock_achievement on the GDScript client
             _achievementsClient.Call("unlock_achievement", googlePlayId);
 
-            // Wait for the callback with a timeout
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
-            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+            var completedTask = await Task.WhenAny(taskResult.Task, timeoutTask);
 
             if (completedTask == timeoutTask)
             {
@@ -318,7 +409,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 return AchievementUnlockResult.FailureResult("Unlock operation timed out");
             }
 
-            var success = await tcs.Task;
+            var success = await taskResult.Task;
             this.Log($"Unlocked achievement: {googlePlayId} (success: {success})");
 
             return success
@@ -332,7 +423,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
-    public async Task<int> GetProgress(string achievementId)
+    public override async Task<int> GetProgressAsync(string achievementId)
     {
         if (!IsAvailable)
             return 0;
@@ -347,7 +438,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
         try
         {
-            // Load achievements from Google Play to get current progress
             var achievements = await LoadAchievementsAsync();
 
             foreach (var gpAchievement in achievements)
@@ -369,7 +459,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         return 0;
     }
 
-    public async Task<SyncResult> SetProgress(string achievementId, int currentProgress)
+    public override async Task<SyncResult> IncrementProgressAsync(string achievementId, int amount)
     {
         if (!_isInitialized)
             return SyncResult.FailureResult("Google Play Games plugin not initialized");
@@ -388,46 +478,30 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         if (string.IsNullOrEmpty(googlePlayId))
             return SyncResult.FailureResult($"Achievement '{achievementId}' has no Google Play ID configured");
 
+        if (amount <= 0)
+        {
+            return SyncResult.FailureResult("Amount must be positive");
+        }
+
         try
         {
-            // For incremental achievements, we use increment_achievement
-            // Google Play uses absolute step count, so we need to calculate the increment
-            int existingProgress = await GetProgress(achievementId);
-            int increment = currentProgress - existingProgress;
+            var taskResult = new TaskCompletionSource<bool>();
+            _pendingUnlocks[googlePlayId] = taskResult;
 
-            if (increment > 0)
+            _achievementsClient.Call("increment_achievement", googlePlayId, amount);
+
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+            var completedTask = await Task.WhenAny(taskResult.Task, timeoutTask);
+
+            if (completedTask == timeoutTask)
             {
-                // Create a TaskCompletionSource for the async callback
-                var tcs = new TaskCompletionSource<bool>();
-                _pendingUnlocks[googlePlayId] = tcs; // increment uses same signal as unlock
-
-                // Call increment_achievement on the GDScript client
-                _achievementsClient.Call("increment_achievement", googlePlayId, increment);
-
-                // Wait for the callback with a timeout
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
-                var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
-
-                if (completedTask == timeoutTask)
-                {
-                    _pendingUnlocks.Remove(googlePlayId);
-                    this.LogWarning($"Increment operation timed out for {googlePlayId}");
-                    // Don't fail - the operation may have succeeded
-                }
-                else
-                {
-                    var success = await tcs.Task;
-                    this.Log($"Incremented achievement: {googlePlayId} by {increment} (success: {success})");
-                }
-            }
-            else if (increment == 0)
-            {
-                this.Log($"No progress change needed for {googlePlayId}");
+                _pendingUnlocks.Remove(googlePlayId);
+                this.LogWarning($"Increment operation timed out for {googlePlayId}");
             }
             else
             {
-                // Negative increment - Google Play doesn't support decreasing progress
-                this.LogWarning($"Cannot decrease progress for {googlePlayId} (requested: {currentProgress}, existing: {existingProgress})");
+                var success = await taskResult.Task;
+                this.Log($"Incremented achievement: {googlePlayId} by {amount} (success: {success})");
             }
 
             return SyncResult.SuccessResult();
@@ -439,27 +513,22 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
-    public async Task<SyncResult> ResetAchievement(string achievementId)
+    public override Task<SyncResult> ResetAchievementAsync(string achievementId)
     {
-        // Google Play Games does not support resetting achievements in production
-        // This is only available for testing via the Play Games Console
-        this.LogWarning($"ResetAchievement is not supported on Google Play Games (achievement: {achievementId}).\n Use the Play Games Console for resetting achievements.");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult("Google Play Games does not support resetting achievements. Returning success.");
+        ResetAchievement(achievementId);
+        return Task.FromResult(SyncResult.SuccessResult("Google Play Games does not support resetting achievements."));
     }
 
-    public async Task<SyncResult> ResetAllAchievements()
+    public override Task<SyncResult> ResetAllAchievementsAsync()
     {
-        // Google Play Games does not support resetting achievements in production
-        this.LogWarning("ResetAllAchievements is not supported on Google Play Games. \n Use the Play Games Console for resetting achievements.");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult("Google Play Games does not support resetting achievements. Returning success.");
+        ResetAllAchievements();
+        return Task.FromResult(SyncResult.SuccessResult("Google Play Games does not support resetting achievements."));
     }
 
-    /// <summary>
-    /// Load all achievements from Google Play Games.
-    /// Returns achievement data including id, name, state, type, and progress.
-    /// </summary>
+    #endregion
+
+    #region Additional Methods
+
     private async Task<List<Dictionary<string, object>>> LoadAchievementsAsync(bool forceReload = false)
     {
         if (_achievementsClient == null)
@@ -490,9 +559,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
-    /// <summary>
-    /// Reveal a hidden achievement. Call this before unlock if the achievement is hidden.
-    /// </summary>
     public async Task<bool> RevealAchievementAsync(string achievementId)
     {
         if (!IsAvailable)
@@ -508,13 +574,13 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
         try
         {
-            var tcs = new TaskCompletionSource<bool>();
-            _pendingReveals[googlePlayId] = tcs;
+            var taskResult = new TaskCompletionSource<bool>();
+            _pendingReveals[googlePlayId] = taskResult;
 
             _achievementsClient!.Call("reveal_achievement", googlePlayId);
 
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
-            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+            var completedTask = await Task.WhenAny(taskResult.Task, timeoutTask);
 
             if (completedTask == timeoutTask)
             {
@@ -522,7 +588,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 return false;
             }
 
-            return await tcs.Task;
+            return await taskResult.Task;
         }
         catch (Exception ex)
         {
@@ -532,9 +598,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
-    /// <summary>
-    /// Show the Google Play Games achievements UI.
-    /// </summary>
     public void ShowAchievementsUI()
     {
         if (!IsAvailable)
@@ -546,9 +609,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         _achievementsClient!.Call("show_achievements");
     }
 
-    /// <summary>
-    /// Request user sign-in to Google Play Games.
-    /// </summary>
     public void SignIn()
     {
         if (_signInClient == null)
@@ -560,9 +620,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         _signInClient.Call("sign_in");
     }
 
-    /// <summary>
-    /// Check if the user is currently authenticated.
-    /// </summary>
     public bool IsAuthenticated => _isAuthenticated;
 
     private void Cleanup()
@@ -589,5 +646,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         _isInitialized = false;
         _isAuthenticated = false;
     }
+
+    #endregion
 }
 #endif

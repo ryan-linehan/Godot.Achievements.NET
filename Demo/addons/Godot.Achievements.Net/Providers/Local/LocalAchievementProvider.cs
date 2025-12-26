@@ -9,19 +9,16 @@ namespace Godot.Achievements.Providers.Local;
 /// Local achievement provider that persists achievement state to user://achievements.json
 /// This is the source of truth for all achievement unlocks
 /// </summary>
-public class LocalAchievementProvider : IAchievementProvider
+public partial class LocalAchievementProvider : AchievementProviderBase
 {
-    /// <summary>
-    /// Local provider is always supported on all platforms
-    /// </summary>
     public static bool IsPlatformSupported => true;
 
     private const string SavePath = "user://achievements.json";
     private readonly AchievementDatabase _database;
     private Dictionary<string, AchievementState> _achievementStates = new();
 
-    public string ProviderName => ProviderNames.Local;
-    public bool IsAvailable => true;
+    public override string ProviderName => ProviderNames.Local;
+    public override bool IsAvailable => true;
 
     public LocalAchievementProvider(AchievementDatabase database)
     {
@@ -29,24 +26,28 @@ public class LocalAchievementProvider : IAchievementProvider
         LoadFromDisk();
     }
 
-    public Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
+    #region Sync Methods
+
+    public override void UnlockAchievement(string achievementId)
     {
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
         {
-            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found in database"));
+            this.LogWarning($"Achievement '{achievementId}' not found in database");
+            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' not found in database");
+            return;
         }
 
-        // Check if already unlocked
         if (_achievementStates.TryGetValue(achievementId, out var state) && state.IsUnlocked)
         {
+            // Already unlocked, just sync state to achievement object
             achievement.IsUnlocked = true;
             achievement.UnlockedAt = state.UnlockedAt;
             achievement.CurrentProgress = achievement.MaxProgress;
-            return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true));
+            EmitAchievementUnlocked(achievementId, true);
+            return;
         }
 
-        // Unlock the achievement
         var newState = new AchievementState
         {
             IsUnlocked = true,
@@ -60,45 +61,37 @@ public class LocalAchievementProvider : IAchievementProvider
         achievement.CurrentProgress = achievement.MaxProgress;
 
         SaveToDisk();
-
-        return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: false));
+        EmitAchievementUnlocked(achievementId, true);
     }
 
-    public Task<int> GetProgress(string achievementId)
-    {
-        if (_achievementStates.TryGetValue(achievementId, out var state))
-        {
-            return Task.FromResult(state.CurrentProgress);
-        }
-
-        return Task.FromResult(0);
-    }
-
-    public Task<SyncResult> SetProgress(string achievementId, int currentProgress)
+    public override void IncrementProgress(string achievementId, int amount)
     {
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
         {
-            var error = $"Achievement '{achievementId}' not found in database";
-            this.LogWarning(error);
-            return Task.FromResult(SyncResult.FailureResult(error));
+            this.LogWarning($"Achievement '{achievementId}' not found in database");
+            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' not found in database");
+            return;
         }
 
-        // Clamp progress to 0 - MaxProgress
-        currentProgress = Mathf.Clamp(currentProgress, 0, achievement.MaxProgress);
-
-        // Get or create state
         if (!_achievementStates.TryGetValue(achievementId, out var state))
         {
             state = new AchievementState();
             _achievementStates[achievementId] = state;
         }
 
-        state.CurrentProgress = currentProgress;
-        achievement.CurrentProgress = currentProgress;
+        // Don't modify if already unlocked
+        if (state.IsUnlocked)
+        {
+            EmitProgressIncremented(achievementId, state.CurrentProgress, true);
+            return;
+        }
 
-        // Auto-unlock if progress reaches max
-        if (currentProgress >= achievement.MaxProgress && !state.IsUnlocked)
+        int newProgress = Mathf.Clamp(state.CurrentProgress + amount, 0, achievement.MaxProgress);
+        state.CurrentProgress = newProgress;
+        achievement.CurrentProgress = newProgress;
+
+        if (newProgress >= achievement.MaxProgress)
         {
             state.IsUnlocked = true;
             state.UnlockedAt = DateTime.UtcNow;
@@ -107,42 +100,34 @@ public class LocalAchievementProvider : IAchievementProvider
         }
 
         SaveToDisk();
-
-        return Task.FromResult(SyncResult.SuccessResult());
+        EmitProgressIncremented(achievementId, newProgress, true);
     }
 
-    public Task<SyncResult> ResetAchievement(string achievementId)
+    public override void ResetAchievement(string achievementId)
     {
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
         {
-            var error = $"Achievement '{achievementId}' not found in database";
-            this.LogWarning(error);
-            return Task.FromResult(SyncResult.FailureResult(error));
+            this.LogWarning($"Achievement '{achievementId}' not found in database");
+            EmitAchievementReset(achievementId, false, $"Achievement '{achievementId}' not found in database");
+            return;
         }
 
-        // Remove from state dictionary
         if (_achievementStates.Remove(achievementId))
         {
-            // Reset runtime state
             achievement.IsUnlocked = false;
             achievement.UnlockedAt = null;
             achievement.CurrentProgress = 0;
-
             SaveToDisk();
             this.Log($"Reset achievement: {achievementId}");
-            return Task.FromResult(SyncResult.SuccessResult());
         }
-
-        return Task.FromResult(SyncResult.FailureResult("Achievement was not in saved state"));
+        EmitAchievementReset(achievementId, true);
     }
 
-    public Task<SyncResult> ResetAllAchievements()
+    public override void ResetAllAchievements()
     {
-        // Clear all states
         _achievementStates.Clear();
 
-        // Reset all runtime states
         foreach (var achievement in _database.Achievements)
         {
             achievement.IsUnlocked = false;
@@ -152,17 +137,72 @@ public class LocalAchievementProvider : IAchievementProvider
 
         SaveToDisk();
         this.Log("Reset all achievements");
+        EmitAllAchievementsReset(true);
+    }
+
+    #endregion
+
+    #region Async Methods
+
+    public override Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId)
+    {
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+        {
+            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found in database"));
+        }
+
+        bool wasAlreadyUnlocked = achievement.IsUnlocked;
+        UnlockAchievement(achievementId);
+
+        return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked));
+    }
+
+    public override Task<int> GetProgressAsync(string achievementId)
+    {
+        if (_achievementStates.TryGetValue(achievementId, out var state))
+        {
+            return Task.FromResult(state.CurrentProgress);
+        }
+        return Task.FromResult(0);
+    }
+
+    public override Task<SyncResult> IncrementProgressAsync(string achievementId, int amount)
+    {
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+        {
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found in database"));
+        }
+
+        IncrementProgress(achievementId, amount);
         return Task.FromResult(SyncResult.SuccessResult());
     }
 
-    /// <summary>
-    /// Load achievement states from disk
-    /// Deserializes JSON save file and reconstructs achievement state objects
-    /// Gracefully handles missing files or corrupted data by initializing empty state
-    /// </summary>
+    public override Task<SyncResult> ResetAchievementAsync(string achievementId)
+    {
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+        {
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found in database"));
+        }
+
+        ResetAchievement(achievementId);
+        return Task.FromResult(SyncResult.SuccessResult());
+    }
+
+    public override Task<SyncResult> ResetAllAchievementsAsync()
+    {
+        ResetAllAchievements();
+        return Task.FromResult(SyncResult.SuccessResult());
+    }
+
+    #endregion
+
+    #region Persistence
+
     private void LoadFromDisk()
     {
-        // Initialize with empty state if save file doesn't exist (first run)
         if (!FileAccess.FileExists(SavePath))
         {
             _achievementStates = new Dictionary<string, AchievementState>();
@@ -180,7 +220,6 @@ public class LocalAchievementProvider : IAchievementProvider
         var jsonText = file.GetAsText();
         file.Close();
 
-        // Parse JSON using Godot's Json class (AOT-compatible)
         var json = new Json();
         var error = json.Parse(jsonText);
         if (error != Error.Ok)
@@ -190,25 +229,21 @@ public class LocalAchievementProvider : IAchievementProvider
             return;
         }
 
-        // Deserialize from Godot dictionary format to our internal C# Dictionary
         var data = json.Data.AsGodotDictionary<string, Godot.Collections.Dictionary>();
         _achievementStates = new Dictionary<string, AchievementState>();
-    
+
         foreach (var kvp in data)
         {
             var stateDict = kvp.Value;
             var state = new AchievementState
             {
-                // Use TryGetValue with fallback defaults for missing/malformed fields
                 IsUnlocked = stateDict.TryGetValue("IsUnlocked", out var unlocked) && unlocked.AsBool(),
                 CurrentProgress = stateDict.TryGetValue("CurrentProgress", out var progress) ? progress.AsInt32() : 0
             };
 
-            // Parse optional UnlockedAt field (stored as ISO 8601 string)
             if (stateDict.TryGetValue("UnlockedAt", out var unlockedAt))
             {
                 var dateStr = unlockedAt.AsString();
-                // Gracefully handle null/empty dates or invalid formats
                 if (!string.IsNullOrEmpty(dateStr) && DateTime.TryParse(dateStr, out var date))
                 {
                     state.UnlockedAt = date;
@@ -221,14 +256,8 @@ public class LocalAchievementProvider : IAchievementProvider
         this.Log($"Loaded {_achievementStates.Count} achievement states from {SavePath}");
     }
 
-    /// <summary>
-    /// Save achievement states to disk
-    /// Serializes state to JSON using Godot's Json.Stringify (AOT-compatible)
-    /// Dates are stored in ISO 8601 format for portability across platforms
-    /// </summary>
     private void SaveToDisk()
     {
-        // Convert internal C# Dictionary to Godot.Collections.Dictionary for serialization
         var data = new Godot.Collections.Dictionary<string, Godot.Collections.Dictionary>();
 
         foreach (var kvp in _achievementStates)
@@ -239,17 +268,14 @@ public class LocalAchievementProvider : IAchievementProvider
                 ["CurrentProgress"] = kvp.Value.CurrentProgress
             };
 
-            // Only include UnlockedAt if it has a value (reduces file size for locked achievements)
             if (kvp.Value.UnlockedAt.HasValue)
             {
-                // ISO 8601 "O" format ensures proper round-trip parsing and timezone handling
                 stateDict["UnlockedAt"] = kvp.Value.UnlockedAt.Value.ToString("O");
             }
 
             data[kvp.Key] = stateDict;
         }
 
-        // Pretty-print JSON with tabs for human readability
         var jsonText = Json.Stringify(data, "\t");
 
         var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
@@ -264,11 +290,10 @@ public class LocalAchievementProvider : IAchievementProvider
 
         this.Log($"Saved {_achievementStates.Count} achievement states to {SavePath}");
     }
+
+    #endregion
 }
 
-/// <summary>
-/// Internal structure for storing achievement state
-/// </summary>
 internal class AchievementState
 {
     public bool IsUnlocked { get; set; }

@@ -62,11 +62,14 @@ public readonly struct SyncResult
 
 /// <summary>
 /// Interface for platform-specific achievement providers (Steam, Game Center, Google Play, etc.)
+/// Providers implement both sync and async versions of each operation.
+/// Sync methods are preferred for gameplay code (no frame blocking).
 /// </summary>
 public interface IAchievementProvider
-{    
+{
     /// <summary>
     /// Whether this provider is supported on the current platform (compile-time check)
+    /// Use preprocessor directives inside the implementation to enforce this.
     /// </summary>
     static virtual bool IsPlatformSupported => false;
 
@@ -79,29 +82,52 @@ public interface IAchievementProvider
     /// Whether the provider is currently available (SDK initialized, user logged in, etc.)
     /// </summary>
     bool IsAvailable { get; }
-
+    #region Sync Methods
     /// <summary>
     /// Unlock an achievement on this platform
     /// </summary>
-    Task<AchievementUnlockResult> UnlockAchievement(string achievementId);
+    void UnlockAchievement(string achievementId);
 
     /// <summary>
-    /// Get current progress for a progressive achievement
+    /// Increment progress for a progressive achievement
     /// </summary>
-    Task<int> GetProgress(string achievementId);
+    void IncrementProgress(string achievementId, int amount);
 
     /// <summary>
-    /// Set current progress for a progressive achievement
+    /// Reset a specific achievement - for testing
     /// </summary>
-    Task<SyncResult> SetProgress(string achievementId, int currentProgress);
+    void ResetAchievement(string achievementId);
 
     /// <summary>
-    /// Reset a specific achievement (for testing)
+    /// Reset all achievements - for testing
     /// </summary>
-    Task<SyncResult> ResetAchievement(string achievementId);
+    void ResetAllAchievements();
+    #endregion
+
+    #region Async Methods
+    /// <summary>
+    /// Unlock an achievement on this platform (async)
+    /// </summary>
+    Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId);
 
     /// <summary>
-    /// Reset all achievements (for testing)
+    /// Get current progress for a progressive achievement (async)
     /// </summary>
-    Task<SyncResult> ResetAllAchievements();
+    Task<int> GetProgressAsync(string achievementId);
+
+    /// <summary>
+    /// Increment progress for a progressive achievement (async)
+    /// </summary>
+    Task<SyncResult> IncrementProgressAsync(string achievementId, int amount);
+
+    /// <summary>
+    /// Reset a specific achievement - for testing (async)
+    /// </summary>
+    Task<SyncResult> ResetAchievementAsync(string achievementId);
+
+    /// <summary>
+    /// Reset all achievements - for testing (async)
+    /// </summary>
+    Task<SyncResult> ResetAllAchievementsAsync();
+    #endregion
 }
