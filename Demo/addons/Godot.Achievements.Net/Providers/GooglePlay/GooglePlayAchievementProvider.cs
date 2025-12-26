@@ -9,23 +9,24 @@ namespace Godot.Achievements.Providers.GooglePlay;
 
 /// <summary>
 /// Google Play Games achievement provider for Android.
-/// Integrates with the godot-play-game-services plugin:
+/// Integrates with the GodotPlayGameServices addon:
 /// https://github.com/godot-sdk-integrations/godot-play-game-services
 ///
 /// Requirements:
-/// 1. Install godot-play-game-services plugin in your project
-/// 2. Configure Google Play Console with your game and achievements
-/// 3. Set up OAuth credentials matching your package name and SHA-1 certificate
-/// 4. Enable Google Play provider in project settings
+/// 1. Install GodotPlayGameServices addon in your project
+/// 2. Enable the GodotPlayGameServices autoload in Project Settings
+/// 3. Configure Google Play Console with your game and achievements
+/// 4. Set up OAuth credentials matching your package name and SHA-1 certificate
+/// 5. Enable Google Play provider in project settings
 /// </summary>
 public class GooglePlayAchievementProvider : IAchievementProvider
 {
     public static bool IsPlatformSupported => true;
 
     private readonly AchievementDatabase _database;
-    private GodotObject? _playGamesServices;
-    private GodotObject? _signInClient;
-    private GodotObject? _achievementsClient;
+    private Node? _godotPlayGameServices;
+    private Node? _signInClient;
+    private Node? _achievementsClient;
     private bool _isInitialized;
     private bool _isAuthenticated;
 
@@ -46,26 +47,6 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     {
         try
         {
-            // Check if the godot-play-game-services plugin is available
-            if (!Engine.HasSingleton("GodotPlayGameServices"))
-            {
-                this.LogWarning("godot-play-game-services plugin not found. Install from: https://github.com/godot-sdk-integrations/godot-play-game-services");
-                _isInitialized = false;
-                return;
-            }
-
-            _playGamesServices = Engine.GetSingleton("GodotPlayGameServices");
-
-            // Initialize the plugin
-            var initResult = _playGamesServices.Call("initialize");
-            if (initResult.AsInt32() != 0) // 0 = OK
-            {
-                this.LogError("Failed to initialize Google Play Games Services plugin");
-                _isInitialized = false;
-                return;
-            }
-
-            // Get the autoload nodes for sign-in and achievements
             var sceneTree = Engine.GetMainLoop() as SceneTree;
             if (sceneTree?.Root == null)
             {
@@ -74,27 +55,50 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 return;
             }
 
-            _signInClient = sceneTree.Root.GetNodeOrNull("SignInClient") as GodotObject;
-            _achievementsClient = sceneTree.Root.GetNodeOrNull("AchievementsClient") as GodotObject;
-
-            if (_signInClient == null)
+            // Get the GodotPlayGameServices autoload
+            _godotPlayGameServices = sceneTree.Root.GetNodeOrNull("GodotPlayGameServices") as Node;
+            if (_godotPlayGameServices == null)
             {
-                this.LogWarning("SignInClient autoload not found. Make sure godot-play-game-services is properly configured.");
+                this.LogWarning("GodotPlayGameServices autoload not found. Make sure it's enabled in Project Settings > Autoload.");
+                _isInitialized = false;
+                return;
             }
 
-            if (_achievementsClient == null)
+            // Initialize the plugin
+            var initResult = _godotPlayGameServices.Call("initialize");
+            if (initResult.AsInt32() != 0) // 0 = OK (PlayGamesPluginError.OK)
             {
-                this.LogWarning("AchievementsClient autoload not found. Make sure godot-play-game-services is properly configured.");
+                this.LogError("Failed to initialize Google Play Games Services plugin. The Android plugin may not be available.");
+                _isInitialized = false;
+                return;
+            }
+
+            this.Log("GodotPlayGameServices plugin initialized");
+
+            // Instance the client nodes into the scene tree
+            InstanceClientNodes(sceneTree.Root);
+
+            if (_signInClient == null || _achievementsClient == null)
+            {
+                this.LogError("Failed to create client nodes");
+                _isInitialized = false;
+                return;
             }
 
             // Connect to signals
             ConnectSignals();
 
+            // Connect to tree exiting for cleanup
+            if (!sceneTree.IsConnected("tree_exiting", Callable.From(Cleanup)))
+            {
+                sceneTree.Connect("tree_exiting", Callable.From(Cleanup));
+            }
+
             // Check initial authentication status
             CheckAuthentication();
 
             _isInitialized = true;
-            this.Log("Initialized with godot-play-game-services plugin");
+            this.Log("Initialized with GodotPlayGameServices addon");
         }
         catch (Exception ex)
         {
@@ -103,33 +107,74 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         }
     }
 
+    private void InstanceClientNodes(Node root)
+    {
+        try
+        {
+            // Load and instance SignInClient
+            var signInScript = GD.Load<Script>("res://addons/GodotPlayGameServices/scripts/sign_in/sign_in_client.gd");
+            if (signInScript != null)
+            {
+                _signInClient = new Node();
+                _signInClient.SetScript(signInScript);
+                _signInClient.Name = "GooglePlaySignInClient";
+                root.AddChild(_signInClient);
+                this.Log("SignInClient node created");
+            }
+            else
+            {
+                this.LogWarning("Could not load sign_in_client.gd script");
+            }
+
+            // Load and instance AchievementsClient
+            var achievementsScript = GD.Load<Script>("res://addons/GodotPlayGameServices/scripts/achievements/achievements_client.gd");
+            if (achievementsScript != null)
+            {
+                _achievementsClient = new Node();
+                _achievementsClient.SetScript(achievementsScript);
+                _achievementsClient.Name = "GooglePlayAchievementsClient";
+                root.AddChild(_achievementsClient);
+                this.Log("AchievementsClient node created");
+            }
+            else
+            {
+                this.LogWarning("Could not load achievements_client.gd script");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Failed to instance client nodes: {ex.Message}");
+        }
+    }
+
     private void ConnectSignals()
     {
-        if (_signInClient is Node signInNode)
+        if (_signInClient != null)
         {
             // Connect to user_authenticated signal
-            if (!signInNode.IsConnected("user_authenticated", Callable.From<bool>(OnUserAuthenticated)))
+            if (!_signInClient.IsConnected("user_authenticated", Callable.From<bool>(OnUserAuthenticated)))
             {
-                signInNode.Connect("user_authenticated", Callable.From<bool>(OnUserAuthenticated));
+                _signInClient.Connect("user_authenticated", Callable.From<bool>(OnUserAuthenticated));
             }
         }
 
-        if (_achievementsClient is Node achievementsNode)
+        if (_achievementsClient != null)
         {
             // Connect to achievement signals
-            if (!achievementsNode.IsConnected("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked)))
+            if (!_achievementsClient.IsConnected("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked)))
             {
-                achievementsNode.Connect("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked));
+                _achievementsClient.Connect("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked));
             }
 
-            if (!achievementsNode.IsConnected("achievement_revealed", Callable.From<bool, string>(OnAchievementRevealed)))
+            if (!_achievementsClient.IsConnected("achievement_revealed", Callable.From<bool, string>(OnAchievementRevealed)))
             {
-                achievementsNode.Connect("achievement_revealed", Callable.From<bool, string>(OnAchievementRevealed));
+                _achievementsClient.Connect("achievement_revealed", Callable.From<bool, string>(OnAchievementRevealed));
             }
 
-            if (!achievementsNode.IsConnected("achievements_loaded", Callable.From<Godot.Collections.Array>(OnAchievementsLoaded)))
+            // The signal emits Array[PlayGamesAchievement] which becomes Godot.Collections.Array in C#
+            if (!_achievementsClient.IsConnected("achievements_loaded", Callable.From<Godot.Collections.Array>(OnAchievementsLoaded)))
             {
-                achievementsNode.Connect("achievements_loaded", Callable.From<Godot.Collections.Array>(OnAchievementsLoaded));
+                _achievementsClient.Connect("achievements_loaded", Callable.From<Godot.Collections.Array>(OnAchievementsLoaded));
             }
         }
     }
@@ -173,6 +218,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         var result = new List<Dictionary<string, object>>();
         foreach (var item in achievements)
         {
+            // Each item is a PlayGamesAchievement object (RefCounted with properties)
             if (item.Obj is GodotObject achievementObj)
             {
                 var dict = new Dictionary<string, object>
@@ -478,5 +524,23 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     /// Check if the user is currently authenticated.
     /// </summary>
     public bool IsAuthenticated => _isAuthenticated;
+
+    private void Cleanup()
+    {
+        if (_signInClient != null && GodotObject.IsInstanceValid(_signInClient))
+        {
+            _signInClient.QueueFree();
+            _signInClient = null;
+        }
+
+        if (_achievementsClient != null && GodotObject.IsInstanceValid(_achievementsClient))
+        {
+            _achievementsClient.QueueFree();
+            _achievementsClient = null;
+        }
+
+        _isInitialized = false;
+        _isAuthenticated = false;
+    }
 }
 #endif
