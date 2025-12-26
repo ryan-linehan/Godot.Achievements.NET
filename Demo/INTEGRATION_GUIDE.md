@@ -135,39 +135,38 @@ unzip godot-play-game-services-v1.0.0.zip -d addons/
 
 Enable in **Project → Project Settings → Plugins**.
 
-### 2. Copy Android Achievement Provider
+**Important:** The godot-play-game-services plugin provides:
+- `GodotPlayGameServices` singleton - Main plugin entry point
+- `SignInClient` autoload - Handles player authentication
+- `AchievementsClient` autoload - Handles achievement operations
 
-```bash
-# Copy the Android provider folder to your project
-cp -r path/to/Godot.Achievements.NET/addons/godot_achievements_android your-project/addons/
-```
+### 2. Configure Google Play Console
 
-### 3. Configure Autoload
+1. Create a new game in [Google Play Console](https://play.google.com/console)
+2. Enable Play Games Services for your game
+3. Create achievements and note their IDs (format: `CgkI...`)
+4. Configure OAuth 2.0 credentials:
+   - Add your app's package name
+   - Add SHA-1 certificate fingerprint (debug and release)
 
-1. Create scene with `GooglePlayAchievementAutoload` node
-2. Save as `res://addons/godot_achievements_android/GooglePlayAutoload.tscn`
-3. Add to autoloads **AFTER** `Achievements`:
+### 3. Configure Plugin in Godot
 
-```
-Project → Project Settings → Autoload
-- Path: res://addons/godot_achievements_android/GooglePlayAutoload.tscn
-- Name: GooglePlayAchievements
-```
+The godot-play-game-services plugin adds an editor dock to configure your Game ID:
 
-### 4. Configure Google Play
+1. Open the **Play Game Services** dock in the editor
+2. Enter your Game ID from Google Play Console
+3. Save the project
 
-In Android export settings, add to AndroidManifest.xml:
+### 4. Enable Google Play Provider
 
-```xml
-<meta-data
-    android:name="com.google.android.gms.games.APP_ID"
-    android:value="@string/app_id" />
-```
+In **Project → Project Settings**:
+1. Navigate to `Addons → Achievements → Platforms`
+2. Enable **Google Play Enabled**
 
-Add to `res/values/strings.xml`:
-```xml
-<string name="app_id">123456789012</string>
-```
+The `GooglePlayAchievementProvider` will automatically initialize when:
+- Running on Android (`GODOT_ANDROID` is defined)
+- The setting is enabled
+- The godot-play-game-services plugin is installed
 
 ### 5. Set Achievement IDs
 
@@ -178,6 +177,71 @@ In achievement editor, set Google Play IDs:
 Achievement: First Kill
 Google Play ID: CgkI7ea1q6IOEAIQBw
 ```
+
+### 6. Authentication
+
+The godot-play-game-services plugin handles authentication automatically. The `GooglePlayAchievementProvider`:
+- Initializes the plugin on startup
+- Listens for authentication state changes
+- Only syncs achievements when the user is authenticated
+
+If you need manual sign-in control, you can access the provider directly:
+
+```csharp
+var googlePlayProvider = AchievementManager.Instance.GetProvider("Google Play Games")
+    as GooglePlayAchievementProvider;
+
+if (googlePlayProvider != null)
+{
+    // Check authentication status
+    if (!googlePlayProvider.IsAuthenticated)
+    {
+        // Request manual sign-in
+        googlePlayProvider.SignIn();
+    }
+
+    // Show Google Play achievements UI
+    googlePlayProvider.ShowAchievementsUI();
+}
+```
+
+### 7. Incremental Achievements
+
+For achievements that track progress (e.g., "Kill 100 enemies"):
+
+1. Create an **Incremental** achievement in Google Play Console
+2. Set the number of steps required (e.g., 100)
+3. Use `SetProgress` in your code - the provider handles increment calculation:
+
+```csharp
+// The provider calculates the increment automatically
+await AchievementManager.Instance.SetProgress("kill_enemies", currentKillCount);
+```
+
+**Note:** Google Play does not support decreasing progress. If you try to set a lower value, the provider will log a warning and skip the operation.
+
+### 8. Hidden Achievements
+
+To reveal a hidden achievement before unlocking:
+
+```csharp
+var googlePlayProvider = AchievementManager.Instance.GetProvider("Google Play Games")
+    as GooglePlayAchievementProvider;
+
+// Reveal the achievement (makes it visible to the player)
+await googlePlayProvider?.RevealAchievementAsync("secret_achievement");
+
+// Later, unlock it
+await AchievementManager.Instance.Unlock("secret_achievement");
+```
+
+**Note:** Unlocking a hidden achievement automatically reveals it.
+
+### 9. Limitations
+
+- **Reset not supported:** Google Play Games does not support resetting achievements in production. Use the Play Games Console for testing.
+- **Progress only increases:** You cannot decrease achievement progress.
+- **Requires authentication:** Achievements only sync when the user is signed in to Google Play Games.
 
 ## Complete Autoload Configuration
 
