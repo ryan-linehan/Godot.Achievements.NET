@@ -229,6 +229,8 @@ public partial class AchievementEditorDock : Control
 
     private void OnAchievementChanged()
     {
+        // Save the database when any achievement property changes
+        SaveDatabase();
         // Refresh the full list to re-run all validations (including duplicate detection)
         RefreshAchievementList(preserveSelection: true);
     }

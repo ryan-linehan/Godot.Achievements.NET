@@ -8,13 +8,19 @@
 
 config_version=5
 
+[Addons]
+
+GooglePlayServices=0
+
 [addons]
 
 achievements/toast/position=1
-achievements/toast/display_duration=0.5
+achievements/toast/display_duration=2.0
 achievements/database_path="uid://ddebvxw8oopod"
 achievements/toast/scene_path="uid://betgshcwd2vle"
 achievements/toast/unlock_sound="uid://tfy5p37ns3cg"
+achievements/platforms/googleplay_enabled=true
+GooglePlayServices/GameID=123456789
 
 [application]
 
@@ -27,6 +33,11 @@ config/icon="res://icon.svg"
 
 Achievements="*res://addons/Godot.Achievements.Net/Core/AchievementManager.cs"
 AchievementToasts="*res://addons/Godot.Achievements.Net/Toast/AchievementToastContainer.tscn"
+GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
+
+[display]
+
+window/handheld/orientation=1
 
 [dotnet]
 
@@ -34,9 +45,10 @@ project/assembly_name="demo"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/Godot.Achievements.Net/plugin.cfg")
+enabled=PackedStringArray("res://addons/Godot.Achievements.Net/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg")
 
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

@@ -8,6 +8,22 @@ using Godot.Achievements.Providers;
 namespace Godot.Achievements.Providers.GooglePlay;
 
 /// <summary>
+/// Helper node to receive app lifecycle notifications.
+/// </summary>
+internal partial class AppResumeListener : Node
+{
+    public event Action? OnAppResumed;
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationApplicationResumed)
+        {
+            OnAppResumed?.Invoke();
+        }
+    }
+}
+
+/// <summary>
 /// Google Play Games achievement provider for Android.
 /// Integrates with the GodotPlayGameServices addon:
 /// https://github.com/godot-sdk-integrations/godot-play-game-services
@@ -27,8 +43,10 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     private Node? _godotPlayGameServices;
     private Node? _signInClient;
     private Node? _achievementsClient;
+    private AppResumeListener? _resumeListener;
     private bool _isInitialized;
     private bool _isAuthenticated;
+    private bool _signInAttempted;
 
     // Track pending callbacks for async operations
     private readonly Dictionary<string, TaskCompletionSource<bool>> _pendingUnlocks = new();
@@ -85,17 +103,15 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 return;
             }
 
-            // Connect to signals
-            ConnectSignals();
-
-            // Connect to tree exiting for cleanup
-            if (!sceneTree.IsConnected("tree_exiting", Callable.From(Cleanup)))
+            // Connect to tree exiting for cleanup (tree_exiting is on Node, not SceneTree)
+            if (!sceneTree.Root.IsConnected("tree_exiting", Callable.From(Cleanup)))
             {
-                sceneTree.Connect("tree_exiting", Callable.From(Cleanup));
+                sceneTree.Root.Connect("tree_exiting", Callable.From(Cleanup));
             }
 
-            // Check initial authentication status
-            CheckAuthentication();
+            // Defer signal connections and auth check until nodes are in tree
+            Callable.From(ConnectSignals).CallDeferred();
+            Callable.From(CheckAuthentication).CallDeferred();
 
             _isInitialized = true;
             this.Log("Initialized with GodotPlayGameServices addon");
@@ -118,7 +134,7 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 _signInClient = new Node();
                 _signInClient.SetScript(signInScript);
                 _signInClient.Name = "GooglePlaySignInClient";
-                root.AddChild(_signInClient);
+                root.CallDeferred("add_child", _signInClient);
                 this.Log("SignInClient node created");
             }
             else
@@ -133,17 +149,33 @@ public class GooglePlayAchievementProvider : IAchievementProvider
                 _achievementsClient = new Node();
                 _achievementsClient.SetScript(achievementsScript);
                 _achievementsClient.Name = "GooglePlayAchievementsClient";
-                root.AddChild(_achievementsClient);
+                root.CallDeferred("add_child", _achievementsClient);
                 this.Log("AchievementsClient node created");
             }
             else
             {
                 this.LogWarning("Could not load achievements_client.gd script");
             }
+
+            // Create resume listener to detect when app returns from sign-in
+            _resumeListener = new AppResumeListener();
+            _resumeListener.Name = "GooglePlayResumeListener";
+            _resumeListener.OnAppResumed += OnAppResumed;
+            root.CallDeferred("add_child", _resumeListener);
         }
         catch (Exception ex)
         {
             this.LogError($"Failed to instance client nodes: {ex.Message}");
+        }
+    }
+
+    private void OnAppResumed()
+    {
+        // When app resumes after sign-in attempt, re-check auth status
+        if (_signInAttempted && !_isAuthenticated && _signInClient != null)
+        {
+            this.Log("App resumed after sign-in, checking auth status...");
+            _signInClient.Call("is_authenticated");
         }
     }
 
@@ -189,8 +221,16 @@ public class GooglePlayAchievementProvider : IAchievementProvider
 
     private void OnUserAuthenticated(bool isAuthenticated)
     {
-        _isAuthenticated = isAuthenticated;
         this.Log($"Authentication status changed: {isAuthenticated}");
+        _isAuthenticated = isAuthenticated;
+
+        // Auto sign-in if not authenticated (only try once)
+        if (!isAuthenticated && !_signInAttempted && _signInClient != null)
+        {
+            _signInAttempted = true;
+            this.Log("Not authenticated, attempting sign-in...");
+            _signInClient.Call("sign_in");
+        }
     }
 
     private void OnAchievementUnlocked(bool isUnlocked, string achievementId)
@@ -403,17 +443,17 @@ public class GooglePlayAchievementProvider : IAchievementProvider
     {
         // Google Play Games does not support resetting achievements in production
         // This is only available for testing via the Play Games Console
-        this.LogWarning($"ResetAchievement is not supported on Google Play Games (achievement: {achievementId})");
+        this.LogWarning($"ResetAchievement is not supported on Google Play Games (achievement: {achievementId}).\n Use the Play Games Console for resetting achievements.");
         await Task.CompletedTask;
-        return SyncResult.FailureResult("Google Play Games does not support resetting achievements. Use the Play Games Console for testing.");
+        return SyncResult.SuccessResult("Google Play Games does not support resetting achievements. Returning success.");
     }
 
     public async Task<SyncResult> ResetAllAchievements()
     {
         // Google Play Games does not support resetting achievements in production
-        this.LogWarning("ResetAllAchievements is not supported on Google Play Games");
+        this.LogWarning("ResetAllAchievements is not supported on Google Play Games. \n Use the Play Games Console for resetting achievements.");
         await Task.CompletedTask;
-        return SyncResult.FailureResult("Google Play Games does not support resetting achievements. Use the Play Games Console for testing.");
+        return SyncResult.SuccessResult("Google Play Games does not support resetting achievements. Returning success.");
     }
 
     /// <summary>
@@ -537,6 +577,13 @@ public class GooglePlayAchievementProvider : IAchievementProvider
         {
             _achievementsClient.QueueFree();
             _achievementsClient = null;
+        }
+
+        if (_resumeListener != null && GodotObject.IsInstanceValid(_resumeListener))
+        {
+            _resumeListener.OnAppResumed -= OnAppResumed;
+            _resumeListener.QueueFree();
+            _resumeListener = null;
         }
 
         _isInitialized = false;
