@@ -91,4 +91,18 @@ public static class AchievementSettings
     public const int DefaultSyncMaxRetryCount = 5;
 
     #endregion
+
+    #region Logging Settings
+
+    /// <summary>
+    /// Log level for the achievements system (Info, Warning, Error, None)
+    /// </summary>
+    public const string LogLevel = "addons/achievements/log_level";
+
+    /// <summary>
+    /// Default log level (Info = show all messages)
+    /// </summary>
+    public const Core.LogLevel DefaultLogLevel = Core.LogLevel.Info;
+
+    #endregion
 }
