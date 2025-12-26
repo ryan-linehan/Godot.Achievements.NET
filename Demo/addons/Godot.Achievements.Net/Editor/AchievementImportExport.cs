@@ -188,7 +188,6 @@ public static class AchievementImportExport
 
                 if (isNew)
                 {
-                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
                     achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
                     database.AddAchievement(achievement);
                     importedCount++;
@@ -400,7 +399,6 @@ public static class AchievementImportExport
 
                 if (isNew)
                 {
-                    achievement.CustomPlatformIds = new Godot.Collections.Dictionary<string, string>();
                     achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
                     database.AddAchievement(achievement);
                     importedCount++;
