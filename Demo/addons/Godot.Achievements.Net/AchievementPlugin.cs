@@ -184,6 +184,20 @@ public partial class AchievementPlugin : EditorPlugin
             { "hint_string", "0,100,1,or_greater" }
         });
 
+        // Log level (default: Info = show all messages)
+        if (!ProjectSettings.HasSetting(AchievementSettings.LogLevel))
+        {
+            ProjectSettings.SetSetting(AchievementSettings.LogLevel, (int)AchievementSettings.DefaultLogLevel);
+        }
+        ProjectSettings.SetInitialValue(AchievementSettings.LogLevel, (int)AchievementSettings.DefaultLogLevel);
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", AchievementSettings.LogLevel },
+            { "type", (int)Variant.Type.Int },
+            { "hint", (int)PropertyHint.Enum },
+            { "hint_string", "Info,Warning,Error,None" }
+        });
+
         ProjectSettings.Save();
     }
 
