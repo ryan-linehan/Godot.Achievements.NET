@@ -34,6 +34,13 @@ public partial class Achievement : Resource
     [Export]
     public string SteamId { get; set; } = string.Empty;
     /// <summary>
+    /// Steam stat key for tracking progress on incremental achievements.
+    /// In Steam, stats and achievements have separate keys.
+    /// Leave empty to use SteamId as the stat key (only works if configured identically in Steamworks).
+    /// </summary>
+    [Export]
+    public string SteamStatId { get; set; } = string.Empty;
+    /// <summary>
     /// Platform-specific ID for Game Center (iOS/macOS)
     /// </summary>
     [Export]

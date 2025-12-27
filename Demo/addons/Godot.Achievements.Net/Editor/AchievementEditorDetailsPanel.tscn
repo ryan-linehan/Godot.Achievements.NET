@@ -35,7 +35,7 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("AchievementIconButton", "IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer", "VisualizeUnlockButton")]
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("AchievementIconButton", "IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "SteamStatIdLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer", "VisualizeUnlockButton")]
 custom_minimum_size = Vector2(400, 0)
 anchors_preset = 15
 anchor_right = 1.0
@@ -54,6 +54,7 @@ TargetValueSpinBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/Con
 PlatformsContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer")
 SteamVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox")
 SteamIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamIDLineEdit")
+SteamStatIdLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamStatIdLineEdit")
 GooglePlayVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox")
 GooglePlayIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox/GooglePlayIDLineEdit")
 GameCenterVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox")
@@ -227,6 +228,20 @@ text = "Steam Achievement ID"
 layout_mode = 2
 placeholder_text = "steam_achievement_api_name"
 
+[node name="SteamStatIdLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+tooltip_text = "Steam stat key for tracking progress. Leave empty to use Achievement ID."
+mouse_filter = 1
+text = "Steam Stat ID (for progress)"
+
+[node name="SteamStatIdLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+placeholder_text = "steam_stat_api_name (optional)"
+
+[node name="SteamSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
 [node name="GooglePlayVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
 layout_mode = 2
 theme_override_constants/separation = 6
@@ -238,6 +253,10 @@ text = "Google Play Achievement ID"
 [node name="GooglePlayIDLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox"]
 layout_mode = 2
 placeholder_text = "CgkI... (Google Play achievement ID)"
+
+[node name="GooglePlaySeparator" type="HSeparator" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="GameCenterVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
 layout_mode = 2

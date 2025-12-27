@@ -80,6 +80,20 @@ public partial class SteamAchievementProvider : AchievementProviderBase
         return (steamId, null);
     }
 
+    /// <summary>
+    /// Gets the Steam stat key for an achievement. Falls back to SteamId if SteamStatId is not set.
+    /// </summary>
+    private string? GetStatKey(Achievement achievement)
+    {
+        // Use SteamStatId if configured, otherwise fall back to SteamId
+        var statId = achievement.SteamStatId;
+        if (!string.IsNullOrEmpty(statId))
+            return statId;
+
+        // Fall back to SteamId (for backwards compatibility or when stat key matches achievement key)
+        return achievement.SteamId;
+    }
+
     #endregion
 
     #region Sync Methods
@@ -119,16 +133,25 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            var currentProgress = _achievements!.GetAchievementProgress(steamId!);
-            var newProgress = currentProgress + amount;
-            _achievements.SetAchievementProgress(steamId!, newProgress);
+            var achievement = _database.GetById(achievementId)!;
+            var statKey = GetStatKey(achievement);
+            if (string.IsNullOrEmpty(statKey))
+            {
+                var noStatError = $"Achievement '{achievementId}' has no Steam Stat ID configured";
+                this.LogWarning(noStatError);
+                EmitProgressIncremented(achievementId, 0, false, noStatError);
+                return;
+            }
 
-            this.Log($"Incremented progress for {steamId}: {currentProgress} -> {newProgress}");
+            var currentProgress = _achievements!.GetStatProgress(statKey);
+            var newProgress = currentProgress + amount;
+            _achievements.SetStatProgress(statKey, newProgress);
+
+            this.Log($"Incremented progress for stat {statKey}: {currentProgress} -> {newProgress}");
             EmitProgressIncremented(achievementId, newProgress, true);
 
             // Check if achievement should be unlocked
-            var achievement = _database.GetById(achievementId);
-            if (achievement != null && newProgress >= achievement.MaxProgress)
+            if (newProgress >= achievement.MaxProgress)
             {
                 UnlockAchievement(achievementId);
             }
@@ -221,7 +244,15 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            var progress = _achievements!.GetAchievementProgress(steamId!);
+            var achievement = _database.GetById(achievementId)!;
+            var statKey = GetStatKey(achievement);
+            if (string.IsNullOrEmpty(statKey))
+            {
+                this.LogWarning($"Achievement '{achievementId}' has no Steam Stat ID configured");
+                return Task.FromResult(0);
+            }
+
+            var progress = _achievements!.GetStatProgress(statKey);
             return Task.FromResult(progress);
         }
         catch (Exception ex)
@@ -242,18 +273,24 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            var currentProgress = _achievements!.GetAchievementProgress(steamId!);
+            var achievement = _database.GetById(achievementId)!;
+            var statKey = GetStatKey(achievement);
+            if (string.IsNullOrEmpty(statKey))
+            {
+                return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam Stat ID configured"));
+            }
+
+            var currentProgress = _achievements!.GetStatProgress(statKey);
             var newProgress = currentProgress + amount;
-            _achievements.SetAchievementProgress(steamId!, newProgress);
+            _achievements.SetStatProgress(statKey, newProgress);
 
             // Auto-unlock if progress reached
-            var achievement = _database.GetById(achievementId);
-            if (achievement != null && newProgress >= achievement.MaxProgress)
+            if (newProgress >= achievement.MaxProgress)
             {
                 _achievements.UnlockAchievement(steamId!);
             }
 
-            this.Log($"Incremented progress for {steamId}: {newProgress}");
+            this.Log($"Incremented progress for stat {statKey}: {newProgress}");
             return Task.FromResult(SyncResult.SuccessResult());
         }
         catch (Exception ex)
