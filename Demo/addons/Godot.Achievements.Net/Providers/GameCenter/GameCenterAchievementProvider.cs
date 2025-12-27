@@ -22,6 +22,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
     public static bool IsPlatformSupported => true;
 
     private readonly AchievementDatabase _database;
+    private GodotObject? _gameCenterManager;
     private GodotObject? _localPlayer;
     private bool _isInitialized;
     private bool _isAuthenticated;
@@ -39,9 +40,9 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         try
         {
             // Check if GodotApplePlugins is available
-            if (!ClassDB.ClassExists("GKLocalPlayer"))
+            if (!ClassDB.ClassExists("GameCenterManager"))
             {
-                this.LogWarning("GKLocalPlayer class not found - ensure GodotApplePlugins is installed");
+                this.LogWarning("GameCenterManager class not found - ensure GodotApplePlugins is installed");
                 _isInitialized = false;
                 return;
             }
@@ -53,25 +54,25 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 return;
             }
 
-            // Get the local player to check authentication status
-            var localPlayerInstance = ClassDB.Instantiate("GKLocalPlayer");
-            if (localPlayerInstance.Obj is GodotObject localPlayerObj)
+            // Create GameCenterManager instance
+            var managerInstance = ClassDB.Instantiate("GameCenterManager");
+            if (managerInstance.Obj is GodotObject managerObj)
             {
-                _localPlayer = localPlayerObj;
-                _isAuthenticated = _localPlayer.Get("isAuthenticated").AsBool();
-                _isInitialized = true;
-                this.Log($"Initialized, authenticated: {_isAuthenticated}");
+                _gameCenterManager = managerObj;
 
-                // If not authenticated, attempt authentication
-                if (!_isAuthenticated)
-                {
-                    this.Log("User not authenticated, attempting authentication...");
-                    AuthenticatePlayer();
-                }
+                // Connect to authentication signals
+                _gameCenterManager.Connect("authentication_result", Callable.From<bool>(OnAuthenticationResult));
+                _gameCenterManager.Connect("authentication_error", Callable.From<string>(OnAuthenticationError));
+
+                _isInitialized = true;
+                this.Log("GameCenterManager initialized, attempting authentication...");
+
+                // Trigger authentication
+                _gameCenterManager.Call("authenticate");
             }
             else
             {
-                this.LogWarning("Could not instantiate GKLocalPlayer");
+                this.LogWarning("Could not instantiate GameCenterManager");
                 _isInitialized = false;
             }
         }
@@ -82,56 +83,28 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         }
     }
 
-    /// <summary>
-    /// Attempts to authenticate the player with Game Center.
-    /// Sets up an authentication handler callback.
-    /// </summary>
-    private void AuthenticatePlayer()
+    private void OnAuthenticationResult(bool success)
     {
-        if (_localPlayer == null)
-        {
-            this.LogWarning("Cannot authenticate - local player is null");
-            return;
-        }
+        _isAuthenticated = success;
+        this.Log($"Authentication result: {(success ? "success" : "failed")}");
 
-        try
+        if (success && _gameCenterManager != null)
         {
-            // Create authentication callback
-            var authCallback = Callable.From<GodotObject, Variant>((viewController, error) =>
+            // Get the local player from GameCenterManager
+            var localPlayerVariant = _gameCenterManager.Get("local_player");
+            if (localPlayerVariant.Obj is GodotObject localPlayerObj)
             {
-                if (error.VariantType != Variant.Type.Nil)
-                {
-                    this.LogError($"Authentication failed: {error.AsString()}");
-                    return;
-                }
-
-                if (GodotObject.IsInstanceValid(viewController))
-                {
-                    // If a view controller is provided, we need to present it
-                    // This typically happens when Game Center UI needs to be shown
-                    this.LogWarning("Game Center authentication requires view controller presentation - not yet implemented");
-                    return;
-                }
-
-                // Authentication successful
-                _isAuthenticated = _localPlayer!.Get("isAuthenticated").AsBool();
-                this.Log($"Authentication completed. Authenticated: {_isAuthenticated}");
-
-                if (_isAuthenticated)
-                {
-                    var playerAlias = _localPlayer.Get("alias").AsString();
-                    this.Log($"Authenticated as: {playerAlias}");
-                }
-            });
-
-            // Set the authentication handler
-            _localPlayer.Set("authenticateHandler", authCallback);
-            this.Log("Authentication handler set");
+                _localPlayer = localPlayerObj;
+                var playerAlias = _localPlayer.Get("alias").AsString();
+                this.Log($"Authenticated as: {playerAlias}");
+            }
         }
-        catch (Exception ex)
-        {
-            this.LogError($"Failed to set authentication handler: {ex.Message}");
-        }
+    }
+
+    private void OnAuthenticationError(string error)
+    {
+        _isAuthenticated = false;
+        this.LogError($"Authentication error: {error}");
     }
 
     /// <summary>
@@ -149,7 +122,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         try
         {
             bool wasAuthenticated = _isAuthenticated;
-            _isAuthenticated = _localPlayer.Get("isAuthenticated").AsBool();
+            _isAuthenticated = _localPlayer.Get("is_authenticated").AsBool();
 
             if (wasAuthenticated != _isAuthenticated)
             {
