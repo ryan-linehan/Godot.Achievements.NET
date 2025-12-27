@@ -21,6 +21,7 @@ achievements/toast/scene_path="uid://betgshcwd2vle"
 achievements/toast/unlock_sound="uid://tfy5p37ns3cg"
 achievements/platforms/googleplay_enabled=true
 GooglePlayServices/GameID=123456789
+achievements/platforms/gamecenter_enabled=true
 
 [application]
 

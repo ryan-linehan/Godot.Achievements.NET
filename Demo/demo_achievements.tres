@@ -9,7 +9,6 @@ Id = "achievement_01"
 DisplayName = "Click a button!"
 Description = "Just click any button!"
 SteamId = "testing"
-GameCenterId = "yes"
 GooglePlayId = "CgkI9Nyp4OkBEAIQAg"
 
 [sub_resource type="Resource" id="Resource_1mgol"]
