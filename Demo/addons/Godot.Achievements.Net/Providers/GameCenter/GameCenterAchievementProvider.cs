@@ -227,13 +227,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
             CallGKAchievementStatic("report_achivement", achievementsArray, callback);
 
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(DefaultTimeoutSeconds));
-            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
-
-            if (completedTask == timeoutTask)
-                return AchievementUnlockResult.FailureResult("Game Center request timed out");
-
-            return await tcs.Task;
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
+                AchievementUnlockResult.FailureResult("Game Center request timed out"));
         }
         catch (Exception ex)
         {
@@ -283,13 +278,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
             CallGKAchievementStatic("load_achievements", callback);
 
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(DefaultTimeoutSeconds));
-            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
-
-            if (completedTask == timeoutTask)
-                return 0;
-
-            return await tcs.Task;
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds, 0);
         }
         catch (Exception ex)
         {
@@ -341,13 +330,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
             CallGKAchievementStatic("report_achivement", achievementsArray, callback);
 
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(DefaultTimeoutSeconds));
-            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
-
-            if (completedTask == timeoutTask)
-                return SyncResult.FailureResult("Game Center request timed out");
-
-            return await tcs.Task;
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
+                SyncResult.FailureResult("Game Center request timed out"));
         }
         catch (Exception ex)
         {
@@ -387,13 +371,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
             CallGKAchievementStatic("reset_achivements", callback);
 
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(DefaultTimeoutSeconds));
-            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
-
-            if (completedTask == timeoutTask)
-                return SyncResult.FailureResult("Game Center request timed out");
-
-            return await tcs.Task;
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
+                SyncResult.FailureResult("Game Center request timed out"));
         }
         catch (Exception ex)
         {

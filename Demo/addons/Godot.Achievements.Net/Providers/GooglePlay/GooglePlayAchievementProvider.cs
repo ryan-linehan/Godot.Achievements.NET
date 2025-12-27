@@ -389,38 +389,21 @@ public partial class GooglePlayAchievementProvider : AchievementProviderBase
     }
 
     /// <summary>
-    /// Awaits a Godot signal with a timeout using SceneTree timer.
+    /// Awaits a Godot signal with a timeout.
     /// Returns the signal arguments or null if timed out.
     /// </summary>
     private async Task<Godot.Collections.Array?> AwaitSignalWithTimeout(GodotObject target, string signalName, double timeoutSeconds)
     {
         var tcs = new TaskCompletionSource<Godot.Collections.Array?>();
 
-        // Create one-shot signal handler
-        void OnSignal(Variant arg0, Variant arg1)
+        var callable = Callable.From<Variant, Variant>((arg0, arg1) =>
         {
             tcs.TrySetResult(new Godot.Collections.Array { arg0, arg1 });
-        }
+        });
 
-        var callable = Callable.From<Variant, Variant>(OnSignal);
         target.Connect(signalName, callable, (uint)GodotObject.ConnectFlags.OneShot);
 
-        // Create timeout using SceneTree timer
-        var sceneTree = Engine.GetMainLoop() as SceneTree;
-        if (sceneTree != null)
-        {
-            var timer = sceneTree.CreateTimer(timeoutSeconds);
-            timer.Timeout += () =>
-            {
-                if (target.IsConnected(signalName, callable))
-                {
-                    target.Disconnect(signalName, callable);
-                }
-                tcs.TrySetResult(null);
-            };
-        }
-
-        return await tcs.Task;
+        return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, timeoutSeconds, null);
     }
 
     /// <summary>
@@ -458,7 +441,7 @@ public partial class GooglePlayAchievementProvider : AchievementProviderBase
     {
         var tcs = new TaskCompletionSource<List<GooglePlayAchievementData>?>();
 
-        void OnLoaded(Godot.Collections.Array achievements)
+        var callable = Callable.From<Godot.Collections.Array>((achievements) =>
         {
             var result = new List<GooglePlayAchievementData>();
             foreach (var item in achievements)
@@ -476,26 +459,11 @@ public partial class GooglePlayAchievementProvider : AchievementProviderBase
                 }
             }
             tcs.TrySetResult(result);
-        }
+        });
 
-        var callable = Callable.From<Godot.Collections.Array>(OnLoaded);
         _achievementsClient!.Connect("achievements_loaded", callable, (uint)GodotObject.ConnectFlags.OneShot);
 
-        var sceneTree = Engine.GetMainLoop() as SceneTree;
-        if (sceneTree != null)
-        {
-            var timer = sceneTree.CreateTimer(timeoutSeconds);
-            timer.Timeout += () =>
-            {
-                if (_achievementsClient.IsConnected("achievements_loaded", callable))
-                {
-                    _achievementsClient.Disconnect("achievements_loaded", callable);
-                }
-                tcs.TrySetResult(null);
-            };
-        }
-
-        return await tcs.Task;
+        return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, timeoutSeconds, null);
     }
 
     public async Task<bool> RevealAchievementAsync(string achievementId)
