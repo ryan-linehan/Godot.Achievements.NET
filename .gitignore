@@ -49,3 +49,5 @@ bld/
 # Test results
 TestResults/
 *.trx
+
+Exports/*
