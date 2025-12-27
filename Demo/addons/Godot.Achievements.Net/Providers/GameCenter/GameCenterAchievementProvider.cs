@@ -95,7 +95,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             return;
         }
 
-        var achievementsArray = new Array { gcAchievement };
+        var achievementsArray = new Godot.Collections.Array { gcAchievement };
         var callback = Callable.From<Variant>((err) =>
         {
             bool success = err.VariantType == Variant.Type.Nil;
@@ -139,7 +139,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             return;
         }
 
-        var achievementsArray = new Array { gcAchievement };
+        var achievementsArray = new Godot.Collections.Array { gcAchievement };
         var callback = Callable.From<Variant>((err) =>
         {
             bool success = err.VariantType == Variant.Type.Nil;
@@ -208,7 +208,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 return AchievementUnlockResult.FailureResult("Failed to create GKAchievement instance");
 
             var tcs = new TaskCompletionSource<AchievementUnlockResult>();
-            var achievementsArray = new Array { gcAchievement };
+            var achievementsArray = new Godot.Collections.Array { gcAchievement };
 
             var callback = Callable.From<Variant>((err) =>
             {
@@ -248,7 +248,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         {
             var tcs = new TaskCompletionSource<int>();
 
-            var callback = Callable.From<Array, Variant>((achievements, err) =>
+            var callback = Callable.From<Godot.Collections.Array, Variant>((achievements, err) =>
             {
                 if (err.VariantType != Variant.Type.Nil)
                 {
@@ -311,7 +311,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 return SyncResult.FailureResult("Failed to create GKAchievement instance");
 
             var tcs = new TaskCompletionSource<SyncResult>();
-            var achievementsArray = new Array { gcAchievement };
+            var achievementsArray = new Godot.Collections.Array { gcAchievement };
 
             var callback = Callable.From<Variant>((err) =>
             {
