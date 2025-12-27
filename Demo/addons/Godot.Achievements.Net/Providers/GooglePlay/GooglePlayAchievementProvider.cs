@@ -162,7 +162,37 @@ public partial class GooglePlayAchievementProvider : AchievementProviderBase
                 _signInClient.Connect("user_authenticated", Callable.From<bool>(OnUserAuthenticated));
             }
         }
-        // Note: We don't connect achievement signals here - async methods await them directly via ToSignal
+
+        // Connect achievement signals to relay results from sync methods
+        if (_achievementsClient != null)
+        {
+            if (!_achievementsClient.IsConnected("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked)))
+            {
+                _achievementsClient.Connect("achievement_unlocked", Callable.From<bool, string>(OnAchievementUnlocked));
+            }
+        }
+    }
+
+    private void OnAchievementUnlocked(bool isUnlocked, string googlePlayId)
+    {
+        // Find the achievement ID from the Google Play ID
+        var achievementId = FindAchievementIdByGooglePlayId(googlePlayId);
+        if (achievementId != null)
+        {
+            EmitAchievementUnlocked(achievementId, isUnlocked, isUnlocked ? null : "Failed to unlock achievement");
+        }
+    }
+
+    private string? FindAchievementIdByGooglePlayId(string googlePlayId)
+    {
+        foreach (var achievement in _database.GetAll())
+        {
+            if (achievement.GooglePlayId == googlePlayId)
+            {
+                return achievement.Id;
+            }
+        }
+        return null;
     }
 
     private void CheckAuthentication()
@@ -199,9 +229,7 @@ public partial class GooglePlayAchievementProvider : AchievementProviderBase
 
         _achievementsClient!.Call("unlock_achievement", googlePlayId);
         this.Log($"Unlock fired for: {googlePlayId}");
-
-        // Fire-and-forget: emit success immediately (Google Play handles the actual unlock)
-        EmitAchievementUnlocked(achievementId, true);
+        // Signal will be emitted via OnAchievementUnlocked when plugin responds
     }
 
     public override void IncrementProgress(string achievementId, int amount)
@@ -215,8 +243,8 @@ public partial class GooglePlayAchievementProvider : AchievementProviderBase
 
         _achievementsClient!.Call("increment_achievement", googlePlayId, amount);
         this.Log($"Incremented progress for: {googlePlayId} by {amount}");
-
-        // Fire-and-forget: emit success immediately
+        // Signal will be emitted via OnAchievementUnlocked if it triggers an unlock
+        // Note: Google Play doesn't have a dedicated progress callback, only unlock
         EmitProgressIncremented(achievementId, amount, true);
     }
 
