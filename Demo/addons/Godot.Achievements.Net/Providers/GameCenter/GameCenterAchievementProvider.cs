@@ -329,7 +329,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                         var identifier = gcAchievement.Get("identifier").AsString();
                         if (identifier == gameCenterId)
                         {
-                            var percentComplete = gcAchievement.Get("percentComplete").AsDouble();
+                            var percentComplete = gcAchievement.Get("percent_complete").AsDouble();
                             int progress = achievement.MaxProgress > 0
                                 ? (int)Math.Round(percentComplete / 100.0 * achievement.MaxProgress)
                                 : 0;
@@ -483,8 +483,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             if (achievement.Obj is GodotObject gcAchievement)
             {
                 gcAchievement.Set("identifier", identifier);
-                gcAchievement.Set("percentComplete", percentComplete);
-                gcAchievement.Set("showsCompletionBanner", true);
+                gcAchievement.Set("percent_complete", percentComplete);
+                gcAchievement.Set("shows_completion_banner", true);
                 return gcAchievement;
             }
 
