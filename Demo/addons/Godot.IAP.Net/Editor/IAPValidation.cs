@@ -6,12 +6,38 @@ using Godot.IAP.Core;
 namespace Godot.IAP.Core.Editor;
 
 /// <summary>
+/// Field identifiers for validation warnings
+/// </summary>
+public static class ValidationFields
+{
+    public const string InternalId = "InternalId";
+    public const string DisplayName = "DisplayName";
+    public const string AppleProductId = "AppleProductId";
+    public const string GooglePlayProductId = "GooglePlayProductId";
+    public const string SubscriptionGroupId = "SubscriptionGroupId";
+}
+
+/// <summary>
+/// Types of validation warnings
+/// </summary>
+public enum ValidationWarningType
+{
+    Missing,
+    Duplicate
+}
+
+/// <summary>
 /// Represents validation warnings for a single product
 /// </summary>
 public class ProductValidationResult
 {
     public InAppProduct Product { get; }
     public List<string> Warnings { get; } = new();
+
+    /// <summary>
+    /// Field-specific warnings keyed by ValidationFields constants
+    /// </summary>
+    public Dictionary<string, ValidationWarningType> FieldWarnings { get; } = new();
 
     public ProductValidationResult(InAppProduct product)
     {
@@ -23,6 +49,15 @@ public class ProductValidationResult
     public void AddWarning(string warning)
     {
         Warnings.Add(warning);
+    }
+
+    /// <summary>
+    /// Add a warning associated with a specific field
+    /// </summary>
+    public void AddFieldWarning(string fieldKey, ValidationWarningType warningType, string message)
+    {
+        FieldWarnings[fieldKey] = warningType;
+        Warnings.Add(message);
     }
 
     public string GetTooltipText()
@@ -47,30 +82,30 @@ public static class ProductValidator
         // Check for missing internal ID
         if (string.IsNullOrWhiteSpace(product.Id))
         {
-            result.AddWarning("Missing internal ID");
+            result.AddFieldWarning(ValidationFields.InternalId, ValidationWarningType.Missing, "Missing internal ID");
         }
 
         // Check for missing display name
         if (string.IsNullOrWhiteSpace(product.DisplayName))
         {
-            result.AddWarning("Missing display name");
+            result.AddFieldWarning(ValidationFields.DisplayName, ValidationWarningType.Missing, "Missing display name");
         }
 
         // Check platform IDs based on enabled integrations
         if (GetPlatformEnabled(IAPSettings.AppleEnabled) && string.IsNullOrWhiteSpace(product.AppleProductId))
         {
-            result.AddWarning("Apple integration enabled but Apple Product ID is missing");
+            result.AddFieldWarning(ValidationFields.AppleProductId, ValidationWarningType.Missing, "Apple integration enabled but Apple Product ID is missing");
         }
 
         if (GetPlatformEnabled(IAPSettings.GooglePlayEnabled) && string.IsNullOrWhiteSpace(product.GooglePlayProductId))
         {
-            result.AddWarning("Google Play integration enabled but Google Play Product ID is missing");
+            result.AddFieldWarning(ValidationFields.GooglePlayProductId, ValidationWarningType.Missing, "Google Play integration enabled but Google Play Product ID is missing");
         }
 
         // Subscription-specific validation
         if (product.Type == ProductType.Subscription && string.IsNullOrWhiteSpace(product.SubscriptionGroupId))
         {
-            result.AddWarning("Subscription product has no Subscription Group ID");
+            result.AddFieldWarning(ValidationFields.SubscriptionGroupId, ValidationWarningType.Missing, "Subscription product has no Subscription Group ID");
         }
 
         return result;
@@ -161,7 +196,8 @@ public static class ProductValidator
             {
                 foreach (var product in kvp.Value)
                 {
-                    results[product].AddWarning($"Duplicate Apple Product ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other product(s))");
+                    results[product].AddFieldWarning(ValidationFields.AppleProductId, ValidationWarningType.Duplicate,
+                        $"Duplicate Apple Product ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other product(s))");
                 }
             }
         }
@@ -172,7 +208,8 @@ public static class ProductValidator
             {
                 foreach (var product in kvp.Value)
                 {
-                    results[product].AddWarning($"Duplicate Google Play Product ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other product(s))");
+                    results[product].AddFieldWarning(ValidationFields.GooglePlayProductId, ValidationWarningType.Duplicate,
+                        $"Duplicate Google Play Product ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other product(s))");
                 }
             }
         }

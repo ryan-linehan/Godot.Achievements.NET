@@ -170,7 +170,10 @@ public partial class IAPEditorDetailsPanel : Control
         _isUpdatingUI = false;
     }
 
-    public void UpdateValidation(ProductValidationResult? result, List<string>? duplicateIds)
+    /// <summary>
+    /// Updates validation display for the current product
+    /// </summary>
+    public void UpdateValidation(ProductValidationResult? validationResult, List<string>? duplicateInternalIds)
     {
         // Update internal ID error label
         if (_internalIdErrorLabel != null)
@@ -179,40 +182,36 @@ public partial class IAPEditorDetailsPanel : Control
                 && string.IsNullOrWhiteSpace(_currentProduct.Id);
 
             var hasDuplicateId = _currentProduct != null
-                && duplicateIds != null
+                && duplicateInternalIds != null
                 && !string.IsNullOrWhiteSpace(_currentProduct.Id)
-                && duplicateIds.Contains(_currentProduct.Id);
+                && duplicateInternalIds.Contains(_currentProduct.Id);
 
             _internalIdErrorLabel.Visible = isMissing || hasDuplicateId;
             _internalIdErrorLabel.Text = isMissing ? "\u274c Required" : (hasDuplicateId ? "\u274c Duplicate" : string.Empty);
         }
 
         // Update platform warning labels based on validation result
-        UpdatePlatformWarningLabel(_appleWarningLabel, result, "Apple");
-        UpdatePlatformWarningLabel(_googlePlayWarningLabel, result, "Google Play");
+        UpdateFieldWarningLabel(_appleWarningLabel, validationResult, ValidationFields.AppleProductId);
+        UpdateFieldWarningLabel(_googlePlayWarningLabel, validationResult, ValidationFields.GooglePlayProductId);
     }
 
-    private void UpdatePlatformWarningLabel(Label? label, ProductValidationResult? validationResult, string platformName)
+    private void UpdateFieldWarningLabel(Label? label, ProductValidationResult? validationResult, string fieldKey)
     {
         if (label == null) return;
 
         string? warningText = null;
-        if (validationResult != null)
+        if (validationResult != null && validationResult.FieldWarnings.TryGetValue(fieldKey, out var warningType))
         {
-            foreach (var warning in validationResult.Warnings)
-            {
-                if (warning.Contains(platformName))
-                {
-                    warningText = warning.Contains("missing") ? $"\u26a0 {platformName} integration enabled but {platformName} Product ID is missing" : "\u26a0 Duplicate";
-                    break;
-                }
-            }
+            warningText = warningType == ValidationWarningType.Missing ? "\u26a0 Missing" : "\u26a0 Duplicate";
         }
 
         label.Visible = warningText != null;
         label.Text = warningText ?? string.Empty;
     }
 
+    /// <summary>
+    /// Clears all validation labels
+    /// </summary>
     public void ClearValidation()
     {
         if (_internalIdErrorLabel != null)
