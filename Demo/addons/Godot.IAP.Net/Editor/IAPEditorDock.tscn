@@ -1,0 +1,206 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/Godot.IAP.Net/Editor/IAPEditorDock.cs" id="1_script"]
+[ext_resource type="PackedScene" path="res://addons/Godot.IAP.Net/Editor/IAPEditorDetailsPanel.tscn" id="2_details"]
+
+[node name="IAPEditorDock" type="Control" node_paths=PackedStringArray("SearchLineEdit", "AddProductButton", "RemoveButton", "DuplicateButton", "NoItemsControl", "ItemList", "ItemListScrollContainer", "DetailsPanel", "NoItemSelectedScroll", "CatalogPathLabel", "ImportMenuButton", "ExportMenuButton")]
+custom_minimum_size = Vector2(0, 500)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+SearchLineEdit = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox/SearchLineEdit")
+AddProductButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/AddProductButton")
+RemoveButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/RemoveButton")
+DuplicateButton = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons/DuplicateButton")
+NoItemsControl = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/NoItemsControl")
+ItemList = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ItemListScrollContainer/ItemList")
+ItemListScrollContainer = NodePath("VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ItemListScrollContainer")
+DetailsPanel = NodePath("VBoxContainer/HSplitContainer/DetailsPanel")
+NoItemSelectedScroll = NodePath("VBoxContainer/HSplitContainer/NoItemSelectedScroll")
+CatalogPathLabel = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/CatalogInfo/CatalogPath")
+ImportMenuButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ImportMenuButton")
+ExportMenuButton = NodePath("VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions/ExportMenuButton")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 340
+
+[node name="ListPanel" type="PanelContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/HSplitContainer/ListPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="List" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ListHeader" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ProductListLabel" type="Label" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
+layout_mode = 2
+text = "Product List"
+
+[node name="SearchHBox" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SearchIcon" type="Label" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox"]
+layout_mode = 2
+text = "🔍"
+
+[node name="SearchLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/SearchHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Search by id or name"
+placeholder_text = "Search products..."
+clear_button_enabled = true
+
+[node name="Spacer" type="Control" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="ActionButtons" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="AddProductButton" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+ Add"
+
+[node name="RemoveButton" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "Remove"
+
+[node name="DuplicateButton" type="Button" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ListHeader/ActionButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "Duplicate"
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="NoItemsControl" type="Panel" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/NoItemsControl"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="NoItemsLabel" type="Label" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/NoItemsControl/ScrollContainer"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 6
+text = "No products available. Add one above!"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ItemListScrollContainer" type="ScrollContainer" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ItemList" type="ItemList" parent="VBoxContainer/HSplitContainer/ListPanel/MarginContainer/List/ItemListScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailsPanel" parent="VBoxContainer/HSplitContainer" instance=ExtResource("2_details")]
+visible = false
+layout_mode = 2
+
+[node name="NoItemSelectedScroll" type="ScrollContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NoItemSelectedPanel" type="PanelContainer" parent="VBoxContainer/HSplitContainer/NoItemSelectedScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Label" type="Label" parent="VBoxContainer/HSplitContainer/NoItemSelectedScroll/NoItemSelectedPanel"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Select a product from the list or add one"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="BottomBar" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/BottomBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer"]
+layout_mode = 2
+
+[node name="CatalogInfo" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CatalogLabel" type="Label" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/CatalogInfo"]
+layout_mode = 2
+tooltip_text = "Change this in project settings > addons > IAP"
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Catalog:"
+
+[node name="CatalogPath" type="Label" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/CatalogInfo"]
+layout_mode = 2
+tooltip_text = "Change this in project settings > addons > IAP"
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.5, 0.7, 1, 1)
+text = "res://_products.tres"
+
+[node name="Actions" type="HBoxContainer" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ImportMenuButton" type="MenuButton" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
+layout_mode = 2
+text = "Import"
+
+[node name="ExportMenuButton" type="MenuButton" parent="VBoxContainer/BottomBar/MarginContainer/HBoxContainer/Actions"]
+layout_mode = 2
+text = "Export"

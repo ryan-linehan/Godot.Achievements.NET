@@ -1,0 +1,204 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/Godot.IAP.Net/Editor/IAPEditorDetailsPanel.cs" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.15, 0.15, 0.15, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.3, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("IdLineEdit", "DisplayNameLineEdit", "DescriptionTextEdit", "IconPreview", "SelectIconButton", "ClearIconButton", "TypeOptionButton", "SubscriptionVBox", "SubscriptionGroupLineEdit", "AppleVBox", "AppleProductIdLineEdit", "GooglePlayVBox", "GooglePlayProductIdLineEdit", "ValidationLabel")]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("1_script")
+IdLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/IdVBox/IdLineEdit")
+DisplayNameLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/NameVBox/DisplayNameLineEdit")
+DescriptionTextEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/DescVBox/DescriptionTextEdit")
+IconPreview = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/IconSection/IconPreview")
+SelectIconButton = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/IconSection/IconButtons/SelectIconButton")
+ClearIconButton = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/IconSection/IconButtons/ClearIconButton")
+TypeOptionButton = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/TypeSection/TypeOptionButton")
+SubscriptionVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/SubscriptionVBox")
+SubscriptionGroupLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/SubscriptionVBox/SubscriptionGroupLineEdit")
+AppleVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox")
+AppleProductIdLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox/AppleProductIdLineEdit")
+GooglePlayVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox")
+GooglePlayProductIdLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox/GooglePlayProductIdLineEdit")
+ValidationLabel = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/ValidationLabel")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/VBox"]
+layout_mode = 2
+text = "Product Details"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ContentVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="BasicInfo" type="HBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="IconSection" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="IconPreview" type="TextureRect" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/IconSection"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="IconButtons" type="HBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/IconSection"]
+layout_mode = 2
+
+[node name="SelectIconButton" type="Button" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/IconSection/IconButtons"]
+layout_mode = 2
+text = "Select"
+
+[node name="ClearIconButton" type="Button" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/IconSection/IconButtons"]
+layout_mode = 2
+text = "Clear"
+
+[node name="Fields" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="IdVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="IdLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/IdVBox"]
+layout_mode = 2
+text = "Internal ID"
+
+[node name="IdLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/IdVBox"]
+layout_mode = 2
+placeholder_text = "unique_product_id"
+
+[node name="NameVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/NameVBox"]
+layout_mode = 2
+text = "Display Name"
+
+[node name="DisplayNameLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/NameVBox"]
+layout_mode = 2
+placeholder_text = "Enter product name..."
+
+[node name="DescVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="DescLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/DescVBox"]
+layout_mode = 2
+text = "Description"
+
+[node name="DescriptionTextEdit" type="TextEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/BasicInfo/Fields/DescVBox"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+placeholder_text = "Product description..."
+wrap_mode = 1
+
+[node name="TypeSection" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TypeLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/TypeSection"]
+layout_mode = 2
+text = "Product Type"
+
+[node name="TypeOptionButton" type="OptionButton" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/TypeSection"]
+layout_mode = 2
+
+[node name="SubscriptionVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SubscriptionLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/SubscriptionVBox"]
+layout_mode = 2
+text = "Subscription Group ID"
+
+[node name="SubscriptionGroupLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/SubscriptionVBox"]
+layout_mode = 2
+placeholder_text = "subscription_group_id"
+
+[node name="PlatformsSection" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_section")
+theme_override_constants/separation = 16
+
+[node name="PlatformsLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
+layout_mode = 2
+text = "Platform Product IDs"
+
+[node name="PlatformNote" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Enable platforms in Project Settings > Addons > IAP"
+autowrap_mode = 3
+
+[node name="AppleVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AppleLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox"]
+layout_mode = 2
+text = "Apple Product ID"
+
+[node name="AppleProductIdLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox"]
+layout_mode = 2
+placeholder_text = "com.yourcompany.product_id"
+
+[node name="GooglePlayVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GooglePlayLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox"]
+layout_mode = 2
+text = "Google Play Product ID"
+
+[node name="GooglePlayProductIdLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox"]
+layout_mode = 2
+placeholder_text = "product_id"
+
+[node name="ValidationLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.6, 0.2, 1)
+autowrap_mode = 3

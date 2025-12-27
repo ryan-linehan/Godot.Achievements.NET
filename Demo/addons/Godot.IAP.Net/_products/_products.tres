@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="ProductCatalog" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/Godot.IAP.Net/Core/ProductCatalog.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
