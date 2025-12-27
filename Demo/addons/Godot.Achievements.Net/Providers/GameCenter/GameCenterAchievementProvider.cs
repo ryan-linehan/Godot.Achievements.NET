@@ -61,6 +61,13 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 _isAuthenticated = _localPlayer.Get("isAuthenticated").AsBool();
                 _isInitialized = true;
                 this.Log($"Initialized, authenticated: {_isAuthenticated}");
+
+                // If not authenticated, attempt authentication
+                if (!_isAuthenticated)
+                {
+                    this.Log("User not authenticated, attempting authentication...");
+                    AuthenticatePlayer();
+                }
             }
             else
             {
@@ -72,6 +79,92 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         {
             this.LogError($"Failed to initialize: {ex.Message}");
             _isInitialized = false;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to authenticate the player with Game Center.
+    /// Sets up an authentication handler callback.
+    /// </summary>
+    private void AuthenticatePlayer()
+    {
+        if (_localPlayer == null)
+        {
+            this.LogWarning("Cannot authenticate - local player is null");
+            return;
+        }
+
+        try
+        {
+            // Create authentication callback
+            var authCallback = Callable.From<GodotObject, Variant>((viewController, error) =>
+            {
+                if (error.VariantType != Variant.Type.Nil)
+                {
+                    this.LogError($"Authentication failed: {error.AsString()}");
+                    return;
+                }
+
+                if (GodotObject.IsInstanceValid(viewController))
+                {
+                    // If a view controller is provided, we need to present it
+                    // This typically happens when Game Center UI needs to be shown
+                    this.LogWarning("Game Center authentication requires view controller presentation - not yet implemented");
+                    return;
+                }
+
+                // Authentication successful
+                _isAuthenticated = _localPlayer!.Get("isAuthenticated").AsBool();
+                this.Log($"Authentication completed. Authenticated: {_isAuthenticated}");
+
+                if (_isAuthenticated)
+                {
+                    var playerAlias = _localPlayer.Get("alias").AsString();
+                    this.Log($"Authenticated as: {playerAlias}");
+                }
+            });
+
+            // Set the authentication handler
+            _localPlayer.Set("authenticateHandler", authCallback);
+            this.Log("Authentication handler set");
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Failed to set authentication handler: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Refreshes the authentication status from Game Center.
+    /// Call this to check if authentication state has changed.
+    /// </summary>
+    public void RefreshAuthenticationStatus()
+    {
+        if (_localPlayer == null || !_isInitialized)
+        {
+            this.LogWarning("Cannot refresh auth status - provider not initialized");
+            return;
+        }
+
+        try
+        {
+            bool wasAuthenticated = _isAuthenticated;
+            _isAuthenticated = _localPlayer.Get("isAuthenticated").AsBool();
+
+            if (wasAuthenticated != _isAuthenticated)
+            {
+                this.Log($"Authentication status changed: {wasAuthenticated} -> {_isAuthenticated}");
+
+                if (_isAuthenticated)
+                {
+                    var playerAlias = _localPlayer.Get("alias").AsString();
+                    this.Log($"Now authenticated as: {playerAlias}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Failed to refresh authentication status: {ex.Message}");
         }
     }
 
