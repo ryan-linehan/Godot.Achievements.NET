@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://addons/Godot.IAP.Net/Editor/IAPEditorDetailsPanel.cs" id="1_script"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foldable"]
 content_margin_left = 12.0
 content_margin_top = 12.0
 content_margin_right = 12.0
@@ -18,7 +18,7 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("IdLineEdit", "DisplayNameLineEdit", "DescriptionTextEdit", "IconPreview", "SelectIconButton", "ClearIconButton", "TypeOptionButton", "SubscriptionVBox", "SubscriptionGroupLineEdit", "AppleVBox", "AppleProductIdLineEdit", "GooglePlayVBox", "GooglePlayProductIdLineEdit", "ValidationLabel")]
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("IdLineEdit", "DisplayNameLineEdit", "DescriptionTextEdit", "IconPreview", "SelectIconButton", "ClearIconButton", "TypeOptionButton", "SubscriptionVBox", "SubscriptionGroupLineEdit", "PlatformsContainer", "AppleVBox", "AppleProductIdLineEdit", "GooglePlayVBox", "GooglePlayProductIdLineEdit")]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -32,11 +32,11 @@ ClearIconButton = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/Bas
 TypeOptionButton = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/TypeSection/TypeOptionButton")
 SubscriptionVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/SubscriptionVBox")
 SubscriptionGroupLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/SubscriptionVBox/SubscriptionGroupLineEdit")
-AppleVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox")
-AppleProductIdLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox/AppleProductIdLineEdit")
-GooglePlayVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox")
-GooglePlayProductIdLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox/GooglePlayProductIdLineEdit")
-ValidationLabel = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/ValidationLabel")
+PlatformsContainer = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer")
+AppleVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/AppleVBox")
+AppleProductIdLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/AppleVBox/AppleProductIdLineEdit")
+GooglePlayVBox = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/GooglePlayVBox")
+GooglePlayProductIdLineEdit = NodePath("MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/GooglePlayVBox/GooglePlayProductIdLineEdit")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
@@ -158,47 +158,43 @@ text = "Subscription Group ID"
 layout_mode = 2
 placeholder_text = "subscription_group_id"
 
-[node name="PlatformsSection" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
+[node name="PlatformsContainer" type="FoldableContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_foldable")
+title = "Platform Product IDs"
+
+[node name="PlatformsContent" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer"]
+layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="PlatformsLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
-layout_mode = 2
-text = "Platform Product IDs"
-
-[node name="PlatformNote" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
+[node name="PlatformNote" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent"]
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
 text = "Enable platforms in Project Settings > Addons > IAP"
 autowrap_mode = 3
 
-[node name="AppleVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
+[node name="AppleVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 
-[node name="AppleLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox"]
+[node name="AppleLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/AppleVBox"]
 layout_mode = 2
 text = "Apple Product ID"
 
-[node name="AppleProductIdLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/AppleVBox"]
+[node name="AppleProductIdLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/AppleVBox"]
 layout_mode = 2
 placeholder_text = "com.yourcompany.product_id"
 
-[node name="GooglePlayVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection"]
+[node name="GooglePlayVBox" type="VBoxContainer" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 
-[node name="GooglePlayLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox"]
+[node name="GooglePlayLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/GooglePlayVBox"]
 layout_mode = 2
 text = "Google Play Product ID"
 
-[node name="GooglePlayProductIdLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsSection/GooglePlayVBox"]
+[node name="GooglePlayProductIdLineEdit" type="LineEdit" parent="MarginContainer/VBox/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsContent/GooglePlayVBox"]
 layout_mode = 2
 placeholder_text = "product_id"
-
-[node name="ValidationLabel" type="Label" parent="MarginContainer/VBox/ScrollContainer/ContentVBox"]
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.6, 0.2, 1)
-autowrap_mode = 3

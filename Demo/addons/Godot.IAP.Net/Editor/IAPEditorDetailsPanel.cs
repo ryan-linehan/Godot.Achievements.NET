@@ -23,19 +23,22 @@ public partial class IAPEditorDetailsPanel : Control
     [Export] private LineEdit SubscriptionGroupLineEdit = null!;
 
     // Platform Sections
+    [Export] public FoldableContainer PlatformsContainer = null!;
     [Export] public VBoxContainer AppleVBox = null!;
     [Export] private LineEdit AppleProductIdLineEdit = null!;
 
     [Export] public VBoxContainer GooglePlayVBox = null!;
     [Export] private LineEdit GooglePlayProductIdLineEdit = null!;
 
-    // Validation
-    [Export] private Label ValidationLabel = null!;
-
     private InAppProduct? _currentProduct;
     private EditorUndoRedoManager? _undoRedoManager;
     private FileDialog? _iconFileDialog;
     private bool _isUpdatingUI;
+
+    // Per-field validation labels
+    private Label? _internalIdErrorLabel;
+    private Label? _appleWarningLabel;
+    private Label? _googlePlayWarningLabel;
 
     [Signal] public delegate void ProductDisplayNameChangedEventHandler(InAppProduct product);
     [Signal] public delegate void ProductChangedEventHandler();
@@ -78,6 +81,31 @@ public partial class IAPEditorDetailsPanel : Control
         _iconFileDialog.AddFilter("*.png, *.jpg, *.jpeg, *.svg", "Image Files");
         _iconFileDialog.FileSelected += OnIconFileSelected;
         AddChild(_iconFileDialog);
+
+        // Create per-field validation labels
+        _internalIdErrorLabel = CreateValidationLabel(IdLineEdit, isError: true);
+        _appleWarningLabel = CreateValidationLabel(AppleProductIdLineEdit, isError: false);
+        _googlePlayWarningLabel = CreateValidationLabel(GooglePlayProductIdLineEdit, isError: false);
+    }
+
+    private Label? CreateValidationLabel(Control? siblingControl, bool isError)
+    {
+        if (siblingControl == null) return null;
+
+        var label = new Label();
+        label.AddThemeColorOverride("font_color", isError ? new Color(1, 0.4f, 0.4f) : new Color(1, 0.75f, 0.3f));
+        label.Visible = false;
+
+        // Add after the sibling control
+        var parent = siblingControl.GetParent();
+        if (parent != null)
+        {
+            var siblingIndex = siblingControl.GetIndex();
+            parent.AddChild(label);
+            parent.MoveChild(label, siblingIndex + 1);
+        }
+
+        return label;
     }
 
     public override void _ExitTree()
@@ -97,6 +125,11 @@ public partial class IAPEditorDetailsPanel : Control
             _iconFileDialog.FileSelected -= OnIconFileSelected;
             _iconFileDialog.QueueFree();
         }
+
+        // Clean up validation labels
+        _internalIdErrorLabel?.QueueFree();
+        _appleWarningLabel?.QueueFree();
+        _googlePlayWarningLabel?.QueueFree();
     }
 
     public void SetUndoRedoManager(EditorUndoRedoManager manager)
@@ -139,41 +172,64 @@ public partial class IAPEditorDetailsPanel : Control
 
     public void UpdateValidation(ProductValidationResult? result, List<string>? duplicateIds)
     {
-        if (result == null && (duplicateIds == null || duplicateIds.Count == 0))
+        // Update internal ID error label
+        if (_internalIdErrorLabel != null)
         {
-            ValidationLabel.Text = "";
-            ValidationLabel.Visible = false;
-            return;
+            var isMissing = _currentProduct != null
+                && string.IsNullOrWhiteSpace(_currentProduct.Id);
+
+            var hasDuplicateId = _currentProduct != null
+                && duplicateIds != null
+                && !string.IsNullOrWhiteSpace(_currentProduct.Id)
+                && duplicateIds.Contains(_currentProduct.Id);
+
+            _internalIdErrorLabel.Visible = isMissing || hasDuplicateId;
+            _internalIdErrorLabel.Text = isMissing ? "\u274c Required" : (hasDuplicateId ? "\u274c Duplicate" : string.Empty);
         }
 
-        var warnings = new List<string>();
+        // Update platform warning labels based on validation result
+        UpdatePlatformWarningLabel(_appleWarningLabel, result, "Apple");
+        UpdatePlatformWarningLabel(_googlePlayWarningLabel, result, "Google Play");
+    }
 
-        if (_currentProduct != null && duplicateIds != null && duplicateIds.Contains(_currentProduct.Id))
+    private void UpdatePlatformWarningLabel(Label? label, ProductValidationResult? validationResult, string platformName)
+    {
+        if (label == null) return;
+
+        string? warningText = null;
+        if (validationResult != null)
         {
-            warnings.Add($"Duplicate internal ID: {_currentProduct.Id}");
+            foreach (var warning in validationResult.Warnings)
+            {
+                if (warning.Contains(platformName))
+                {
+                    warningText = warning.Contains("missing") ? $"\u26a0 {platformName} integration enabled but {platformName} Product ID is missing" : "\u26a0 Duplicate";
+                    break;
+                }
+            }
         }
 
-        if (result != null)
-        {
-            warnings.AddRange(result.Warnings);
-        }
-
-        if (warnings.Count > 0)
-        {
-            ValidationLabel.Text = string.Join("\n", warnings);
-            ValidationLabel.Visible = true;
-        }
-        else
-        {
-            ValidationLabel.Text = "";
-            ValidationLabel.Visible = false;
-        }
+        label.Visible = warningText != null;
+        label.Text = warningText ?? string.Empty;
     }
 
     public void ClearValidation()
     {
-        ValidationLabel.Text = "";
-        ValidationLabel.Visible = false;
+        if (_internalIdErrorLabel != null)
+        {
+            _internalIdErrorLabel.Visible = false;
+            _internalIdErrorLabel.Text = string.Empty;
+        }
+        if (_appleWarningLabel != null)
+        {
+            _appleWarningLabel.Visible = false;
+            _appleWarningLabel.Text = string.Empty;
+        }
+        if (_googlePlayWarningLabel != null)
+        {
+            _googlePlayWarningLabel.Visible = false;
+            _googlePlayWarningLabel.Text = string.Empty;
+        }
     }
 
     #region Event Handlers
