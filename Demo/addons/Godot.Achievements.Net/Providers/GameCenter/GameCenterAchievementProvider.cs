@@ -126,9 +126,10 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         var achievement = _database.GetById(achievementId)!;
 
         // Game Center uses percentages (0-100)
-        // Note: Game Center doesn't have a direct increment API, we set absolute percentage
+        // Use achievement.CurrentProgress which already has the new total from local provider
+        int currentProgress = achievement.CurrentProgress;
         double percentage = achievement.MaxProgress > 0
-            ? Math.Min((double)amount / achievement.MaxProgress * 100.0, 100.0)
+            ? Math.Min((double)currentProgress / achievement.MaxProgress * 100.0, 100.0)
             : 0;
 
         var gcAchievement = CreateGKAchievement(gameCenterId!, percentage);
@@ -144,17 +145,17 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             bool success = err.VariantType == Variant.Type.Nil;
             if (success)
             {
-                this.Log($"Incremented progress for {gameCenterId}: {amount} ({percentage:F1}%)");
+                this.Log($"Set progress for {gameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
             }
             else
             {
-                this.LogError($"Failed to increment progress for {gameCenterId}: {err.AsString()}");
+                this.LogError($"Failed to set progress for {gameCenterId}: {err.AsString()}");
             }
-            EmitProgressIncremented(achievementId, amount, success, success ? null : err.AsString());
+            EmitProgressIncremented(achievementId, currentProgress, success, success ? null : err.AsString());
         });
 
         CallGKAchievementStatic("report_achivement", achievementsArray, callback);
-        this.Log($"Increment progress fired for: {gameCenterId} by {amount}");
+        this.Log($"Increment progress fired for: {gameCenterId} (new total: {currentProgress})");
     }
 
     public override void ResetAchievement(string achievementId)
@@ -310,8 +311,10 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
         try
         {
+            // Use achievement.CurrentProgress which already has the new total from local provider
+            int currentProgress = achievement.CurrentProgress;
             double percentage = achievement.MaxProgress > 0
-                ? Math.Min((double)amount / achievement.MaxProgress * 100.0, 100.0)
+                ? Math.Min((double)currentProgress / achievement.MaxProgress * 100.0, 100.0)
                 : 0;
 
             var gcAchievement = CreateGKAchievement(gameCenterId!, percentage);
@@ -325,13 +328,13 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             {
                 if (err.VariantType == Variant.Type.Nil)
                 {
-                    this.Log($"Incremented progress for {gameCenterId}: {amount}/{achievement.MaxProgress} ({percentage:F1}%)");
+                    this.Log($"Set progress for {gameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
                     tcs.TrySetResult(SyncResult.SuccessResult());
                 }
                 else
                 {
                     var errorMessage = err.AsString();
-                    this.LogError($"Failed to increment progress for {gameCenterId}: {errorMessage}");
+                    this.LogError($"Failed to set progress for {gameCenterId}: {errorMessage}");
                     tcs.TrySetResult(SyncResult.FailureResult(errorMessage));
                 }
             });
