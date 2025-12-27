@@ -19,6 +19,7 @@ achievements/toast/display_duration=2.0
 achievements/database_path="uid://ddebvxw8oopod"
 achievements/toast/scene_path="uid://betgshcwd2vle"
 achievements/toast/unlock_sound="uid://tfy5p37ns3cg"
+achievements/platforms/steam_enabled=false
 achievements/platforms/googleplay_enabled=true
 GooglePlayServices/GameID=123456789
 achievements/platforms/gamecenter_enabled=true
@@ -35,6 +36,7 @@ config/icon="res://icon.svg"
 Achievements="*res://addons/Godot.Achievements.Net/Core/AchievementManager.cs"
 AchievementToasts="*res://addons/Godot.Achievements.Net/Toast/AchievementToastContainer.tscn"
 GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
+GodotSteamworks="*res://addons/Godot.Steamworks.NET/GodotSteamworks.cs"
 
 [display]
 
