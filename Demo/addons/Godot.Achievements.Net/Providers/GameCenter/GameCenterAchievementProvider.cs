@@ -1,22 +1,39 @@
 #if GODOT_IOS
 using System;
 using System.Threading.Tasks;
+using Godot;
 using Godot.Achievements.Core;
 using Godot.Achievements.Providers;
+using Godot.Collections;
 
 namespace Godot.Achievements.Providers.GameCenter;
 
 /// <summary>
-/// iOS Game Center achievement provider.
-/// Note: Game Center operations are inherently async. Sync methods start the operation
-/// and return immediately. Use async methods if you need to wait for the result.
+/// iOS Game Center achievement provider using GodotApplePlugins.
+/// See: https://github.com/migueldeicaza/GodotApplePlugins
+///
+/// Note: Game Center operations are inherently async. Sync methods fire-and-forget.
+/// Async methods await the corresponding callback from the plugin.
 /// </summary>
 public partial class GameCenterAchievementProvider : AchievementProviderBase
 {
+    private const double DefaultTimeoutSeconds = 30.0;
+
+    // API method names (typos are intentional - matches GodotApplePlugins API)
+    private static readonly StringName MethodReportAchievement = "report_achivement";
+    private static readonly StringName MethodResetAchievements = "reset_achivements";
+    private static readonly StringName MethodLoadAchievements = "load_achievements";
+
     public static bool IsPlatformSupported => true;
 
     private readonly AchievementDatabase _database;
+    private GodotObject? _gameCenterManager;
+    private GodotObject? _localPlayer;
+    private GodotObject? _gkAchievementStatic; // Cached instance for static method calls
+    private TaskCompletionSource<bool>? _authenticationTcs;
+    private bool _isInitialized;
     private bool _isAuthenticated;
+    private bool _isDisposed;
 
     public override string ProviderName => ProviderNames.GameCenter;
 
@@ -30,244 +47,594 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
     {
         try
         {
-            // UNCOMMENT when iOS Game Center bindings are set up:
-            // GKLocalPlayer.LocalPlayer.Authenticate((viewController, error) =>
-            // {
-            //     if (error != null)
-            //     {
-            //         GD.PushError($"[GameCenter] Authentication failed: {error}");
-            //         _isAuthenticated = false;
-            //     }
-            //     else
-            //     {
-            //         _isAuthenticated = GKLocalPlayer.LocalPlayer.IsAuthenticated;
-            //     }
-            // });
+            // Check if GodotApplePlugins is available
+            if (!ClassDB.ClassExists("GameCenterManager"))
+            {
+                this.LogWarning("GameCenterManager class not found - ensure GodotApplePlugins is installed");
+                _isInitialized = false;
+                return;
+            }
 
-            this.Log("Initialized (iOS bindings required)");
-            _isAuthenticated = false;
+            if (!ClassDB.ClassExists("GKAchievement"))
+            {
+                this.LogWarning("GKAchievement class not found - ensure GodotApplePlugins is installed");
+                _isInitialized = false;
+                return;
+            }
+
+            // Create GameCenterManager instance
+            var managerInstance = ClassDB.Instantiate("GameCenterManager");
+            if (managerInstance.Obj is GodotObject managerObj)
+            {
+                _gameCenterManager = managerObj;
+
+                // Connect to authentication signals
+                _gameCenterManager.Connect("authentication_result", Callable.From<bool>(OnAuthenticationResult));
+                _gameCenterManager.Connect("authentication_error", Callable.From<string>(OnAuthenticationError));
+
+                // Cache a GKAchievement instance for static method calls
+                var gkInstance = ClassDB.Instantiate("GKAchievement");
+                if (gkInstance.Obj is GodotObject gkObj)
+                {
+                    _gkAchievementStatic = gkObj;
+                }
+
+                // Connect cleanup to tree exit
+                var sceneTree = Engine.GetMainLoop() as SceneTree;
+                if (sceneTree?.Root != null)
+                {
+                    sceneTree.Root.TreeExiting += Cleanup;
+                }
+
+                _isInitialized = true;
+                this.Log("GameCenterManager initialized, attempting authentication...");
+
+                // Trigger authentication
+                _gameCenterManager.Call("authenticate");
+            }
+            else
+            {
+                this.LogWarning("Could not instantiate GameCenterManager");
+                _isInitialized = false;
+            }
         }
         catch (Exception ex)
         {
             this.LogError($"Failed to initialize: {ex.Message}");
-            _isAuthenticated = false;
+            _isInitialized = false;
         }
     }
 
-    public override bool IsAvailable => _isAuthenticated && IsGameCenterAvailable();
-
-    private bool IsGameCenterAvailable()
+    /// <summary>
+    /// Authenticates the player with Game Center asynchronously.
+    /// Returns true if authentication succeeded, false otherwise.
+    /// </summary>
+    public async Task<bool> AuthenticateAsync()
     {
-        // UNCOMMENT: return GKLocalPlayer.IsAvailable;
-        return false;
+        if (_isAuthenticated)
+            return true;
+
+        if (!_isInitialized || _gameCenterManager == null)
+            return false;
+
+        _authenticationTcs = new TaskCompletionSource<bool>();
+        _gameCenterManager.Call("authenticate");
+
+        return await AsyncTimeoutHelper.AwaitWithTimeout(_authenticationTcs, DefaultTimeoutSeconds, false);
     }
 
-    #region Sync Methods
-
-    public override void UnlockAchievement(string achievementId)
+    private void OnAuthenticationResult(bool success)
     {
-        if (!IsAvailable)
+        _isAuthenticated = success;
+        this.Log($"Authentication result: {(success ? "success" : "failed")}");
+
+        if (success && _gameCenterManager != null)
         {
-            this.LogWarning("Game Center is not available");
-            EmitAchievementUnlocked(achievementId, false, "Game Center is not available");
-            return;
+            // Get the local player from GameCenterManager
+            var localPlayerVariant = _gameCenterManager.Get("local_player");
+            if (localPlayerVariant.Obj is GodotObject localPlayerObj)
+            {
+                _localPlayer = localPlayerObj;
+                var playerAlias = _localPlayer.Get("alias").AsString();
+                this.Log($"Authenticated as: {playerAlias}");
+            }
         }
 
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-        {
-            this.LogWarning($"Achievement '{achievementId}' not found");
-            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' not found");
-            return;
-        }
+        _authenticationTcs?.TrySetResult(success);
+    }
 
-        var gameCenterId = achievement.GameCenterId;
-        if (string.IsNullOrEmpty(gameCenterId))
+    private void OnAuthenticationError(string error)
+    {
+        _isAuthenticated = false;
+        this.LogError($"Authentication error: {error}");
+        _authenticationTcs?.TrySetResult(false);
+    }
+
+    /// <summary>
+    /// Refreshes the authentication status from Game Center.
+    /// Call this to check if authentication state has changed.
+    /// </summary>
+    public void RefreshAuthenticationStatus()
+    {
+        if (_localPlayer == null || !_isInitialized)
         {
-            this.LogWarning($"Achievement '{achievementId}' has no Game Center ID configured");
-            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' has no Game Center ID configured");
+            this.LogWarning("Cannot refresh auth status - provider not initialized");
             return;
         }
 
         try
         {
-            // UNCOMMENT: Fire-and-forget unlock with signal emission in callback
-            // var gcAchievement = new GKAchievement(gameCenterId) { PercentComplete = 100.0 };
-            // GKAchievement.ReportAchievements(new[] { gcAchievement }, error =>
-            // {
-            //     EmitAchievementUnlocked(achievementId, error == null, error?.ToString());
-            // });
+            bool wasAuthenticated = _isAuthenticated;
+            _isAuthenticated = _localPlayer.Get("is_authenticated").AsBool();
 
-            this.Log($"Would unlock achievement: {gameCenterId}");
-            EmitAchievementUnlocked(achievementId, true);
+            if (wasAuthenticated != _isAuthenticated)
+            {
+                this.Log($"Authentication status changed: {wasAuthenticated} -> {_isAuthenticated}");
+
+                if (_isAuthenticated)
+                {
+                    var playerAlias = _localPlayer.Get("alias").AsString();
+                    this.Log($"Now authenticated as: {playerAlias}");
+                }
+            }
         }
         catch (Exception ex)
         {
-            this.LogError($"Game Center exception: {ex.Message}");
-            EmitAchievementUnlocked(achievementId, false, $"Game Center exception: {ex.Message}");
+            this.LogError($"Failed to refresh authentication status: {ex.Message}");
         }
     }
 
+    public override bool IsAvailable => _isInitialized && _isAuthenticated;
+
+    #region Sync Methods (Fire-and-Forget)
+
+    public override void UnlockAchievement(string achievementId)
+    {
+        var (gameCenterId, error) = ValidateAndGetGameCenterId(achievementId);
+        if (error != null)
+        {
+            EmitAchievementUnlocked(achievementId, false, error);
+            return;
+        }
+
+        var gcAchievement = CreateGKAchievement(gameCenterId!, 100.0);
+        if (gcAchievement == null)
+        {
+            EmitAchievementUnlocked(achievementId, false, "Failed to create GKAchievement instance");
+            return;
+        }
+
+        var achievementsArray = new Godot.Collections.Array { gcAchievement };
+        var callback = Callable.From<Variant>((err) =>
+        {
+            if (IsSuccess(err))
+            {
+                this.Log($"Unlocked achievement: {gameCenterId}");
+                EmitAchievementUnlocked(achievementId, true, null);
+            }
+            else
+            {
+                var errorMessage = err.AsString();
+                this.LogError($"Failed to unlock achievement {gameCenterId}: {errorMessage}");
+                EmitAchievementUnlocked(achievementId, false, errorMessage);
+            }
+        });
+
+        CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+        this.Log($"Unlock fired for: {gameCenterId}");
+    }
+
+    /// <remarks>
+    /// The <paramref name="amount"/> parameter is validated but not directly used.
+    /// Game Center only supports absolute percentages, not increments. The actual progress
+    /// is read from achievement.CurrentProgress which already includes the increment
+    /// applied by LocalAchievementProvider.
+    /// </remarks>
     public override void IncrementProgress(string achievementId, int amount)
     {
-        if (!IsAvailable)
+        var (gameCenterId, error) = ValidateAndGetGameCenterId(achievementId);
+        if (error != null)
         {
-            this.LogWarning("Game Center is not available");
-            EmitProgressIncremented(achievementId, 0, false, "Game Center is not available");
+            EmitProgressIncremented(achievementId, 0, false, error);
             return;
         }
 
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
+        if (amount <= 0)
         {
-            this.LogWarning($"Achievement '{achievementId}' not found");
-            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' not found");
+            EmitProgressIncremented(achievementId, 0, false, "Amount must be positive");
             return;
         }
 
-        if (string.IsNullOrEmpty(achievement.GameCenterId))
+        var achievement = _database.GetById(achievementId)!;
+
+        // Game Center uses percentages (0-100)
+        // Use achievement.CurrentProgress which already has the new total from local provider
+        int currentProgress = achievement.CurrentProgress;
+        double percentage = achievement.MaxProgress > 0
+            ? Math.Min((double)currentProgress / achievement.MaxProgress * 100.0, 100.0)
+            : 0;
+
+        var gcAchievement = CreateGKAchievement(gameCenterId!, percentage);
+        if (gcAchievement == null)
         {
-            this.LogWarning($"Achievement '{achievementId}' has no Game Center ID configured");
-            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' has no Game Center ID configured");
+            EmitProgressIncremented(achievementId, 0, false, "Failed to create GKAchievement instance");
             return;
         }
 
-        // UNCOMMENT: Fire-and-forget progress report with signal emission in callback
-        // Note: Game Center works with percentages, so we'd need to track current progress
-        // and calculate the new percentage based on the increment
-        // var gcAchievement = new GKAchievement(achievement.GameCenterId) { PercentComplete = newPercentage };
-        // GKAchievement.ReportAchievements(new[] { gcAchievement }, error =>
-        // {
-        //     EmitProgressIncremented(achievementId, amount, error == null, error?.ToString());
-        // });
+        var achievementsArray = new Godot.Collections.Array { gcAchievement };
+        var callback = Callable.From<Variant>((err) =>
+        {
+            if (IsSuccess(err))
+            {
+                this.Log($"Set progress for {gameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
+                EmitProgressIncremented(achievementId, currentProgress, true, null);
+            }
+            else
+            {
+                var errorMessage = err.AsString();
+                this.LogError($"Failed to set progress for {gameCenterId}: {errorMessage}");
+                EmitProgressIncremented(achievementId, currentProgress, false, errorMessage);
+            }
+        });
 
-        this.Log($"Would increment progress for {achievement.GameCenterId} by {amount}");
-        EmitProgressIncremented(achievementId, amount, true);
+        CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+        this.Log($"Increment progress fired for: {gameCenterId} (new total: {currentProgress})");
     }
 
     public override void ResetAchievement(string achievementId)
     {
-        if (!IsAvailable)
-        {
-            this.LogWarning("Game Center is not available");
-            EmitAchievementReset(achievementId, false, "Game Center is not available");
-            return;
-        }
-
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-        {
-            this.LogWarning($"Achievement '{achievementId}' not found");
-            EmitAchievementReset(achievementId, false, $"Achievement '{achievementId}' not found");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(achievement.GameCenterId))
-        {
-            this.LogWarning($"Achievement '{achievementId}' has no Game Center ID configured");
-            EmitAchievementReset(achievementId, false, $"Achievement '{achievementId}' has no Game Center ID configured");
-            return;
-        }
-
-        this.Log($"Would reset achievement: {achievement.GameCenterId}");
-        EmitAchievementReset(achievementId, true);
+        this.LogWarning("ResetAchievement is not supported on Game Center. Use ResetAllAchievements instead.");
+        EmitAchievementReset(achievementId, false, "Game Center does not support resetting individual achievements");
     }
 
     public override void ResetAllAchievements()
     {
         if (!IsAvailable)
         {
-            this.LogWarning("Game Center is not available");
             EmitAllAchievementsReset(false, "Game Center is not available");
             return;
         }
 
-        // UNCOMMENT: GKAchievement.ResetAchievements(error =>
-        // {
-        //     EmitAllAchievementsReset(error == null, error?.ToString());
-        // });
-        this.Log("Would reset all achievements");
-        EmitAllAchievementsReset(true);
+        var callback = Callable.From<Variant>((err) =>
+        {
+            if (IsSuccess(err))
+            {
+                this.Log("Reset all achievements");
+                EmitAllAchievementsReset(true, null);
+            }
+            else
+            {
+                var errorMessage = err.AsString();
+                this.LogError($"Failed to reset achievements: {errorMessage}");
+                EmitAllAchievementsReset(false, errorMessage);
+            }
+        });
+
+        CallGKAchievementStatic(MethodResetAchievements, callback);
+        this.Log("Reset all achievements fired");
     }
 
     #endregion
 
     #region Async Methods
 
-    public override Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId)
+    public override async Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId)
     {
-        if (!IsAvailable)
-            return Task.FromResult(AchievementUnlockResult.FailureResult("Game Center is not available"));
+        var (gameCenterId, error) = ValidateAndGetGameCenterId(achievementId);
+        if (error != null)
+            return AchievementUnlockResult.FailureResult(error);
 
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found"));
+        try
+        {
+            var gcAchievement = CreateGKAchievement(gameCenterId!, 100.0);
+            if (gcAchievement == null)
+                return AchievementUnlockResult.FailureResult("Failed to create GKAchievement instance");
 
-        if (string.IsNullOrEmpty(achievement.GameCenterId))
-            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured"));
+            var tcs = new TaskCompletionSource<AchievementUnlockResult>();
+            var achievementsArray = new Godot.Collections.Array { gcAchievement };
 
-        // UNCOMMENT: Real async implementation with TaskCompletionSource
-        // var tcs = new TaskCompletionSource<AchievementUnlockResult>();
-        // var gcAchievement = new GKAchievement(achievement.GameCenterId) { PercentComplete = 100.0 };
-        // GKAchievement.ReportAchievements(new[] { gcAchievement }, error =>
-        //     tcs.SetResult(error == null ? AchievementUnlockResult.SuccessResult() : AchievementUnlockResult.FailureResult(error.ToString())));
-        // return tcs.Task;
+            var callback = Callable.From<Variant>((err) =>
+            {
+                if (IsSuccess(err))
+                {
+                    this.Log($"Unlocked achievement: {gameCenterId}");
+                    tcs.TrySetResult(AchievementUnlockResult.SuccessResult());
+                }
+                else
+                {
+                    var errorMessage = err.AsString();
+                    this.LogError($"Failed to unlock achievement {gameCenterId}: {errorMessage}");
+                    tcs.TrySetResult(AchievementUnlockResult.FailureResult(errorMessage));
+                }
+            });
 
-        this.Log($"Would unlock achievement: {achievement.GameCenterId}");
-        return Task.FromResult(AchievementUnlockResult.SuccessResult());
+            CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
+                AchievementUnlockResult.FailureResult("Game Center request timed out"));
+        }
+        catch (Exception ex)
+        {
+            return AchievementUnlockResult.FailureResult($"Game Center exception: {ex.Message}");
+        }
     }
 
-    public override Task<int> GetProgressAsync(string achievementId)
+    public override async Task<int> GetProgressAsync(string achievementId)
     {
-        if (!IsAvailable)
-            return Task.FromResult(0);
+        var (gameCenterId, error) = ValidateAndGetGameCenterId(achievementId);
+        if (error != null)
+            return 0;
 
-        // UNCOMMENT: Load cached progress from Game Center
-        return Task.FromResult(0);
+        var achievement = _database.GetById(achievementId)!;
+
+        try
+        {
+            var tcs = new TaskCompletionSource<int>();
+
+            var callback = Callable.From<Godot.Collections.Array, Variant>((achievements, err) =>
+            {
+                if (!IsSuccess(err))
+                {
+                    tcs.TrySetResult(0);
+                    return;
+                }
+
+                foreach (var item in achievements)
+                {
+                    if (item.Obj is GodotObject gcAchievement)
+                    {
+                        var identifier = gcAchievement.Get("identifier").AsString();
+                        if (identifier == gameCenterId)
+                        {
+                            var percentComplete = gcAchievement.Get("percent_complete").AsDouble();
+                            int progress = achievement.MaxProgress > 0
+                                ? (int)Math.Round(percentComplete / 100.0 * achievement.MaxProgress)
+                                : 0;
+                            tcs.TrySetResult(progress);
+                            return;
+                        }
+                    }
+                }
+
+                tcs.TrySetResult(0);
+            });
+
+            CallGKAchievementStatic(MethodLoadAchievements, callback);
+
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds, 0);
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Failed to get progress: {ex.Message}");
+            return 0;
+        }
     }
 
-    public override Task<SyncResult> IncrementProgressAsync(string achievementId, int amount)
+    /// <inheritdoc cref="IncrementProgress"/>
+    public override async Task<SyncResult> IncrementProgressAsync(string achievementId, int amount)
     {
-        if (!IsAvailable)
-            return Task.FromResult(SyncResult.FailureResult("Game Center is not available"));
+        var (gameCenterId, error) = ValidateAndGetGameCenterId(achievementId);
+        if (error != null)
+            return SyncResult.FailureResult(error);
 
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found"));
+        if (amount <= 0)
+            return SyncResult.FailureResult("Amount must be positive");
 
-        if (string.IsNullOrEmpty(achievement.GameCenterId))
-            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured"));
+        var achievement = _database.GetById(achievementId)!;
 
-        this.Log($"Would increment progress for {achievement.GameCenterId} by {amount}");
-        return Task.FromResult(SyncResult.SuccessResult());
+        try
+        {
+            // Game Center uses percentages - CurrentProgress already includes increment from local provider
+            int currentProgress = achievement.CurrentProgress;
+            double percentage = achievement.MaxProgress > 0
+                ? Math.Min((double)currentProgress / achievement.MaxProgress * 100.0, 100.0)
+                : 0;
+
+            var gcAchievement = CreateGKAchievement(gameCenterId!, percentage);
+            if (gcAchievement == null)
+                return SyncResult.FailureResult("Failed to create GKAchievement instance");
+
+            var tcs = new TaskCompletionSource<SyncResult>();
+            var achievementsArray = new Godot.Collections.Array { gcAchievement };
+
+            var callback = Callable.From<Variant>((err) =>
+            {
+                if (IsSuccess(err))
+                {
+                    this.Log($"Set progress for {gameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
+                    tcs.TrySetResult(SyncResult.SuccessResult());
+                }
+                else
+                {
+                    var errorMessage = err.AsString();
+                    this.LogError($"Failed to set progress for {gameCenterId}: {errorMessage}");
+                    tcs.TrySetResult(SyncResult.FailureResult(errorMessage));
+                }
+            });
+
+            CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
+                SyncResult.FailureResult("Game Center request timed out"));
+        }
+        catch (Exception ex)
+        {
+            return SyncResult.FailureResult($"Game Center exception: {ex.Message}");
+        }
     }
 
     public override Task<SyncResult> ResetAchievementAsync(string achievementId)
     {
-        if (!IsAvailable)
-            return Task.FromResult(SyncResult.FailureResult("Game Center is not available"));
-
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found"));
-
-        if (string.IsNullOrEmpty(achievement.GameCenterId))
-            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured"));
-
-        this.Log($"Would reset achievement: {achievement.GameCenterId}");
-        return Task.FromResult(SyncResult.SuccessResult());
+        ResetAchievement(achievementId);
+        return Task.FromResult(SyncResult.FailureResult("Game Center does not support resetting individual achievements"));
     }
 
-    public override Task<SyncResult> ResetAllAchievementsAsync()
+    public override async Task<SyncResult> ResetAllAchievementsAsync()
     {
         if (!IsAvailable)
-            return Task.FromResult(SyncResult.FailureResult("Game Center is not available"));
+            return SyncResult.FailureResult("Game Center is not available");
 
-        // UNCOMMENT: GKAchievement.ResetAchievements(error => { });
-        this.Log("Would reset all achievements");
-        return Task.FromResult(SyncResult.SuccessResult());
+        try
+        {
+            var tcs = new TaskCompletionSource<SyncResult>();
+
+            var callback = Callable.From<Variant>((err) =>
+            {
+                if (IsSuccess(err))
+                {
+                    this.Log("Successfully reset all achievements");
+                    tcs.TrySetResult(SyncResult.SuccessResult());
+                }
+                else
+                {
+                    var errorMessage = err.AsString();
+                    this.LogError($"Failed to reset achievements: {errorMessage}");
+                    tcs.TrySetResult(SyncResult.FailureResult(errorMessage));
+                }
+            });
+
+            CallGKAchievementStatic(MethodResetAchievements, callback);
+
+            return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
+                SyncResult.FailureResult("Game Center request timed out"));
+        }
+        catch (Exception ex)
+        {
+            return SyncResult.FailureResult($"Game Center exception: {ex.Message}");
+        }
     }
 
     #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Validates the provider state and returns the Game Center ID for an achievement.
+    /// </summary>
+    private (string? gameCenterId, string? error) ValidateAndGetGameCenterId(string achievementId)
+    {
+        if (!_isInitialized)
+            return (null, "Game Center plugin not initialized");
+
+        if (!_isAuthenticated)
+            return (null, "User not authenticated with Game Center");
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return (null, $"Achievement '{achievementId}' not found in database");
+
+        var gameCenterId = achievement.GameCenterId;
+        if (string.IsNullOrEmpty(gameCenterId))
+            return (null, $"Achievement '{achievementId}' has no Game Center ID configured");
+
+        return (gameCenterId, null);
+    }
+
+    /// <summary>
+    /// Creates a GKAchievement instance with the specified identifier and progress percentage.
+    /// </summary>
+    private GodotObject? CreateGKAchievement(string identifier, double percentComplete)
+    {
+        try
+        {
+            var achievement = ClassDB.Instantiate("GKAchievement");
+            if (achievement.Obj is GodotObject gcAchievement)
+            {
+                gcAchievement.Set("identifier", identifier);
+                gcAchievement.Set("percent_complete", percentComplete);
+                gcAchievement.Set("shows_completion_banner", true);
+                return gcAchievement;
+            }
+
+            this.LogError("Failed to instantiate GKAchievement");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Error creating GKAchievement: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Calls a static method on the GKAchievement class using the cached instance.
+    /// </summary>
+    private void CallGKAchievementStatic(StringName method, params Variant[] args)
+    {
+        try
+        {
+            if (_gkAchievementStatic == null)
+            {
+                this.LogError($"Failed to call GKAchievement.{method} - cached instance not available");
+                return;
+            }
+
+            _gkAchievementStatic.Call(method, args);
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Error calling GKAchievement.{method}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Checks if a Game Center callback error variant indicates success.
+    /// </summary>
+    private static bool IsSuccess(Variant error) => error.VariantType == Variant.Type.Nil;
+
+    /// <summary>
+    /// Cleans up resources used by the provider.
+    /// Call this when the provider is no longer needed.
+    /// </summary>
+    public void Cleanup()
+    {
+        if (_isDisposed)
+            return;
+
+        _isDisposed = true;
+        _isAuthenticated = false;
+        _isInitialized = false;
+
+        // Disconnect from tree exiting
+        var sceneTree = Engine.GetMainLoop() as SceneTree;
+        if (sceneTree?.Root != null)
+        {
+            sceneTree.Root.TreeExiting -= Cleanup;
+        }
+
+        if (_gameCenterManager != null)
+        {
+            _gameCenterManager.Disconnect("authentication_result", Callable.From<bool>(OnAuthenticationResult));
+            _gameCenterManager.Disconnect("authentication_error", Callable.From<string>(OnAuthenticationError));
+            _gameCenterManager = null;
+        }
+
+        _localPlayer = null;
+        _gkAchievementStatic = null;
+
+        this.Log("GameCenterAchievementProvider cleaned up");
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Result type for GetProgressAsync that includes error information.
+/// </summary>
+public readonly struct GetProgressResult
+{
+    public int Progress { get; }
+    public bool Success { get; }
+    public string? Error { get; }
+
+    private GetProgressResult(int progress, bool success, string? error)
+    {
+        Progress = progress;
+        Success = success;
+        Error = error;
+    }
+
+    public static GetProgressResult SuccessResult(int progress) => new(progress, true, null);
+    public static GetProgressResult FailureResult(string error) => new(0, false, error);
 }
 #endif

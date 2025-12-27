@@ -49,3 +49,8 @@ bld/
 # Test results
 TestResults/
 *.trx
+
+Exports/*
+*.xcscheme
+*.pbxproj
+*.xcworkspacedata

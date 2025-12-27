@@ -6,17 +6,18 @@
 [sub_resource type="Resource" id="Resource_pevyi"]
 script = ExtResource("1_pevyi")
 Id = "achievement_01"
-DisplayName = "Click a button!"
+DisplayName = "Hit the button!"
 Description = "Just click any button!"
 SteamId = "testing"
-GameCenterId = "yes"
+GameCenterId = "achievement_01"
 GooglePlayId = "CgkI9Nyp4OkBEAIQAg"
 
 [sub_resource type="Resource" id="Resource_1mgol"]
 script = ExtResource("1_pevyi")
 Id = "achievement_02"
-DisplayName = "Click a button 20x!"
-Description = "Achievement description hmmm"
+DisplayName = "Hit the button 20x!"
+Description = "Hit the button 20 times!"
+GameCenterId = "achievement_02"
 GooglePlayId = "CgkI9Nyp4OkBEAIQAw"
 IsIncremental = true
 MaxProgress = 20
