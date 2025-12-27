@@ -3,6 +3,7 @@ namespace Godot.Achievements.Core;
 /// <summary>
 /// Centralized logging for the achievements system.
 /// All logs are prefixed with [Achievements] for easy filtering.
+/// Respects the log level configured in project settings.
 /// </summary>
 public static class AchievementLogger
 {
@@ -19,11 +20,29 @@ public static class AchievementLogger
     }
 
     /// <summary>
+    /// Gets the current log level from project settings
+    /// </summary>
+    private static LogLevel CurrentLogLevel
+    {
+        get
+        {
+            if (!ProjectSettings.HasSetting(AchievementSettings.LogLevel))
+            {
+                return AchievementSettings.DefaultLogLevel;
+            }
+            return (LogLevel)ProjectSettings.GetSetting(AchievementSettings.LogLevel).AsInt32();
+        }
+    }
+
+    /// <summary>
     /// Log an informational message
     /// </summary>
     public static void Log(string area, string message)
     {
-        GD.Print($"[Achievements] [{area}] {message}");
+        if (CurrentLogLevel <= LogLevel.Info)
+        {
+            GD.Print($"[Achievements] [{area}] {message}");
+        }
     }
 
     /// <summary>
@@ -31,7 +50,10 @@ public static class AchievementLogger
     /// </summary>
     public static void Warning(string area, string message)
     {
-        GD.PushWarning($"[Achievements] [{area}] {message}");
+        if (CurrentLogLevel <= LogLevel.Warning)
+        {
+            GD.PushWarning($"[Achievements] [{area}] {message}");
+        }
     }
 
     /// <summary>
@@ -39,7 +61,10 @@ public static class AchievementLogger
     /// </summary>
     public static void Error(string area, string message)
     {
-        GD.PushError($"[Achievements] [{area}] {message}");
+        if (CurrentLogLevel <= LogLevel.Error)
+        {
+            GD.PushError($"[Achievements] [{area}] {message}");
+        }
     }
 
     /// <summary>
@@ -47,7 +72,10 @@ public static class AchievementLogger
     /// </summary>
     public static void Log(string message)
     {
-        GD.Print($"[Achievements] {message}");
+        if (CurrentLogLevel <= LogLevel.Info)
+        {
+            GD.Print($"[Achievements] {message}");
+        }
     }
 
     /// <summary>
@@ -55,7 +83,10 @@ public static class AchievementLogger
     /// </summary>
     public static void Warning(string message)
     {
-        GD.PushWarning($"[Achievements] {message}");
+        if (CurrentLogLevel <= LogLevel.Warning)
+        {
+            GD.PushWarning($"[Achievements] {message}");
+        }
     }
 
     /// <summary>
@@ -63,6 +94,9 @@ public static class AchievementLogger
     /// </summary>
     public static void Error(string message)
     {
-        GD.PushError($"[Achievements] {message}");
+        if (CurrentLogLevel <= LogLevel.Error)
+        {
+            GD.PushError($"[Achievements] {message}");
+        }
     }
 }

@@ -55,7 +55,6 @@ public partial class AchievementCrudOperations : RefCounted
             GooglePlayId = string.Empty,
             IsIncremental = false,
             MaxProgress = 1,
-            CustomPlatformIds = new Godot.Collections.Dictionary<string, string>(),
             ExtraProperties = new Godot.Collections.Dictionary<string, Variant>()
         };
 
@@ -225,7 +224,6 @@ public partial class AchievementCrudOperations : RefCounted
             GooglePlayId = original.GooglePlayId,
             IsIncremental = original.IsIncremental,
             MaxProgress = original.MaxProgress,
-            CustomPlatformIds = new Godot.Collections.Dictionary<string, string>(original.CustomPlatformIds),
             ExtraProperties = new Godot.Collections.Dictionary<string, Variant>(original.ExtraProperties)
         };
     }

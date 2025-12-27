@@ -7,16 +7,17 @@ using Godot.Achievements.Providers;
 namespace Godot.Achievements.Providers.Steamworks;
 
 /// <summary>
-/// Steam achievement provider for PC/Desktop platforms
+/// Steam achievement provider for PC/Desktop platforms.
+/// Steamworks.NET operations are synchronous, so sync methods are the primary implementation.
 /// </summary>
-public class SteamAchievementProvider : IAchievementProvider
+public partial class SteamAchievementProvider : AchievementProviderBase
 {
     public static bool IsPlatformSupported => true;
 
     private readonly AchievementDatabase _database;
     private bool _isInitialized;
 
-    public string ProviderName => ProviderNames.Steam;
+    public override string ProviderName => ProviderNames.Steam;
 
     public SteamAchievementProvider(AchievementDatabase database)
     {
@@ -46,7 +47,7 @@ public class SteamAchievementProvider : IAchievementProvider
         }
     }
 
-    public bool IsAvailable => _isInitialized && IsSteamworksAvailable();
+    public override bool IsAvailable => _isInitialized && IsSteamworksAvailable();
 
     private bool IsSteamworksAvailable()
     {
@@ -61,92 +62,223 @@ public class SteamAchievementProvider : IAchievementProvider
         }
     }
 
-    public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
+    #region Sync Methods
+
+    public override void UnlockAchievement(string achievementId)
     {
         if (!IsAvailable)
-            return AchievementUnlockResult.FailureResult("Steam is not available");
+        {
+            this.LogWarning("Steam is not available");
+            EmitAchievementUnlocked(achievementId, false, "Steam is not available");
+            return;
+        }
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
-            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found");
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found");
+            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' not found");
+            return;
+        }
 
         var steamId = achievement.SteamId;
         if (string.IsNullOrEmpty(steamId))
-            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Steam ID configured");
+            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' has no Steam ID configured");
+            return;
+        }
 
         try
         {
             // UNCOMMENT:
             // bool success = SteamUserStats.SetAchievement(steamId);
-            // if (success) success = SteamUserStats.StoreStats();
-            // if (!success) return AchievementUnlockResult.FailureResult("Failed to unlock");
+            // if (success) SteamUserStats.StoreStats();
 
             this.Log($"Would unlock achievement: {steamId}");
-            await Task.Delay(10);
-            return AchievementUnlockResult.SuccessResult();
+            EmitAchievementUnlocked(achievementId, true);
         }
         catch (Exception ex)
         {
-            return AchievementUnlockResult.FailureResult($"Steam exception: {ex.Message}");
+            this.LogError($"Steam exception: {ex.Message}");
+            EmitAchievementUnlocked(achievementId, false, $"Steam exception: {ex.Message}");
         }
     }
 
-    public async Task<int> GetProgress(string achievementId)
+    public override void IncrementProgress(string achievementId, int amount)
     {
         if (!IsAvailable)
-            return 0;
-
-        // UNCOMMENT: Load progress from Steamworks
-        await Task.CompletedTask;
-        return 0;
-    }
-
-    public async Task<SyncResult> SetProgress(string achievementId, int currentProgress)
-    {
-        if (!IsAvailable)
-            return SyncResult.FailureResult("Steam is not available");
+        {
+            this.LogWarning("Steam is not available");
+            EmitProgressIncremented(achievementId, 0, false, "Steam is not available");
+            return;
+        }
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
-            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found");
+            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' not found");
+            return;
+        }
 
         if (string.IsNullOrEmpty(achievement.SteamId))
-            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Steam ID configured");
+            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' has no Steam ID configured");
+            return;
+        }
 
-        // UNCOMMENT: Report progress to Steamworks
-        float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
-        this.Log($"Would set progress for {achievement.SteamId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult();
+        // UNCOMMENT: Increment progress in Steamworks
+        // int currentProgress;
+        // SteamUserStats.GetStat(achievement.SteamId + "_progress", out currentProgress);
+        // SteamUserStats.SetStat(achievement.SteamId + "_progress", currentProgress + amount);
+        // SteamUserStats.StoreStats();
+
+        this.Log($"Would increment progress for {achievement.SteamId} by {amount}");
+        EmitProgressIncremented(achievementId, amount, true);
     }
 
-    public async Task<SyncResult> ResetAchievement(string achievementId)
+    public override void ResetAchievement(string achievementId)
     {
         if (!IsAvailable)
-            return SyncResult.FailureResult("Steam is not available");
+        {
+            this.LogWarning("Steam is not available");
+            EmitAchievementReset(achievementId, false, "Steam is not available");
+            return;
+        }
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
-            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found");
+            EmitAchievementReset(achievementId, false, $"Achievement '{achievementId}' not found");
+            return;
+        }
 
         if (string.IsNullOrEmpty(achievement.SteamId))
-            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Steam ID configured");
+            EmitAchievementReset(achievementId, false, $"Achievement '{achievementId}' has no Steam ID configured");
+            return;
+        }
 
         // UNCOMMENT: SteamUserStats.ClearAchievement(achievement.SteamId);
         this.Log($"Would reset achievement: {achievement.SteamId}");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult();
+        EmitAchievementReset(achievementId, true);
     }
 
-    public async Task<SyncResult> ResetAllAchievements()
+    public override void ResetAllAchievements()
     {
         if (!IsAvailable)
-            return SyncResult.FailureResult("Steam is not available");
+        {
+            this.LogWarning("Steam is not available");
+            EmitAllAchievementsReset(false, "Steam is not available");
+            return;
+        }
 
         // UNCOMMENT: SteamUserStats.ResetAllStats(true);
         this.Log("Would reset all achievements");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult();
+        EmitAllAchievementsReset(true);
     }
+
+    #endregion
+
+    #region Async Methods
+
+    public override Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(AchievementUnlockResult.FailureResult("Steam is not available"));
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found"));
+
+        if (string.IsNullOrEmpty(achievement.SteamId))
+            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured"));
+
+        try
+        {
+            // UNCOMMENT:
+            // bool success = SteamUserStats.SetAchievement(achievement.SteamId);
+            // if (success) success = SteamUserStats.StoreStats();
+            // return Task.FromResult(success ? AchievementUnlockResult.SuccessResult() : AchievementUnlockResult.FailureResult("Failed to unlock"));
+
+            this.Log($"Would unlock achievement: {achievement.SteamId}");
+            return Task.FromResult(AchievementUnlockResult.SuccessResult());
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(AchievementUnlockResult.FailureResult($"Steam exception: {ex.Message}"));
+        }
+    }
+
+    public override Task<int> GetProgressAsync(string achievementId)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(0);
+
+        // UNCOMMENT: Load progress from Steamworks
+        // var achievement = _database.GetById(achievementId);
+        // if (achievement == null || string.IsNullOrEmpty(achievement.SteamId))
+        //     return Task.FromResult(0);
+        // int progress;
+        // SteamUserStats.GetStat(achievement.SteamId + "_progress", out progress);
+        // return Task.FromResult(progress);
+
+        return Task.FromResult(0);
+    }
+
+    public override Task<SyncResult> IncrementProgressAsync(string achievementId, int amount)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(SyncResult.FailureResult("Steam is not available"));
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found"));
+
+        if (string.IsNullOrEmpty(achievement.SteamId))
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured"));
+
+        // UNCOMMENT: Increment progress in Steamworks
+        // int currentProgress;
+        // SteamUserStats.GetStat(achievement.SteamId + "_progress", out currentProgress);
+        // SteamUserStats.SetStat(achievement.SteamId + "_progress", currentProgress + amount);
+        // SteamUserStats.StoreStats();
+
+        this.Log($"Would increment progress for {achievement.SteamId} by {amount}");
+        return Task.FromResult(SyncResult.SuccessResult());
+    }
+
+    public override Task<SyncResult> ResetAchievementAsync(string achievementId)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(SyncResult.FailureResult("Steam is not available"));
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found"));
+
+        if (string.IsNullOrEmpty(achievement.SteamId))
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured"));
+
+        // UNCOMMENT: SteamUserStats.ClearAchievement(achievement.SteamId);
+        this.Log($"Would reset achievement: {achievement.SteamId}");
+        return Task.FromResult(SyncResult.SuccessResult());
+    }
+
+    public override Task<SyncResult> ResetAllAchievementsAsync()
+    {
+        if (!IsAvailable)
+            return Task.FromResult(SyncResult.FailureResult("Steam is not available"));
+
+        // UNCOMMENT: SteamUserStats.ResetAllStats(true);
+        this.Log("Would reset all achievements");
+        return Task.FromResult(SyncResult.SuccessResult());
+    }
+
+    #endregion
 }
 #endif

@@ -62,6 +62,7 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     private string _idBeforeEdit = string.Empty;
     private EditorToastPreview? _editorToastPreview;
     private EditorUndoRedoManager? _undoRedoManager;
+    private CustomPropertiesEditor? _customPropertiesEditor;
 
     // Track old values for undo/redo
     private string _nameBeforeEdit = string.Empty;
@@ -148,6 +149,11 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         GameCenterIDLineEdit.FocusExited += OnGameCenterIdFocusExited;
 
         VisualizeUnlockButton.Pressed += OnVisualizeUnlockPressed;
+
+        // Create and setup custom properties editor
+        _customPropertiesEditor = new CustomPropertiesEditor();
+        _customPropertiesEditor.PropertyChanged += OnCustomPropertyChanged;
+        CustomPropertiesContainer.AddChild(_customPropertiesEditor);
 
         // Create validation labels
         _internalIdErrorLabel = CreateValidationLabel(InternalIDLineEdit, isError: true);
@@ -620,6 +626,15 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
 
     #endregion
 
+    #region Custom Properties Handlers
+
+    private void OnCustomPropertyChanged()
+    {
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    #endregion
+
     private void OnVisualizeUnlockPressed()
     {
         if (_currentAchievement == null) return;
@@ -651,6 +666,12 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         {
             _iconPicker.ResourceChanged -= OnIconResourceChanged;
             _iconPicker.QueueFree();
+        }
+
+        if (_customPropertiesEditor != null)
+        {
+            _customPropertiesEditor.PropertyChanged -= OnCustomPropertyChanged;
+            _customPropertiesEditor.QueueFree();
         }
 
         // Clean up validation labels
@@ -732,6 +753,12 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         ReplaceGooglePlayIdLineEdit(_currentAchievement.GooglePlayId ?? string.Empty);
         ReplaceGameCenterIdLineEdit(_currentAchievement.GameCenterId ?? string.Empty);
 
+        // Update custom properties editor
+        if (_customPropertiesEditor != null)
+        {
+            _customPropertiesEditor.CurrentAchievement = _currentAchievement;
+        }
+
         _isUpdating = false;
     }
 
@@ -755,6 +782,12 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         ReplaceSteamIdLineEdit(string.Empty);
         ReplaceGooglePlayIdLineEdit(string.Empty);
         ReplaceGameCenterIdLineEdit(string.Empty);
+
+        // Clear custom properties editor
+        if (_customPropertiesEditor != null)
+        {
+            _customPropertiesEditor.CurrentAchievement = null;
+        }
 
         _isUpdating = false;
     }

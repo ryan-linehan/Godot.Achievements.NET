@@ -43,9 +43,6 @@ public partial class Achievement : Resource
     /// </summary>
     [Export]
     public string GooglePlayId { get; set; } = string.Empty;
-    // Custom platform metadata (for third-party providers)
-    [Export]
-    public Dictionary<string, string> CustomPlatformIds { get; set; } = new();
     /// <summary>
     /// Extra properties for extensibility
     /// </summary>
@@ -78,19 +75,4 @@ public partial class Achievement : Resource
     /// </summary>
     public float ProgressPercentage => MaxProgress > 0 ? (float)CurrentProgress / MaxProgress : 0f;
 
-    /// <summary>
-    /// Get a platform-specific ID from the CustomPlatformIds dictionary
-    /// </summary>
-    public string? GetPlatformId(string platform)
-    {
-        return CustomPlatformIds.TryGetValue(platform, out var id) ? id : null;
-    }
-
-    /// <summary>
-    /// Set a platform-specific ID in the CustomPlatformIds dictionary
-    /// </summary>
-    public void SetPlatformId(string platform, string id)
-    {
-        CustomPlatformIds[platform] = id;
-    }
 }
