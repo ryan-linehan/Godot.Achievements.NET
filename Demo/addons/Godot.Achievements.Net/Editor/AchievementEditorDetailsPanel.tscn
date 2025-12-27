@@ -92,6 +92,7 @@ layout_mode = 2
 [node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+scroll_vertical = 100
 
 [node name="ContentVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer"]
 layout_mode = 2
@@ -253,5 +254,4 @@ placeholder_text = "com.yourcompany.achievement_id"
 [node name="CustomProperties" type="FoldableContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_customprops")
-folded = true
 title = "Custom Properties"

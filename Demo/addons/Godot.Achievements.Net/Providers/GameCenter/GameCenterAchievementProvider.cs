@@ -7,16 +7,18 @@ using Godot.Achievements.Providers;
 namespace Godot.Achievements.Providers.GameCenter;
 
 /// <summary>
-/// iOS Game Center achievement provider
+/// iOS Game Center achievement provider.
+/// Note: Game Center operations are inherently async. Sync methods start the operation
+/// and return immediately. Use async methods if you need to wait for the result.
 /// </summary>
-public class GameCenterAchievementProvider : IAchievementProvider
+public partial class GameCenterAchievementProvider : AchievementProviderBase
 {
     public static bool IsPlatformSupported => true;
 
     private readonly AchievementDatabase _database;
     private bool _isAuthenticated;
 
-    public string ProviderName => ProviderNames.GameCenter;
+    public override string ProviderName => ProviderNames.GameCenter;
 
     public GameCenterAchievementProvider(AchievementDatabase database)
     {
@@ -52,7 +54,7 @@ public class GameCenterAchievementProvider : IAchievementProvider
         }
     }
 
-    public bool IsAvailable => _isAuthenticated && IsGameCenterAvailable();
+    public override bool IsAvailable => _isAuthenticated && IsGameCenterAvailable();
 
     private bool IsGameCenterAvailable()
     {
@@ -60,92 +62,212 @@ public class GameCenterAchievementProvider : IAchievementProvider
         return false;
     }
 
-    public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
+    #region Sync Methods
+
+    public override void UnlockAchievement(string achievementId)
     {
         if (!IsAvailable)
-            return AchievementUnlockResult.FailureResult("Game Center is not available");
+        {
+            this.LogWarning("Game Center is not available");
+            EmitAchievementUnlocked(achievementId, false, "Game Center is not available");
+            return;
+        }
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
-            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found");
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found");
+            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' not found");
+            return;
+        }
 
         var gameCenterId = achievement.GameCenterId;
         if (string.IsNullOrEmpty(gameCenterId))
-            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured");
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Game Center ID configured");
+            EmitAchievementUnlocked(achievementId, false, $"Achievement '{achievementId}' has no Game Center ID configured");
+            return;
+        }
 
         try
         {
-            // UNCOMMENT:
+            // UNCOMMENT: Fire-and-forget unlock with signal emission in callback
             // var gcAchievement = new GKAchievement(gameCenterId) { PercentComplete = 100.0 };
-            // var tcs = new TaskCompletionSource<bool>();
-            // GKAchievement.ReportAchievements(new[] { gcAchievement }, error => tcs.SetResult(error == null));
-            // if (!await tcs.Task) return AchievementUnlockResult.FailureResult("Failed to unlock");
+            // GKAchievement.ReportAchievements(new[] { gcAchievement }, error =>
+            // {
+            //     EmitAchievementUnlocked(achievementId, error == null, error?.ToString());
+            // });
 
             this.Log($"Would unlock achievement: {gameCenterId}");
-            await Task.Delay(10);
-            return AchievementUnlockResult.SuccessResult();
+            EmitAchievementUnlocked(achievementId, true);
         }
         catch (Exception ex)
         {
-            return AchievementUnlockResult.FailureResult($"Game Center exception: {ex.Message}");
+            this.LogError($"Game Center exception: {ex.Message}");
+            EmitAchievementUnlocked(achievementId, false, $"Game Center exception: {ex.Message}");
         }
     }
 
-    public async Task<int> GetProgress(string achievementId)
+    public override void IncrementProgress(string achievementId, int amount)
     {
         if (!IsAvailable)
-            return 0;
-
-        // UNCOMMENT: Load progress from Game Center
-        await Task.CompletedTask;
-        return 0;
-    }
-
-    public async Task<SyncResult> SetProgress(string achievementId, int currentProgress)
-    {
-        if (!IsAvailable)
-            return SyncResult.FailureResult("Game Center is not available");
+        {
+            this.LogWarning("Game Center is not available");
+            EmitProgressIncremented(achievementId, 0, false, "Game Center is not available");
+            return;
+        }
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
-            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found");
+            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' not found");
+            return;
+        }
 
         if (string.IsNullOrEmpty(achievement.GameCenterId))
-            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured");
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Game Center ID configured");
+            EmitProgressIncremented(achievementId, 0, false, $"Achievement '{achievementId}' has no Game Center ID configured");
+            return;
+        }
 
-        // UNCOMMENT: Report progress to Game Center
-        float percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
-        this.Log($"Would set progress for {achievement.GameCenterId}: {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult();
+        // UNCOMMENT: Fire-and-forget progress report with signal emission in callback
+        // Note: Game Center works with percentages, so we'd need to track current progress
+        // and calculate the new percentage based on the increment
+        // var gcAchievement = new GKAchievement(achievement.GameCenterId) { PercentComplete = newPercentage };
+        // GKAchievement.ReportAchievements(new[] { gcAchievement }, error =>
+        // {
+        //     EmitProgressIncremented(achievementId, amount, error == null, error?.ToString());
+        // });
+
+        this.Log($"Would increment progress for {achievement.GameCenterId} by {amount}");
+        EmitProgressIncremented(achievementId, amount, true);
     }
 
-    public async Task<SyncResult> ResetAchievement(string achievementId)
+    public override void ResetAchievement(string achievementId)
     {
         if (!IsAvailable)
-            return SyncResult.FailureResult("Game Center is not available");
+        {
+            this.LogWarning("Game Center is not available");
+            EmitAchievementReset(achievementId, false, "Game Center is not available");
+            return;
+        }
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
-            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
+        {
+            this.LogWarning($"Achievement '{achievementId}' not found");
+            EmitAchievementReset(achievementId, false, $"Achievement '{achievementId}' not found");
+            return;
+        }
 
         if (string.IsNullOrEmpty(achievement.GameCenterId))
-            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured");
+        {
+            this.LogWarning($"Achievement '{achievementId}' has no Game Center ID configured");
+            EmitAchievementReset(achievementId, false, $"Achievement '{achievementId}' has no Game Center ID configured");
+            return;
+        }
 
         this.Log($"Would reset achievement: {achievement.GameCenterId}");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult();
+        EmitAchievementReset(achievementId, true);
     }
 
-    public async Task<SyncResult> ResetAllAchievements()
+    public override void ResetAllAchievements()
     {
         if (!IsAvailable)
-            return SyncResult.FailureResult("Game Center is not available");
+        {
+            this.LogWarning("Game Center is not available");
+            EmitAllAchievementsReset(false, "Game Center is not available");
+            return;
+        }
+
+        // UNCOMMENT: GKAchievement.ResetAchievements(error =>
+        // {
+        //     EmitAllAchievementsReset(error == null, error?.ToString());
+        // });
+        this.Log("Would reset all achievements");
+        EmitAllAchievementsReset(true);
+    }
+
+    #endregion
+
+    #region Async Methods
+
+    public override Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(AchievementUnlockResult.FailureResult("Game Center is not available"));
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found"));
+
+        if (string.IsNullOrEmpty(achievement.GameCenterId))
+            return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured"));
+
+        // UNCOMMENT: Real async implementation with TaskCompletionSource
+        // var tcs = new TaskCompletionSource<AchievementUnlockResult>();
+        // var gcAchievement = new GKAchievement(achievement.GameCenterId) { PercentComplete = 100.0 };
+        // GKAchievement.ReportAchievements(new[] { gcAchievement }, error =>
+        //     tcs.SetResult(error == null ? AchievementUnlockResult.SuccessResult() : AchievementUnlockResult.FailureResult(error.ToString())));
+        // return tcs.Task;
+
+        this.Log($"Would unlock achievement: {achievement.GameCenterId}");
+        return Task.FromResult(AchievementUnlockResult.SuccessResult());
+    }
+
+    public override Task<int> GetProgressAsync(string achievementId)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(0);
+
+        // UNCOMMENT: Load cached progress from Game Center
+        return Task.FromResult(0);
+    }
+
+    public override Task<SyncResult> IncrementProgressAsync(string achievementId, int amount)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(SyncResult.FailureResult("Game Center is not available"));
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found"));
+
+        if (string.IsNullOrEmpty(achievement.GameCenterId))
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured"));
+
+        this.Log($"Would increment progress for {achievement.GameCenterId} by {amount}");
+        return Task.FromResult(SyncResult.SuccessResult());
+    }
+
+    public override Task<SyncResult> ResetAchievementAsync(string achievementId)
+    {
+        if (!IsAvailable)
+            return Task.FromResult(SyncResult.FailureResult("Game Center is not available"));
+
+        var achievement = _database.GetById(achievementId);
+        if (achievement == null)
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' not found"));
+
+        if (string.IsNullOrEmpty(achievement.GameCenterId))
+            return Task.FromResult(SyncResult.FailureResult($"Achievement '{achievementId}' has no Game Center ID configured"));
+
+        this.Log($"Would reset achievement: {achievement.GameCenterId}");
+        return Task.FromResult(SyncResult.SuccessResult());
+    }
+
+    public override Task<SyncResult> ResetAllAchievementsAsync()
+    {
+        if (!IsAvailable)
+            return Task.FromResult(SyncResult.FailureResult("Game Center is not available"));
 
         // UNCOMMENT: GKAchievement.ResetAchievements(error => { });
         this.Log("Would reset all achievements");
-        await Task.CompletedTask;
-        return SyncResult.SuccessResult();
+        return Task.FromResult(SyncResult.SuccessResult());
     }
+
+    #endregion
 }
 #endif

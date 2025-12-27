@@ -321,7 +321,7 @@ public partial class AchievementEditorDock : Control
         AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Loaded database from {path}");
     }
 
-    private void SaveDatabase()
+    public void SaveDatabase()
     {
         if (_currentDatabase == null)
         {

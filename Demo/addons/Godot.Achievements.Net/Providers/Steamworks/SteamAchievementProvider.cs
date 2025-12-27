@@ -10,27 +10,21 @@ namespace Godot.Achievements.Providers.Steamworks;
 /// <summary>
 /// Steam achievement provider for PC/Desktop platforms.
 /// Automatically uses Godot.Steamworks.Net if available as an autoload, otherwise falls back to direct Steamworks.NET calls.
+/// Steamworks.NET operations are synchronous, so sync methods are the primary implementation.
 /// </summary>
-public class SteamAchievementProvider : IAchievementProvider
+public partial class SteamAchievementProvider : AchievementProviderBase
 {
     public static bool IsPlatformSupported => true;
 
-    private const string GodotSteamworksAutoloadPath = "/root/GodotSteamworks";
-
     private readonly AchievementDatabase _database;
     private bool _isInitialized;
-    private bool _statsReceived;
     private bool _useGodotSteamworks;
-    private TaskCompletionSource<bool>? _statsReceivedTcs;
 
     // Reference to Godot.Steamworks.Net autoload (if available)
     private GodotObject? _godotSteamworks;
     private GodotObject? _achievementsManager;
 
-    // Callback for when stats are received from Steam (used in fallback mode)
-    private Callback<UserStatsReceived_t>? _userStatsReceivedCallback;
-
-    public string ProviderName => ProviderNames.Steam;
+    public override string ProviderName => ProviderNames.Steam;
 
     public SteamAchievementProvider(AchievementDatabase database)
     {
@@ -45,7 +39,6 @@ public class SteamAchievementProvider : IAchievementProvider
         {
             _useGodotSteamworks = true;
             _isInitialized = true;
-            _statsReceived = true; // Godot.Steamworks.Net handles this internally
             this.Log("Using Godot.Steamworks.Net for Steam achievements");
             return;
         }
@@ -61,12 +54,10 @@ public class SteamAchievementProvider : IAchievementProvider
     {
         try
         {
-            // Get the scene tree
             var mainLoop = Engine.GetMainLoop();
             if (mainLoop is not SceneTree sceneTree)
                 return false;
 
-            // Check if GodotSteamworks autoload exists
             if (!sceneTree.Root.HasNode("GodotSteamworks"))
                 return false;
 
@@ -74,12 +65,10 @@ public class SteamAchievementProvider : IAchievementProvider
             if (_godotSteamworks == null)
                 return false;
 
-            // Get the Achievements manager
             _achievementsManager = _godotSteamworks.Get("Achievements").AsGodotObject();
             if (_achievementsManager == null)
                 return false;
 
-            // Verify the singleton is initialized
             var isInitialized = _godotSteamworks.Get("IsInitialized").AsBool();
             if (!isInitialized)
             {
@@ -103,7 +92,6 @@ public class SteamAchievementProvider : IAchievementProvider
     {
         try
         {
-            // Check if Steam is running and initialized
             if (!SteamAPI.Init())
             {
                 this.LogWarning("Steam API failed to initialize. Make sure Steam is running and steam_appid.txt is present.");
@@ -111,10 +99,6 @@ public class SteamAchievementProvider : IAchievementProvider
                 return;
             }
 
-            // Set up callback for receiving stats
-            _userStatsReceivedCallback = Callback<UserStatsReceived_t>.Create(OnUserStatsReceived);
-
-            // Request stats from Steam
             if (!SteamUserStats.RequestCurrentStats())
             {
                 this.LogWarning("Failed to request current stats from Steam");
@@ -130,61 +114,226 @@ public class SteamAchievementProvider : IAchievementProvider
         }
     }
 
-    private void OnUserStatsReceived(UserStatsReceived_t callback)
+    public override bool IsAvailable => _isInitialized && IsSteamAvailable();
+
+    private bool IsSteamAvailable()
     {
-        if (callback.m_eResult == EResult.k_EResultOK)
+        if (_useGodotSteamworks)
         {
-            _statsReceived = true;
-            this.Log("Steam user stats received successfully");
-            _statsReceivedTcs?.TrySetResult(true);
+            return _godotSteamworks?.Get("IsInitialized").AsBool() ?? false;
         }
-        else
-        {
-            this.LogWarning($"Failed to receive Steam user stats: {callback.m_eResult}");
-            _statsReceivedTcs?.TrySetResult(false);
-        }
+        return SteamAPI.IsSteamRunning();
     }
 
-    /// <summary>
-    /// Wait for stats to be received from Steam (with timeout)
-    /// </summary>
-    private async Task<bool> EnsureStatsReceived()
+    #region Helper Methods
+
+    private (string? steamId, string? error) ValidateAndGetSteamId(string achievementId)
     {
-        if (_statsReceived)
-            return true;
+        if (!_isInitialized)
+            return (null, "Steam not initialized");
 
-        if (_statsReceivedTcs == null)
-        {
-            _statsReceivedTcs = new TaskCompletionSource<bool>();
-        }
-
-        // Wait up to 5 seconds for stats
-        var timeoutTask = Task.Delay(5000);
-        var completedTask = await Task.WhenAny(_statsReceivedTcs.Task, timeoutTask);
-
-        if (completedTask == timeoutTask)
-        {
-            this.LogWarning("Timeout waiting for Steam stats");
-            return false;
-        }
-
-        return await _statsReceivedTcs.Task;
-    }
-
-    public bool IsAvailable => _isInitialized && (_useGodotSteamworks || SteamAPI.IsSteamRunning());
-
-    public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
-    {
         if (!IsAvailable)
-            return AchievementUnlockResult.FailureResult("Steam is not available");
+            return (null, "Steam is not available");
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
-            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found");
+            return (null, $"Achievement '{achievementId}' not found in database");
 
         var steamId = achievement.SteamId;
         if (string.IsNullOrEmpty(steamId))
-            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
+            return (null, $"Achievement '{achievementId}' has no Steam ID configured");
+
+        return (steamId, null);
+    }
+
+    #endregion
+
+    #region Sync Methods
+
+    public override void UnlockAchievement(string achievementId)
+    {
+        var (steamId, error) = ValidateAndGetSteamId(achievementId);
+        if (error != null)
+        {
+            this.LogWarning(error);
+            EmitAchievementUnlocked(achievementId, false, error);
+            return;
+        }
+
+        try
+        {
+            if (_useGodotSteamworks && _achievementsManager != null)
+            {
+                _achievementsManager.Call("Unlock", steamId);
+                this.Log($"Unlocked achievement via Godot.Steamworks.Net: {steamId}");
+                EmitAchievementUnlocked(achievementId, true);
+            }
+            else
+            {
+                bool success = SteamUserStats.SetAchievement(steamId!);
+                if (success) success = SteamUserStats.StoreStats();
+
+                if (success)
+                {
+                    this.Log($"Unlocked achievement: {steamId}");
+                    EmitAchievementUnlocked(achievementId, true);
+                }
+                else
+                {
+                    this.LogWarning($"Failed to unlock achievement: {steamId}");
+                    EmitAchievementUnlocked(achievementId, false, "Failed to unlock achievement");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Steam exception: {ex.Message}");
+            EmitAchievementUnlocked(achievementId, false, $"Steam exception: {ex.Message}");
+        }
+    }
+
+    public override void IncrementProgress(string achievementId, int amount)
+    {
+        var (steamId, error) = ValidateAndGetSteamId(achievementId);
+        if (error != null)
+        {
+            this.LogWarning(error);
+            EmitProgressIncremented(achievementId, 0, false, error);
+            return;
+        }
+
+        try
+        {
+            // Steam uses stats for progress tracking
+            var statName = $"{steamId}_PROGRESS";
+            int currentProgress = 0;
+            SteamUserStats.GetStat(statName, out currentProgress);
+
+            int newProgress = currentProgress + amount;
+            bool success = SteamUserStats.SetStat(statName, newProgress);
+            if (success) success = SteamUserStats.StoreStats();
+
+            if (success)
+            {
+                this.Log($"Incremented progress for {steamId}: {currentProgress} -> {newProgress}");
+                EmitProgressIncremented(achievementId, newProgress, true);
+
+                // Check if achievement should be unlocked
+                var achievement = _database.GetById(achievementId);
+                if (achievement != null && newProgress >= achievement.MaxProgress)
+                {
+                    UnlockAchievement(achievementId);
+                }
+            }
+            else
+            {
+                this.LogWarning($"Failed to increment progress for {steamId}");
+                EmitProgressIncremented(achievementId, currentProgress, false, "Failed to increment progress");
+            }
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Steam exception: {ex.Message}");
+            EmitProgressIncremented(achievementId, 0, false, $"Steam exception: {ex.Message}");
+        }
+    }
+
+    public override void ResetAchievement(string achievementId)
+    {
+        var (steamId, error) = ValidateAndGetSteamId(achievementId);
+        if (error != null)
+        {
+            this.LogWarning(error);
+            EmitAchievementReset(achievementId, false, error);
+            return;
+        }
+
+        try
+        {
+            if (_useGodotSteamworks && _achievementsManager != null)
+            {
+                _achievementsManager.Call("Reset", steamId);
+                this.Log($"Reset achievement via Godot.Steamworks.Net: {steamId}");
+                EmitAchievementReset(achievementId, true);
+            }
+            else
+            {
+                bool success = SteamUserStats.ClearAchievement(steamId!);
+
+                // Also reset the progress stat
+                var statName = $"{steamId}_PROGRESS";
+                SteamUserStats.SetStat(statName, 0);
+
+                if (success) success = SteamUserStats.StoreStats();
+
+                if (success)
+                {
+                    this.Log($"Reset achievement: {steamId}");
+                    EmitAchievementReset(achievementId, true);
+                }
+                else
+                {
+                    this.LogWarning($"Failed to reset achievement: {steamId}");
+                    EmitAchievementReset(achievementId, false, "Failed to reset achievement");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Steam exception: {ex.Message}");
+            EmitAchievementReset(achievementId, false, $"Steam exception: {ex.Message}");
+        }
+    }
+
+    public override void ResetAllAchievements()
+    {
+        if (!IsAvailable)
+        {
+            this.LogWarning("Steam is not available");
+            EmitAllAchievementsReset(false, "Steam is not available");
+            return;
+        }
+
+        try
+        {
+            if (_useGodotSteamworks && _achievementsManager != null)
+            {
+                _achievementsManager.Call("ResetAll");
+                this.Log("Reset all achievements via Godot.Steamworks.Net");
+                EmitAllAchievementsReset(true);
+            }
+            else
+            {
+                bool success = SteamUserStats.ResetAllStats(bAchievementsToo: true);
+
+                if (success)
+                {
+                    this.Log("Reset all achievements");
+                    EmitAllAchievementsReset(true);
+                }
+                else
+                {
+                    this.LogWarning("Failed to reset all achievements");
+                    EmitAllAchievementsReset(false, "Failed to reset all achievements");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            this.LogError($"Steam exception: {ex.Message}");
+            EmitAllAchievementsReset(false, $"Steam exception: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Async Methods
+
+    public override Task<AchievementUnlockResult> UnlockAchievementAsync(string achievementId)
+    {
+        var (steamId, error) = ValidateAndGetSteamId(achievementId);
+        if (error != null)
+            return Task.FromResult(AchievementUnlockResult.FailureResult(error));
 
         try
         {
@@ -194,256 +343,195 @@ public class SteamAchievementProvider : IAchievementProvider
                 var isUnlocked = _achievementsManager.Call("IsUnlocked", steamId).AsBool();
                 if (isUnlocked)
                 {
-                    this.Log($"Achievement '{steamId}' was already unlocked");
-                    return AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true);
+                    this.Log($"Achievement already unlocked: {steamId}");
+                    return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true));
                 }
 
-                // Unlock via Godot.Steamworks.Net
                 _achievementsManager.Call("Unlock", steamId);
-                this.Log($"Unlocked Steam achievement via Godot.Steamworks.Net: {steamId}");
-                return AchievementUnlockResult.SuccessResult();
+                this.Log($"Unlocked achievement via Godot.Steamworks.Net: {steamId}");
+                return Task.FromResult(AchievementUnlockResult.SuccessResult());
             }
             else
             {
-                // Fall back to direct Steamworks.NET
-                return await UnlockAchievementDirect(steamId);
+                // Check if already unlocked
+                if (SteamUserStats.GetAchievement(steamId!, out bool alreadyUnlocked) && alreadyUnlocked)
+                {
+                    this.Log($"Achievement already unlocked: {steamId}");
+                    return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true));
+                }
+
+                bool success = SteamUserStats.SetAchievement(steamId!);
+                if (success) success = SteamUserStats.StoreStats();
+
+                if (success)
+                {
+                    this.Log($"Unlocked achievement: {steamId}");
+                    return Task.FromResult(AchievementUnlockResult.SuccessResult());
+                }
+                else
+                {
+                    return Task.FromResult(AchievementUnlockResult.FailureResult("Failed to unlock achievement"));
+                }
             }
         }
         catch (Exception ex)
         {
-            return AchievementUnlockResult.FailureResult($"Steam exception: {ex.Message}");
+            return Task.FromResult(AchievementUnlockResult.FailureResult($"Steam exception: {ex.Message}"));
         }
     }
 
-    private async Task<AchievementUnlockResult> UnlockAchievementDirect(string steamId)
+    public override Task<int> GetProgressAsync(string achievementId)
     {
-        if (!await EnsureStatsReceived())
-            return AchievementUnlockResult.FailureResult("Failed to receive Steam stats");
-
-        // Check if already unlocked
-        if (SteamUserStats.GetAchievement(steamId, out bool alreadyUnlocked) && alreadyUnlocked)
-        {
-            this.Log($"Achievement '{steamId}' was already unlocked");
-            return AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true);
-        }
-
-        // Unlock the achievement
-        if (!SteamUserStats.SetAchievement(steamId))
-        {
-            return AchievementUnlockResult.FailureResult($"Failed to set achievement '{steamId}'");
-        }
-
-        // Store the stats to Steam
-        if (!SteamUserStats.StoreStats())
-        {
-            return AchievementUnlockResult.FailureResult($"Failed to store stats for achievement '{steamId}'");
-        }
-
-        this.Log($"Unlocked Steam achievement: {steamId}");
-        return AchievementUnlockResult.SuccessResult();
-    }
-
-    public async Task<int> GetProgress(string achievementId)
-    {
-        if (!IsAvailable)
-            return 0;
-
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-            return 0;
-
-        // Godot.Steamworks.Net doesn't expose progress API, so always use direct access
-        if (!_useGodotSteamworks)
-        {
-            if (!await EnsureStatsReceived())
-                return 0;
-        }
-
-        // Steam doesn't have native progress for achievements, but we can use stats
-        // Convention: use the SteamId + "_PROGRESS" as the stat name
-        var statName = $"{achievement.SteamId}_PROGRESS";
+        var (steamId, error) = ValidateAndGetSteamId(achievementId);
+        if (error != null)
+            return Task.FromResult(0);
 
         try
         {
+            var statName = $"{steamId}_PROGRESS";
             if (SteamUserStats.GetStat(statName, out int progress))
             {
-                return progress;
+                return Task.FromResult(progress);
             }
         }
         catch (Exception ex)
         {
-            this.LogWarning($"Failed to get progress stat '{statName}': {ex.Message}");
+            this.LogWarning($"Failed to get progress: {ex.Message}");
         }
 
-        return 0;
+        return Task.FromResult(0);
     }
 
-    public async Task<SyncResult> SetProgress(string achievementId, int currentProgress)
+    public override Task<SyncResult> IncrementProgressAsync(string achievementId, int amount)
     {
-        if (!IsAvailable)
-            return SyncResult.FailureResult("Steam is not available");
+        var (steamId, error) = ValidateAndGetSteamId(achievementId);
+        if (error != null)
+            return Task.FromResult(SyncResult.FailureResult(error));
 
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
-
-        if (string.IsNullOrEmpty(achievement.SteamId))
-            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
-
-        // Progress tracking requires direct Steamworks.NET access
-        if (!_useGodotSteamworks)
-        {
-            if (!await EnsureStatsReceived())
-                return SyncResult.FailureResult("Failed to receive Steam stats");
-        }
+        if (amount <= 0)
+            return Task.FromResult(SyncResult.FailureResult("Amount must be positive"));
 
         try
         {
-            // Use stat for progress tracking
-            var statName = $"{achievement.SteamId}_PROGRESS";
+            var statName = $"{steamId}_PROGRESS";
+            int currentProgress = 0;
+            SteamUserStats.GetStat(statName, out currentProgress);
 
-            if (!SteamUserStats.SetStat(statName, currentProgress))
+            int newProgress = currentProgress + amount;
+            bool success = SteamUserStats.SetStat(statName, newProgress);
+
+            // Show progress indicator
+            var achievement = _database.GetById(achievementId);
+            if (achievement != null)
             {
-                this.LogWarning($"Failed to set stat '{statName}' - stat may not exist in Steamworks partner portal");
+                SteamUserStats.IndicateAchievementProgress(
+                    steamId!,
+                    (uint)newProgress,
+                    (uint)achievement.MaxProgress
+                );
+
+                // Auto-unlock if progress reached
+                if (newProgress >= achievement.MaxProgress)
+                {
+                    SteamUserStats.SetAchievement(steamId!);
+                }
             }
 
-            // Show progress indicator to user (this is a Steam overlay notification)
-            SteamUserStats.IndicateAchievementProgress(
-                achievement.SteamId,
-                (uint)currentProgress,
-                (uint)achievement.MaxProgress
-            );
+            if (success) success = SteamUserStats.StoreStats();
 
-            // If progress reached max, unlock the achievement
-            if (currentProgress >= achievement.MaxProgress)
+            if (success)
             {
-                var unlockResult = await UnlockAchievement(achievementId);
-                if (!unlockResult.Success)
-                {
-                    return SyncResult.FailureResult(unlockResult.Error ?? "Failed to unlock achievement");
-                }
+                this.Log($"Incremented progress for {steamId}: {newProgress}");
+                return Task.FromResult(SyncResult.SuccessResult());
             }
             else
             {
-                // Store stats to Steam
-                if (!SteamUserStats.StoreStats())
-                {
-                    return SyncResult.FailureResult("Failed to store stats to Steam");
-                }
+                return Task.FromResult(SyncResult.FailureResult("Failed to increment progress"));
             }
-
-            var percentage = achievement.MaxProgress > 0 ? (float)currentProgress / achievement.MaxProgress * 100 : 0;
-            this.Log($"Set progress for '{achievement.SteamId}': {currentProgress}/{achievement.MaxProgress} ({percentage:F1}%)");
-
-            return SyncResult.SuccessResult();
         }
         catch (Exception ex)
         {
-            return SyncResult.FailureResult($"Steam exception: {ex.Message}");
+            return Task.FromResult(SyncResult.FailureResult($"Steam exception: {ex.Message}"));
         }
     }
 
-    public async Task<SyncResult> ResetAchievement(string achievementId)
+    public override Task<SyncResult> ResetAchievementAsync(string achievementId)
     {
-        if (!IsAvailable)
-            return SyncResult.FailureResult("Steam is not available");
-
-        var achievement = _database.GetById(achievementId);
-        if (achievement == null)
-            return SyncResult.FailureResult($"Achievement '{achievementId}' not found");
-
-        if (string.IsNullOrEmpty(achievement.SteamId))
-            return SyncResult.FailureResult($"Achievement '{achievementId}' has no Steam ID configured");
+        var (steamId, error) = ValidateAndGetSteamId(achievementId);
+        if (error != null)
+            return Task.FromResult(SyncResult.FailureResult(error));
 
         try
         {
             if (_useGodotSteamworks && _achievementsManager != null)
             {
-                // Reset via Godot.Steamworks.Net
-                _achievementsManager.Call("Reset", achievement.SteamId);
-                this.Log($"Reset Steam achievement via Godot.Steamworks.Net: {achievement.SteamId}");
-                return SyncResult.SuccessResult();
+                _achievementsManager.Call("Reset", steamId);
+                this.Log($"Reset achievement via Godot.Steamworks.Net: {steamId}");
+                return Task.FromResult(SyncResult.SuccessResult());
             }
             else
             {
-                // Fall back to direct Steamworks.NET
-                return await ResetAchievementDirect(achievement.SteamId);
+                bool success = SteamUserStats.ClearAchievement(steamId!);
+
+                var statName = $"{steamId}_PROGRESS";
+                SteamUserStats.SetStat(statName, 0);
+
+                if (success) success = SteamUserStats.StoreStats();
+
+                if (success)
+                {
+                    this.Log($"Reset achievement: {steamId}");
+                    return Task.FromResult(SyncResult.SuccessResult());
+                }
+                else
+                {
+                    return Task.FromResult(SyncResult.FailureResult("Failed to reset achievement"));
+                }
             }
         }
         catch (Exception ex)
         {
-            return SyncResult.FailureResult($"Steam exception: {ex.Message}");
+            return Task.FromResult(SyncResult.FailureResult($"Steam exception: {ex.Message}"));
         }
     }
 
-    private async Task<SyncResult> ResetAchievementDirect(string steamId)
-    {
-        if (!await EnsureStatsReceived())
-            return SyncResult.FailureResult("Failed to receive Steam stats");
-
-        // Clear the achievement
-        if (!SteamUserStats.ClearAchievement(steamId))
-        {
-            return SyncResult.FailureResult($"Failed to clear achievement '{steamId}'");
-        }
-
-        // Also reset the progress stat if it exists
-        var statName = $"{steamId}_PROGRESS";
-        SteamUserStats.SetStat(statName, 0);
-
-        // Store changes to Steam
-        if (!SteamUserStats.StoreStats())
-        {
-            return SyncResult.FailureResult("Failed to store stats to Steam");
-        }
-
-        this.Log($"Reset Steam achievement: {steamId}");
-        return SyncResult.SuccessResult();
-    }
-
-    public async Task<SyncResult> ResetAllAchievements()
+    public override Task<SyncResult> ResetAllAchievementsAsync()
     {
         if (!IsAvailable)
-            return SyncResult.FailureResult("Steam is not available");
+            return Task.FromResult(SyncResult.FailureResult("Steam is not available"));
 
         try
         {
             if (_useGodotSteamworks && _achievementsManager != null)
             {
-                // Reset via Godot.Steamworks.Net
                 _achievementsManager.Call("ResetAll");
-                this.Log("Reset all Steam achievements via Godot.Steamworks.Net");
-                return SyncResult.SuccessResult();
+                this.Log("Reset all achievements via Godot.Steamworks.Net");
+                return Task.FromResult(SyncResult.SuccessResult());
             }
             else
             {
-                // Fall back to direct Steamworks.NET
-                return await ResetAllAchievementsDirect();
+                bool success = SteamUserStats.ResetAllStats(bAchievementsToo: true);
+
+                if (success)
+                {
+                    this.Log("Reset all achievements");
+                    return Task.FromResult(SyncResult.SuccessResult());
+                }
+                else
+                {
+                    return Task.FromResult(SyncResult.FailureResult("Failed to reset all achievements"));
+                }
             }
         }
         catch (Exception ex)
         {
-            return SyncResult.FailureResult($"Steam exception: {ex.Message}");
+            return Task.FromResult(SyncResult.FailureResult($"Steam exception: {ex.Message}"));
         }
     }
 
-    private async Task<SyncResult> ResetAllAchievementsDirect()
-    {
-        if (!await EnsureStatsReceived())
-            return SyncResult.FailureResult("Failed to receive Steam stats");
+    #endregion
 
-        // Reset all stats including achievements
-        if (!SteamUserStats.ResetAllStats(bAchievementsToo: true))
-        {
-            return SyncResult.FailureResult("Failed to reset all Steam stats and achievements");
-        }
-
-        // Re-request stats after reset
-        SteamUserStats.RequestCurrentStats();
-
-        this.Log("Reset all Steam achievements and stats");
-        return SyncResult.SuccessResult();
-    }
+    #region Steam-Specific Methods
 
     /// <summary>
     /// Call this method in your game's process loop to handle Steam callbacks.
@@ -467,9 +555,10 @@ public class SteamAchievementProvider : IAchievementProvider
         {
             SteamAPI.Shutdown();
             _isInitialized = false;
-            _statsReceived = false;
             this.Log("Steam API shutdown");
         }
     }
+
+    #endregion
 }
 #endif
