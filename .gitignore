@@ -51,3 +51,6 @@ TestResults/
 *.trx
 
 Exports/*
+*.xcscheme
+*.pbxproj
+*.xcworkspacedata
