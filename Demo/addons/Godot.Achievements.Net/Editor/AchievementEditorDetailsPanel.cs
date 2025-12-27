@@ -1,7 +1,6 @@
 #if TOOLS
 using Godot;
 using Godot.Achievements.Core;
-using Godot.Achievements.Providers;
 using System;
 
 namespace Godot.Achievements.Core.Editor;
@@ -203,26 +202,19 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         }
 
         // Update platform warning labels based on validation result
-        UpdatePlatformWarningLabel(_steamWarningLabel, validationResult, ProviderNames.Steam);
-        UpdatePlatformWarningLabel(_googlePlayWarningLabel, validationResult, ProviderNames.GooglePlay);
-        UpdatePlatformWarningLabel(_gameCenterWarningLabel, validationResult, ProviderNames.GameCenter);
+        UpdateFieldWarningLabel(_steamWarningLabel, validationResult, ValidationFields.SteamId);
+        UpdateFieldWarningLabel(_googlePlayWarningLabel, validationResult, ValidationFields.GooglePlayId);
+        UpdateFieldWarningLabel(_gameCenterWarningLabel, validationResult, ValidationFields.GameCenterId);
     }
 
-    private void UpdatePlatformWarningLabel(Label? label, AchievementValidationResult? validationResult, string platformName)
+    private void UpdateFieldWarningLabel(Label? label, AchievementValidationResult? validationResult, string fieldKey)
     {
         if (label == null) return;
 
         string? warningText = null;
-        if (validationResult != null)
+        if (validationResult != null && validationResult.FieldWarnings.TryGetValue(fieldKey, out var warningType))
         {
-            foreach (var warning in validationResult.Warnings)
-            {
-                if (warning.Contains(platformName))
-                {
-                    warningText = warning.Contains("missing") ? "\u26a0 Missing" : "\u26a0 Duplicate";
-                    break;
-                }
-            }
+            warningText = warningType == ValidationWarningType.Missing ? "\u26a0 Missing" : "\u26a0 Duplicate";
         }
 
         label.Visible = warningText != null;

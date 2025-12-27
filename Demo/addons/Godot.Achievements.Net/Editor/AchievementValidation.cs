@@ -6,12 +6,38 @@ using Godot.Achievements.Core;
 namespace Godot.Achievements.Core.Editor;
 
 /// <summary>
+/// Field identifiers for validation warnings
+/// </summary>
+public static class ValidationFields
+{
+    public const string InternalId = "InternalId";
+    public const string DisplayName = "DisplayName";
+    public const string SteamId = "SteamId";
+    public const string GooglePlayId = "GooglePlayId";
+    public const string GameCenterId = "GameCenterId";
+}
+
+/// <summary>
+/// Types of validation warnings
+/// </summary>
+public enum ValidationWarningType
+{
+    Missing,
+    Duplicate
+}
+
+/// <summary>
 /// Represents validation warnings for a single achievement
 /// </summary>
 public class AchievementValidationResult
 {
     public Achievement Achievement { get; }
     public List<string> Warnings { get; } = new();
+
+    /// <summary>
+    /// Field-specific warnings keyed by ValidationFields constants
+    /// </summary>
+    public Dictionary<string, ValidationWarningType> FieldWarnings { get; } = new();
 
     public AchievementValidationResult(Achievement achievement)
     {
@@ -23,6 +49,15 @@ public class AchievementValidationResult
     public void AddWarning(string warning)
     {
         Warnings.Add(warning);
+    }
+
+    /// <summary>
+    /// Add a warning associated with a specific field
+    /// </summary>
+    public void AddFieldWarning(string fieldKey, ValidationWarningType warningType, string message)
+    {
+        FieldWarnings[fieldKey] = warningType;
+        Warnings.Add(message);
     }
 
     public string GetTooltipText()
@@ -48,29 +83,29 @@ public static class AchievementValidator
         // Check for missing internal ID
         if (string.IsNullOrWhiteSpace(achievement.Id))
         {
-            result.AddWarning("Missing internal ID");
+            result.AddFieldWarning(ValidationFields.InternalId, ValidationWarningType.Missing, "Missing internal ID");
         }
 
         // Check for missing display name
         if (string.IsNullOrWhiteSpace(achievement.DisplayName))
         {
-            result.AddWarning("Missing display name");
+            result.AddFieldWarning(ValidationFields.DisplayName, ValidationWarningType.Missing, "Missing display name");
         }
 
         // Check platform IDs based on enabled integrations
         if (GetPlatformEnabled(AchievementSettings.SteamEnabled) && string.IsNullOrWhiteSpace(achievement.SteamId))
         {
-            result.AddWarning("Steam integration enabled but Steam ID is missing");
+            result.AddFieldWarning(ValidationFields.SteamId, ValidationWarningType.Missing, "Steam integration enabled but Steam ID is missing");
         }
 
         if (GetPlatformEnabled(AchievementSettings.GameCenterEnabled) && string.IsNullOrWhiteSpace(achievement.GameCenterId))
         {
-            result.AddWarning("Game Center integration enabled but Game Center ID is missing");
+            result.AddFieldWarning(ValidationFields.GameCenterId, ValidationWarningType.Missing, "Game Center integration enabled but Game Center ID is missing");
         }
 
         if (GetPlatformEnabled(AchievementSettings.GooglePlayEnabled) && string.IsNullOrWhiteSpace(achievement.GooglePlayId))
         {
-            result.AddWarning("Google Play integration enabled but Google Play ID is missing");
+            result.AddFieldWarning(ValidationFields.GooglePlayId, ValidationWarningType.Missing, "Google Play integration enabled but Google Play ID is missing");
         }
 
         return result;
@@ -171,7 +206,8 @@ public static class AchievementValidator
             {
                 foreach (var achievement in kvp.Value)
                 {
-                    results[achievement].AddWarning($"Duplicate Steam ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
+                    results[achievement].AddFieldWarning(ValidationFields.SteamId, ValidationWarningType.Duplicate,
+                        $"Duplicate Steam ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
                 }
             }
         }
@@ -182,7 +218,8 @@ public static class AchievementValidator
             {
                 foreach (var achievement in kvp.Value)
                 {
-                    results[achievement].AddWarning($"Duplicate Game Center ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
+                    results[achievement].AddFieldWarning(ValidationFields.GameCenterId, ValidationWarningType.Duplicate,
+                        $"Duplicate Game Center ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
                 }
             }
         }
@@ -193,7 +230,8 @@ public static class AchievementValidator
             {
                 foreach (var achievement in kvp.Value)
                 {
-                    results[achievement].AddWarning($"Duplicate Google Play ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
+                    results[achievement].AddFieldWarning(ValidationFields.GooglePlayId, ValidationWarningType.Duplicate,
+                        $"Duplicate Google Play ID '{kvp.Key}' (shared with {kvp.Value.Count - 1} other achievement(s))");
                 }
             }
         }
