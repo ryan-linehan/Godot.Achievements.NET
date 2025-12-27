@@ -185,7 +185,7 @@ public partial class GooglePlayAchievementProvider : AchievementProviderBase
 
     private string? FindAchievementIdByGooglePlayId(string googlePlayId)
     {
-        foreach (var achievement in _database.GetAll())
+        foreach (var achievement in _database.Achievements)
         {
             if (achievement.GooglePlayId == googlePlayId)
             {
