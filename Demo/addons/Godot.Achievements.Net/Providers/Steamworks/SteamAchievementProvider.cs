@@ -3,20 +3,20 @@ using System;
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 using Godot.Achievements.Providers;
+using Godot.Steamworks.Net;
 
 namespace Godot.Achievements.Providers.Steamworks;
 
 /// <summary>
 /// Steam achievement provider for PC/Desktop platforms.
-/// Requires Godot.Steamworks.Net addon to be installed and configured as an autoload.
+/// Requires Godot.Steamworks.NET addon to be installed and configured as an autoload.
 /// </summary>
 public partial class SteamAchievementProvider : AchievementProviderBase
 {
     public static bool IsPlatformSupported => true;
 
     private readonly AchievementDatabase _database;
-    private GodotObject? _godotSteamworks;
-    private GodotObject? _achievementsManager;
+    private SteamworksAchievements? _achievements;
     private bool _isInitialized;
 
     public override string ProviderName => ProviderNames.Steam;
@@ -31,42 +31,27 @@ public partial class SteamAchievementProvider : AchievementProviderBase
     {
         try
         {
-            var mainLoop = Engine.GetMainLoop();
-            if (mainLoop is not SceneTree sceneTree)
+            if (GodotSteamworks.Instance == null)
             {
-                this.LogError("Could not access scene tree");
+                this.LogWarning("GodotSteamworks.Instance is null. Ensure GodotSteamworks autoload is configured.");
                 return;
             }
 
-            if (!sceneTree.Root.HasNode("GodotSteamworks"))
+            if (!GodotSteamworks.Instance.IsInitialized)
             {
-                this.LogWarning("GodotSteamworks autoload not found. Please install Godot.Steamworks.Net addon.");
+                this.LogWarning("Steam is not initialized. Make sure Steam is running.");
                 return;
             }
 
-            _godotSteamworks = sceneTree.Root.GetNode("GodotSteamworks");
-            if (_godotSteamworks == null)
+            _achievements = GodotSteamworks.Achievements;
+            if (_achievements == null)
             {
-                this.LogError("Failed to get GodotSteamworks node");
-                return;
-            }
-
-            _achievementsManager = _godotSteamworks.Get("Achievements").AsGodotObject();
-            if (_achievementsManager == null)
-            {
-                this.LogError("Failed to get Achievements manager from GodotSteamworks");
-                return;
-            }
-
-            var isInitialized = _godotSteamworks.Get("IsInitialized").AsBool();
-            if (!isInitialized)
-            {
-                this.LogWarning("GodotSteamworks found but Steam is not initialized. Make sure Steam is running.");
+                this.LogError("Failed to get SteamworksAchievements");
                 return;
             }
 
             _isInitialized = true;
-            this.Log("Initialized with Godot.Steamworks.Net");
+            this.Log("Initialized with Godot.Steamworks.NET");
         }
         catch (Exception ex)
         {
@@ -75,17 +60,14 @@ public partial class SteamAchievementProvider : AchievementProviderBase
     }
 
     public override bool IsAvailable => _isInitialized &&
-        (_godotSteamworks?.Get("IsInitialized").AsBool() ?? false);
+        GodotSteamworks.Instance?.IsInitialized == true;
 
     #region Helper Methods
 
     private (string? steamId, string? error) ValidateAndGetSteamId(string achievementId)
     {
-        if (!_isInitialized)
-            return (null, "Steam not initialized. Ensure Godot.Steamworks.Net is installed and Steam is running.");
-
-        if (_achievementsManager == null)
-            return (null, "Achievements manager not available");
+        if (!_isInitialized || _achievements == null)
+            return (null, "Steam not initialized. Ensure Godot.Steamworks.NET is installed and Steam is running.");
 
         var achievement = _database.GetById(achievementId);
         if (achievement == null)
@@ -114,7 +96,7 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            _achievementsManager!.Call("Unlock", steamId);
+            _achievements!.UnlockAchievement(steamId!);
             this.Log($"Unlocked achievement: {steamId}");
             EmitAchievementUnlocked(achievementId, true);
         }
@@ -137,10 +119,9 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            // Get current progress, increment, and set
-            var currentProgress = _achievementsManager!.Call("GetProgress", steamId).AsInt32();
+            var currentProgress = _achievements!.GetAchievementProgress(steamId!);
             var newProgress = currentProgress + amount;
-            _achievementsManager.Call("SetProgress", steamId, newProgress);
+            _achievements.SetAchievementProgress(steamId!, newProgress);
 
             this.Log($"Incremented progress for {steamId}: {currentProgress} -> {newProgress}");
             EmitProgressIncremented(achievementId, newProgress, true);
@@ -171,7 +152,7 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            _achievementsManager!.Call("Reset", steamId);
+            _achievements!.ClearAchievement(steamId!);
             this.Log($"Reset achievement: {steamId}");
             EmitAchievementReset(achievementId, true);
         }
@@ -193,7 +174,7 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            _achievementsManager!.Call("ResetAll");
+            _achievements!.ResetAllAchievements();
             this.Log("Reset all achievements");
             EmitAllAchievementsReset(true);
         }
@@ -216,14 +197,13 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            var isUnlocked = _achievementsManager!.Call("IsUnlocked", steamId).AsBool();
-            if (isUnlocked)
+            if (_achievements!.IsAchievementUnlocked(steamId!))
             {
                 this.Log($"Achievement already unlocked: {steamId}");
                 return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true));
             }
 
-            _achievementsManager.Call("Unlock", steamId);
+            _achievements.UnlockAchievement(steamId!);
             this.Log($"Unlocked achievement: {steamId}");
             return Task.FromResult(AchievementUnlockResult.SuccessResult());
         }
@@ -241,7 +221,7 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            var progress = _achievementsManager!.Call("GetProgress", steamId).AsInt32();
+            var progress = _achievements!.GetAchievementProgress(steamId!);
             return Task.FromResult(progress);
         }
         catch (Exception ex)
@@ -262,15 +242,15 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            var currentProgress = _achievementsManager!.Call("GetProgress", steamId).AsInt32();
+            var currentProgress = _achievements!.GetAchievementProgress(steamId!);
             var newProgress = currentProgress + amount;
-            _achievementsManager.Call("SetProgress", steamId, newProgress);
+            _achievements.SetAchievementProgress(steamId!, newProgress);
 
             // Auto-unlock if progress reached
             var achievement = _database.GetById(achievementId);
             if (achievement != null && newProgress >= achievement.MaxProgress)
             {
-                _achievementsManager.Call("Unlock", steamId);
+                _achievements.UnlockAchievement(steamId!);
             }
 
             this.Log($"Incremented progress for {steamId}: {newProgress}");
@@ -290,7 +270,7 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            _achievementsManager!.Call("Reset", steamId);
+            _achievements!.ClearAchievement(steamId!);
             this.Log($"Reset achievement: {steamId}");
             return Task.FromResult(SyncResult.SuccessResult());
         }
@@ -307,7 +287,7 @@ public partial class SteamAchievementProvider : AchievementProviderBase
 
         try
         {
-            _achievementsManager!.Call("ResetAll");
+            _achievements!.ResetAllAchievements();
             this.Log("Reset all achievements");
             return Task.FromResult(SyncResult.SuccessResult());
         }

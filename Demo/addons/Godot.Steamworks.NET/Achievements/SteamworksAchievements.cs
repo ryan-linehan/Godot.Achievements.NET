@@ -1,3 +1,4 @@
+#if GODOT_PC || GODOT_WINDOWS || GODOT_LINUX || GODOT_MACOS || GODOT_X11 || GODOT_OSX
 using Godot;
 using Godot.Steamworks.Net;
 using Godot.Steamworks.Net.Models;
@@ -183,3 +184,4 @@ public partial class SteamworksAchievements : RefCounted
         SteamUserStats.StoreStats();
     }
 }
+#endif
