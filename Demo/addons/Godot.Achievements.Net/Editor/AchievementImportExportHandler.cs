@@ -256,29 +256,35 @@ public partial class AchievementImportExportHandler : RefCounted
 
     private void ShowInfoDialog(string message)
     {
-        var parent = _getParentNodeFunc();
-        var dialog = new AcceptDialog();
-        dialog.DialogText = message;
-        parent.AddChild(dialog);
-        dialog.PopupCentered();
+        ShowDialog("Info", message);
     }
 
     private void ShowSuccessDialog(string title, string message)
+    {
+        ShowDialog(title, message);
+    }
+
+    private void ShowErrorDialog(string message)
+    {
+        ShowDialog("Error", message);
+    }
+
+    private void ShowDialog(string title, string message)
     {
         var parent = _getParentNodeFunc();
         var dialog = new AcceptDialog();
         dialog.Title = title;
         dialog.DialogText = message;
-        parent.AddChild(dialog);
-        dialog.PopupCentered();
-    }
 
-    private void ShowErrorDialog(string message)
-    {
-        var parent = _getParentNodeFunc();
-        var dialog = new AcceptDialog();
-        dialog.Title = "Error";
-        dialog.DialogText = message;
+        void OnDialogClosed()
+        {
+            dialog.Confirmed -= OnDialogClosed;
+            dialog.Canceled -= OnDialogClosed;
+            dialog.QueueFree();
+        }
+
+        dialog.Confirmed += OnDialogClosed;
+        dialog.Canceled += OnDialogClosed;
         parent.AddChild(dialog);
         dialog.PopupCentered();
     }
