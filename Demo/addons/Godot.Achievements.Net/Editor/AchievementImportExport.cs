@@ -185,6 +185,19 @@ public static class AchievementImportExport
                         }
                     }
                 }
+                if (columnMap.ContainsKey("IconPath"))
+                {
+                    var iconPath = GetCSVValue(values, columnMap, "IconPath");
+                    if (!string.IsNullOrWhiteSpace(iconPath))
+                    {
+                        var newIcon = ResourceLoader.Load<Texture2D>(iconPath);
+                        if (newIcon != null && achievement.Icon != newIcon)
+                        {
+                            achievement.Icon = newIcon;
+                            hasChanges = true;
+                        }
+                    }
+                }
 
                 if (isNew)
                 {
@@ -229,7 +242,7 @@ public static class AchievementImportExport
                 return ExportResult.FailureResult($"Failed to create file: {FileAccess.GetOpenError()}");
 
             // Write header using Godot's StoreCsvLine
-            file.StoreCsvLine(new string[] { "Id", "DisplayName", "Description", "SteamId", "GameCenterId", "GooglePlayId", "IsIncremental", "MaxProgress" });
+            file.StoreCsvLine(new string[] { "Id", "DisplayName", "Description", "IconPath", "SteamId", "GameCenterId", "GooglePlayId", "IsIncremental", "MaxProgress" });
 
             // Write achievement rows using Godot's StoreCsvLine (handles escaping automatically)
             foreach (var achievement in database.Achievements)
@@ -239,6 +252,7 @@ public static class AchievementImportExport
                     achievement.Id ?? "",
                     achievement.DisplayName ?? "",
                     achievement.Description ?? "",
+                    achievement.Icon?.ResourcePath ?? "",
                     achievement.SteamId ?? "",
                     achievement.GameCenterId ?? "",
                     achievement.GooglePlayId ?? "",
@@ -397,6 +411,19 @@ public static class AchievementImportExport
                     }
                 }
 
+                if (TryGetJsonString(item, "IconPath", out var iconPath) || TryGetJsonString(item, "iconPath", out iconPath))
+                {
+                    if (!string.IsNullOrWhiteSpace(iconPath))
+                    {
+                        var newIcon = ResourceLoader.Load<Texture2D>(iconPath);
+                        if (newIcon != null && achievement.Icon != newIcon)
+                        {
+                            achievement.Icon = newIcon;
+                            hasChanges = true;
+                        }
+                    }
+                }
+
                 if (isNew)
                 {
                     achievement.ExtraProperties = new Godot.Collections.Dictionary<string, Variant>();
@@ -450,6 +477,7 @@ public static class AchievementImportExport
                     Id = achievement.Id ?? "",
                     DisplayName = achievement.DisplayName ?? "",
                     Description = achievement.Description ?? "",
+                    IconPath = achievement.Icon?.ResourcePath ?? "",
                     SteamId = achievement.SteamId ?? "",
                     GameCenterId = achievement.GameCenterId ?? "",
                     GooglePlayId = achievement.GooglePlayId ?? "",
