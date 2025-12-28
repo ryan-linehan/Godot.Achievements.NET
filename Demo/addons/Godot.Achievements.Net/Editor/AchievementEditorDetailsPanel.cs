@@ -785,9 +785,14 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     }
 
     /// <summary>
-    /// Replaces a LineEdit with a fresh instance to clear undo history.
-    /// Returns the new instance.
+    /// Replaces a LineEdit with a fresh instance to clear its internal undo/redo history.
     /// </summary>
+    /// <remarks>
+    /// Godot's LineEdit maintains an internal undo/redo stack that cannot be cleared via any public API.
+    /// When switching between achievements, we must replace the entire control to prevent Ctrl+Z from
+    /// restoring text from a previously selected achievement. This is the only way to reset the history.
+    /// </remarks>
+    /// <returns>The new LineEdit instance that replaces the old one.</returns>
     private static LineEdit ReplaceLineEdit(LineEdit oldLineEdit, string newText)
     {
         var parent = oldLineEdit.GetParent();
