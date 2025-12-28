@@ -258,20 +258,6 @@ public partial class AchievementToastContainer : CanvasLayer
         _activeToasts.Remove(entry);
         entry.Tween?.Kill();
         entry.Toast.QueueFree();
-
-        // Animate remaining toasts to slide into place
-        // The VBoxContainer handles repositioning automatically,
-        // but we can add a smooth transition by tweening the container's children
-        AnimateRemainingToasts();
-    }
-
-    private void AnimateRemainingToasts()
-    {
-        // The VBoxContainer automatically repositions children when one is removed.
-        // For smooth sliding, we could track positions and animate, but the VBox
-        // handles this well enough for most cases. If more sophisticated animation
-        // is needed, we'd need to manually position children outside the VBox.
-        // For now, the fade-out of the removed toast provides visual feedback.
     }
 
     public override void _ExitTree()

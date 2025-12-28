@@ -18,12 +18,13 @@ public partial class AchievementImportExportHandler : RefCounted
     private EditorFileDialog? _exportCSVFileDialog;
     private EditorFileDialog? _importJSONFileDialog;
     private EditorFileDialog? _exportJSONFileDialog;
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    public AchievementImportExportHandler()
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    {
-        // NOT CALLED
-    }
+    /// <summary>
+    /// Parameterless constructor required by Godot's serialization system.
+    /// This constructor is never called directly - use the parameterized constructor instead.
+    /// </summary>
+#pragma warning disable CS8618 // Required for Godot serialization - fields initialized via parameterized constructor
+    public AchievementImportExportHandler() { }
+#pragma warning restore CS8618
     public AchievementImportExportHandler(
         Func<AchievementDatabase?> getDatabaseFunc,
         Action saveDatabase,
