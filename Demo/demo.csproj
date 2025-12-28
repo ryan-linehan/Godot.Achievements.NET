@@ -5,4 +5,8 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup Condition=" '$(GodotTargetPlatform)' == '' OR '$(GodotTargetPlatform)' == 'windows' OR '$(GodotTargetPlatform)' == 'linux' OR '$(GodotTargetPlatform)' == 'macos' ">
+    <PackageReference Include="Steamworks.NET.AnyCPU" Version="2025.162.6-b-socket.1" />
+  </ItemGroup>
 </Project>

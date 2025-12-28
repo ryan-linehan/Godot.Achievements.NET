@@ -37,6 +37,8 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     [Export]
     private LineEdit SteamIDLineEdit = null!;
     [Export]
+    private LineEdit SteamStatIdLineEdit = null!;
+    [Export]
     public VBoxContainer GooglePlayVBox = null!;
     [Export]
     private LineEdit GooglePlayIDLineEdit = null!;
@@ -67,6 +69,7 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     private string _nameBeforeEdit = string.Empty;
     private string _descriptionBeforeEdit = string.Empty;
     private string _steamIdBeforeEdit = string.Empty;
+    private string _steamStatIdBeforeEdit = string.Empty;
     private string _googlePlayIdBeforeEdit = string.Empty;
     private string _gameCenterIdBeforeEdit = string.Empty;
 
@@ -138,6 +141,10 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         SteamIDLineEdit.TextChanged += OnSteamIdChanged;
         SteamIDLineEdit.FocusEntered += OnSteamIdFocusEntered;
         SteamIDLineEdit.FocusExited += OnSteamIdFocusExited;
+
+        SteamStatIdLineEdit.TextChanged += OnSteamStatIdChanged;
+        SteamStatIdLineEdit.FocusEntered += OnSteamStatIdFocusEntered;
+        SteamStatIdLineEdit.FocusExited += OnSteamStatIdFocusExited;
 
         GooglePlayIDLineEdit.TextChanged += OnGooglePlayIdChanged;
         GooglePlayIDLineEdit.FocusEntered += OnGooglePlayIdFocusEntered;
@@ -455,6 +462,51 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         EmitSignal(SignalName.AchievementChanged);
     }
 
+    private void OnSteamStatIdFocusEntered()
+    {
+        if (_currentAchievement == null) return;
+        _steamStatIdBeforeEdit = _currentAchievement.SteamStatId ?? string.Empty;
+        SteamStatIdLineEdit.CaretColumn = SteamStatIdLineEdit.Text.Length;
+    }
+
+    private void OnSteamStatIdChanged(string text)
+    {
+        if (_isUpdating || _currentAchievement == null) return;
+
+        _currentAchievement.SteamStatId = text;
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
+    private void OnSteamStatIdFocusExited()
+    {
+        if (_currentAchievement == null) return;
+
+        var newSteamStatId = _currentAchievement.SteamStatId ?? string.Empty;
+        if (_steamStatIdBeforeEdit != newSteamStatId && _undoRedoManager != null)
+        {
+            var achievement = _currentAchievement;
+            var oldValue = _steamStatIdBeforeEdit;
+
+            _undoRedoManager.CreateAction("Change Steam Stat ID");
+            _undoRedoManager.AddDoMethod(this, nameof(SetAchievementSteamStatId), achievement, newSteamStatId);
+            _undoRedoManager.AddUndoMethod(this, nameof(SetAchievementSteamStatId), achievement, oldValue);
+            _undoRedoManager.CommitAction(false);
+        }
+    }
+
+    private void SetAchievementSteamStatId(Achievement achievement, string steamStatId)
+    {
+        achievement.SteamStatId = steamStatId;
+        if (_currentAchievement == achievement)
+        {
+            _isUpdating = true;
+            SteamStatIdLineEdit.Text = steamStatId;
+            SteamStatIdLineEdit.CaretColumn = steamStatId.Length;
+            _isUpdating = false;
+        }
+        EmitSignal(SignalName.AchievementChanged);
+    }
+
     private void OnGooglePlayIdFocusEntered()
     {
         if (_currentAchievement == null) return;
@@ -692,6 +744,10 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         SteamIDLineEdit.FocusEntered -= OnSteamIdFocusEntered;
         SteamIDLineEdit.FocusExited -= OnSteamIdFocusExited;
 
+        SteamStatIdLineEdit.TextChanged -= OnSteamStatIdChanged;
+        SteamStatIdLineEdit.FocusEntered -= OnSteamStatIdFocusEntered;
+        SteamStatIdLineEdit.FocusExited -= OnSteamStatIdFocusExited;
+
         GooglePlayIDLineEdit.TextChanged -= OnGooglePlayIdChanged;
         GooglePlayIDLineEdit.FocusEntered -= OnGooglePlayIdFocusEntered;
         GooglePlayIDLineEdit.FocusExited -= OnGooglePlayIdFocusExited;
@@ -742,6 +798,7 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         }
 
         ReplaceSteamIdLineEdit(_currentAchievement.SteamId ?? string.Empty);
+        ReplaceSteamStatIdLineEdit(_currentAchievement.SteamStatId ?? string.Empty);
         ReplaceGooglePlayIdLineEdit(_currentAchievement.GooglePlayId ?? string.Empty);
         ReplaceGameCenterIdLineEdit(_currentAchievement.GameCenterId ?? string.Empty);
 
@@ -772,6 +829,7 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         if (_iconPicker != null)
             _iconPicker.EditedResource = null;
         ReplaceSteamIdLineEdit(string.Empty);
+        ReplaceSteamStatIdLineEdit(string.Empty);
         ReplaceGooglePlayIdLineEdit(string.Empty);
         ReplaceGameCenterIdLineEdit(string.Empty);
 
@@ -859,6 +917,17 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         SteamIDLineEdit.TextChanged += OnSteamIdChanged;
         SteamIDLineEdit.FocusEntered += OnSteamIdFocusEntered;
         SteamIDLineEdit.FocusExited += OnSteamIdFocusExited;
+    }
+
+    private void ReplaceSteamStatIdLineEdit(string text)
+    {
+        SteamStatIdLineEdit.TextChanged -= OnSteamStatIdChanged;
+        SteamStatIdLineEdit.FocusEntered -= OnSteamStatIdFocusEntered;
+        SteamStatIdLineEdit.FocusExited -= OnSteamStatIdFocusExited;
+        SteamStatIdLineEdit = ReplaceLineEdit(SteamStatIdLineEdit, text);
+        SteamStatIdLineEdit.TextChanged += OnSteamStatIdChanged;
+        SteamStatIdLineEdit.FocusEntered += OnSteamStatIdFocusEntered;
+        SteamStatIdLineEdit.FocusExited += OnSteamStatIdFocusExited;
     }
 
     private void ReplaceGooglePlayIdLineEdit(string text)

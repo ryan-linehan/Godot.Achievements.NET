@@ -20,8 +20,9 @@ achievements/database_path="uid://ddebvxw8oopod"
 achievements/toast/scene_path="uid://betgshcwd2vle"
 achievements/toast/unlock_sound="uid://tfy5p37ns3cg"
 achievements/platforms/googleplay_enabled=true
-GooglePlayServices/GameID=123456789
 achievements/platforms/gamecenter_enabled=true
+GooglePlayServices/GameID=123456789
+achievements/platforms/steam_enabled=true
 
 [application]
 
@@ -34,6 +35,7 @@ config/icon="res://icon.svg"
 
 Achievements="*res://addons/Godot.Achievements.Net/Core/AchievementManager.cs"
 AchievementToasts="*res://addons/Godot.Achievements.Net/Toast/AchievementToastContainer.tscn"
+GodotSteamworks="*res://addons/Godot.Steamworks.NET/GodotSteamworks.cs"
 GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
 
 [display]
@@ -46,7 +48,7 @@ project/assembly_name="demo"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/Godot.Achievements.Net/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg")
+enabled=PackedStringArray("res://addons/Godot.Achievements.Net/plugin.cfg", "res://addons/Godot.Steamworks.NET/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg")
 
 [rendering]
 
