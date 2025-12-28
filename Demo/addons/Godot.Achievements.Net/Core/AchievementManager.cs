@@ -59,7 +59,8 @@ public partial class AchievementManager : Node
         }
 
         InitializeWithDatabase();
-        InitializePlatformProviders();
+        // Defer platform provider initialization to ensure other autoloads (Steam, GameCenter, etc.) are ready
+        CallDeferred(nameof(InitializePlatformProviders));
     }
 
     private AchievementDatabase? LoadDatabaseFromSettings()
