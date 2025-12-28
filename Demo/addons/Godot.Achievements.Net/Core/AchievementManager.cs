@@ -350,39 +350,200 @@ public partial class AchievementManager : Node
     #endregion
     #region Async Methods
     /// <summary>
-    /// Unlock an achievement (async). Saves locally and syncs to all platforms.
+    /// Unlock an achievement (async). Saves locally and awaits sync to all platforms.
+    /// Returns when all providers have completed (or failed).
     /// </summary>
-    public Task UnlockAsync(string achievementId)
+    public async Task<AchievementUnlockResult> UnlockAsync(string achievementId)
     {
-        Unlock(achievementId);
-        return Task.CompletedTask;
+        if (_localProvider == null)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
+            return AchievementUnlockResult.FailureResult("LocalProvider not initialized");
+        }
+
+        var achievement = Database?.GetById(achievementId);
+        if (achievement == null)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Core, $"Achievement '{achievementId}' not found in database");
+            return AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found in database");
+        }
+
+        bool wasAlreadyUnlocked = achievement.IsUnlocked;
+
+        // Unlock locally first (source of truth)
+        var localResult = await _localProvider.UnlockAchievementAsync(achievementId);
+        if (!localResult.Success)
+        {
+            return localResult;
+        }
+
+        // Emit signal if newly unlocked
+        if (!wasAlreadyUnlocked && achievement.IsUnlocked)
+        {
+            EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
+        }
+
+        // Sync to platform providers and await all
+        await SyncAchievementToPlatformsAsync(achievementId);
+
+        return AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked);
     }
 
     /// <summary>
     /// Increment progress for a progressive achievement (async).
+    /// Returns when all providers have completed (or failed).
     /// </summary>
-    public Task IncrementProgressAsync(string achievementId, int amount = 1)
+    public async Task<SyncResult> IncrementProgressAsync(string achievementId, int amount = 1)
     {
-        IncrementProgress(achievementId, amount);
-        return Task.CompletedTask;
+        if (_localProvider == null)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
+            return SyncResult.FailureResult("LocalProvider not initialized");
+        }
+
+        var achievement = Database?.GetById(achievementId);
+        if (achievement == null)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Core, $"Achievement '{achievementId}' not found in database");
+            return SyncResult.FailureResult($"Achievement '{achievementId}' not found in database");
+        }
+
+        bool wasUnlocked = achievement.IsUnlocked;
+
+        // Increment progress locally first
+        var localResult = await _localProvider.IncrementProgressAsync(achievementId, amount);
+        if (!localResult.Success)
+        {
+            return localResult;
+        }
+
+        // Emit progress changed signal
+        EmitSignal(SignalName.AchievementProgressChanged, achievementId, achievement.CurrentProgress, achievement.MaxProgress);
+
+        // Check if this progress update caused the achievement to auto-unlock
+        if (achievement.IsUnlocked && !wasUnlocked)
+        {
+            EmitSignal(SignalName.AchievementUnlocked, achievementId, achievement);
+        }
+
+        // Sync to platform providers and await all
+        await SyncIncrementToPlatformsAsync(achievementId, amount);
+
+        return SyncResult.SuccessResult();
     }
 
     /// <summary>
     /// Reset a specific achievement on all providers (async, for testing).
+    /// Returns when all providers have completed (or failed).
     /// </summary>
-    public Task ResetAchievementAsync(string achievementId)
+    public async Task<SyncResult> ResetAchievementAsync(string achievementId)
     {
-        ResetAchievement(achievementId);
-        return Task.CompletedTask;
+        if (_localProvider == null)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
+            return SyncResult.FailureResult("LocalProvider not initialized");
+        }
+
+        // Reset locally first
+        var localResult = await _localProvider.ResetAchievementAsync(achievementId);
+        if (!localResult.Success)
+        {
+            return localResult;
+        }
+
+        // Reset on all platform providers
+        var tasks = _platformProviders
+            .Where(p => p.IsAvailable)
+            .Select(p => p.ResetAchievementAsync(achievementId));
+
+        await Task.WhenAll(tasks);
+
+        AchievementLogger.Log(AchievementLogger.Areas.Core, $"Reset achievement: {achievementId}");
+        return SyncResult.SuccessResult();
     }
 
     /// <summary>
     /// Reset all achievements on all providers (async, for testing).
+    /// Returns when all providers have completed (or failed).
     /// </summary>
-    public Task ResetAllAchievementsAsync()
+    public async Task<SyncResult> ResetAllAchievementsAsync()
     {
-        ResetAllAchievements();
-        return Task.CompletedTask;
+        if (_localProvider == null)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
+            return SyncResult.FailureResult("LocalProvider not initialized");
+        }
+
+        // Reset locally first
+        var localResult = await _localProvider.ResetAllAchievementsAsync();
+        if (!localResult.Success)
+        {
+            return localResult;
+        }
+
+        // Reset on all platform providers
+        var tasks = _platformProviders
+            .Where(p => p.IsAvailable)
+            .Select(p => p.ResetAllAchievementsAsync());
+
+        await Task.WhenAll(tasks);
+
+        AchievementLogger.Log(AchievementLogger.Areas.Core, "Reset all achievements");
+        return SyncResult.SuccessResult();
+    }
+
+    private async Task SyncAchievementToPlatformsAsync(string achievementId)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var provider in _platformProviders)
+        {
+            if (!provider.IsAvailable)
+                continue;
+
+            tasks.Add(SyncUnlockToProviderAsync(provider, achievementId));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task SyncUnlockToProviderAsync(IAchievementProvider provider, string achievementId)
+    {
+        try
+        {
+            await provider.UnlockAchievementAsync(achievementId);
+        }
+        catch (Exception ex)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Sync, $"Exception syncing '{achievementId}' to {provider.ProviderName}: {ex.Message}");
+        }
+    }
+
+    private async Task SyncIncrementToPlatformsAsync(string achievementId, int amount)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var provider in _platformProviders)
+        {
+            if (!provider.IsAvailable)
+                continue;
+
+            tasks.Add(SyncIncrementToProviderAsync(provider, achievementId, amount));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task SyncIncrementToProviderAsync(IAchievementProvider provider, string achievementId, int amount)
+    {
+        try
+        {
+            await provider.IncrementProgressAsync(achievementId, amount);
+        }
+        catch (Exception ex)
+        {
+            AchievementLogger.Error(AchievementLogger.Areas.Sync, $"Exception syncing progress for '{achievementId}' to {provider.ProviderName}: {ex.Message}");
+        }
     }
     #endregion
     #region Query Methods
