@@ -6,10 +6,10 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ### Prerequisites
 
+- Godot 4.3+ with .NET support
 - .NET 8.0 SDK or later
 - Git
 - (Optional) Visual Studio 2022, Rider, or VS Code with C# extension
-- (Optional) Godot 4.3+ for testing
 
 ### Clone the Repository
 
@@ -18,31 +18,39 @@ git clone https://github.com/ryan-linehan/Godot.Achievements.NET.git
 cd Godot.Achievements.NET
 ```
 
-### Build the Project
+### Open in Godot
 
-```bash
-# Linux/macOS
-./build.sh
-
-# Windows
-build.bat
-```
+1. Open Godot 4.3+
+2. Import the `Demo` folder as a project
+3. Enable the plugin in **Project > Project Settings > Plugins**
 
 ## Project Structure
 
 ```
 Godot.Achievements.NET/
-├── src/
-│   ├── Godot.Achievements.Core/       # Core package (required)
-│   ├── Godot.Achievements.Steam/      # Steam provider
-│   ├── Godot.Achievements.iOS/        # iOS Game Center provider
-│   └── Godot.Achievements.Android/    # Android Google Play provider
-├── examples/                          # Example usage code
-├── addons/                            # Godot editor plugin files
-├── DESIGN.md                          # Architecture documentation
-├── ARCHITECTURE_PATTERNS.md           # Design patterns used
-├── CODE_REVIEW_CHECKLIST.md          # Code review guidelines
-└── COMMON_PITFALLS.md                # Known issues and solutions
++-- Demo/
+|   +-- addons/
+|   |   +-- Godot.Achievements.Net/
+|   |       +-- Core/                    # Core types and manager
+|   |       |   +-- Achievement.cs
+|   |       |   +-- AchievementDatabase.cs
+|   |       |   +-- AchievementManager.cs
+|   |       |   +-- AchievementLogger.cs
+|   |       |   +-- AchievementSettings.cs
+|   |       +-- Providers/               # Platform providers
+|   |       |   +-- IAchievementProvider.cs
+|   |       |   +-- AchievementProviderBase.cs
+|   |       |   +-- Local/
+|   |       |   +-- Steamworks/
+|   |       |   +-- GameCenter/
+|   |       |   +-- GooglePlay/
+|   |       +-- Editor/                  # Editor dock UI
+|   |       +-- Toast/                   # Toast notification system
+|   |       +-- AchievementPlugin.cs     # Plugin entry point
+|   +-- INTEGRATION_GUIDE.md
+|   +-- CONTRIBUTING.md
+|   +-- CHANGELOG.md
++-- README.md
 ```
 
 ## How to Contribute
@@ -75,7 +83,7 @@ Godot.Achievements.NET/
    ```
 3. **Make your changes**
    - Follow the coding guidelines below
-   - Add tests if applicable
+   - Test in Godot editor
    - Update documentation
 4. **Commit your changes**:
    ```bash
@@ -101,14 +109,14 @@ Follow standard C# conventions:
 
 Example:
 ```csharp
-public class AchievementProvider : IAchievementProvider
+public class MyProvider : AchievementProviderBase
 {
     private readonly AchievementDatabase _database;
 
     /// <summary>
-    /// Unlocks the specified achievement
+    /// Unlocks the specified achievement.
     /// </summary>
-    public async Task<AchievementUnlockResult> UnlockAchievement(string achievementId)
+    public override void UnlockAchievement(string achievementId)
     {
         // Implementation
     }
@@ -126,114 +134,121 @@ public class AchievementProvider : IAchievementProvider
 #if GODOT_WINDOWS || GODOT_PC
 // Windows-specific code
 #endif
+
+#if GODOT_IOS
+// iOS-specific code
+#endif
+
+#if GODOT_ANDROID
+// Android-specific code
+#endif
 ```
-
-### Documentation
-
-- **XML comments** for all public APIs
-- **README.md** for each package
-- **Code comments** for complex logic
-- **DESIGN.md** updates for architectural changes
-
-### Testing
-
-- Test your changes in a real Godot project
-- Verify multi-platform if applicable
-- Test edge cases (null values, empty strings, etc.)
 
 ## Creating a New Platform Provider
 
 To add support for a new platform (e.g., Epic Games Store):
 
-### 1. Create Package Structure
+### 1. Create Provider Class
 
-```bash
-mkdir -p src/Godot.Achievements.YourPlatform
-```
-
-### 2. Create .csproj
-
-```xml
-<Project Sdk="Godot.NET.Sdk/4.3.0">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <PackageId>Godot.Achievements.YourPlatform</PackageId>
-    <Version>1.0.0</Version>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../Godot.Achievements.Core/Godot.Achievements.Core.csproj" />
-  </ItemGroup>
-</Project>
-```
-
-### 3. Implement Provider
+Create `Providers/Epic/EpicAchievementProvider.cs`:
 
 ```csharp
-#if GODOT_PLATFORM_CONDITION
+#if GODOT_PC // Or appropriate platform condition
+using System.Threading.Tasks;
 using Godot.Achievements.Core;
 
-namespace Godot.Achievements.YourPlatform;
+namespace Godot.Achievements.Providers.Epic;
 
-public class YourPlatformAchievementProvider : IAchievementProvider
+public partial class EpicAchievementProvider : AchievementProviderBase
 {
-    public string ProviderName => "Your Platform";
-    public bool IsAvailable => /* check if SDK is initialized */;
+    private readonly AchievementDatabase _database;
 
-    // Implement interface methods...
+    public override string ProviderName => ProviderNames.Epic; // Add to ProviderNames.cs
+    public override bool IsAvailable => /* check if Epic SDK is initialized */;
+
+    public EpicAchievementProvider(AchievementDatabase database)
+    {
+        _database = database;
+    }
+
+    public override void UnlockAchievement(string achievementId)
+    {
+        var achievement = _database.GetById(achievementId);
+        var epicId = achievement?.EpicId; // Add EpicId property to Achievement.cs
+
+        // Call Epic SDK
+        EpicSDK.UnlockAchievement(epicId);
+        EmitAchievementUnlocked(achievementId, true);
+    }
+
+    // Implement other required methods...
 }
 #endif
 ```
 
-### 4. Create Autoload
+### 2. Create Stub for Other Platforms
+
+Create `Providers/Epic/EpicAchievementProvider.Stubs.cs`:
 
 ```csharp
-#if GODOT_PLATFORM_CONDITION
-public partial class YourPlatformAutoload : Node
+#if !GODOT_PC
+namespace Godot.Achievements.Providers.Epic;
+
+public class EpicAchievementProvider : IAchievementProvider
 {
-    public override void _Ready()
-    {
-        var manager = GetNode<AchievementManager>("/root/Achievements");
-        manager.RegisterProvider(new YourPlatformAchievementProvider(manager.Database));
-    }
+    public static bool IsPlatformSupported => false;
+    public string ProviderName => "Epic";
+    public bool IsAvailable => false;
+
+    // Stub implementations that do nothing...
 }
 #endif
 ```
 
-### 5. Add README
+### 3. Add Platform ID to Achievement
 
-Create `src/Godot.Achievements.YourPlatform/README.md` with:
-- Installation instructions
-- Configuration steps
-- Platform-specific setup
-- Example usage
+In `Core/Achievement.cs`, add:
 
-### 6. Update Solution
-
-Add to `Godot.Achievements.NET.sln`:
-```
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Godot.Achievements.YourPlatform", "src\Godot.Achievements.YourPlatform\Godot.Achievements.YourPlatform.csproj"
-EndProject
+```csharp
+[Export]
+public string EpicId { get; set; } = string.Empty;
 ```
 
-### 7. Update Build Scripts
+### 4. Register Provider in AchievementManager
 
-Add to `build.sh` and `build.bat`:
-```bash
-dotnet build src/Godot.Achievements.YourPlatform/Godot.Achievements.YourPlatform.csproj --configuration Release
+In `Core/AchievementManager.cs`, add to `CreateProviders()`:
+
+```csharp
+if (ProjectSettings.HasSetting(AchievementSettings.EpicEnabled) &&
+    ProjectSettings.GetSetting(AchievementSettings.EpicEnabled).AsBool())
+{
+    if (EpicAchievementProvider.IsPlatformSupported)
+    {
+        _providers.Add(new EpicAchievementProvider(_database));
+    }
+}
 ```
+
+### 5. Add Editor UI
+
+In `Editor/AchievementEditorDetailsPanel.cs`, add fields for the Epic ID.
+
+### 6. Update Documentation
+
+- Add to README.md supported platforms table
+- Update INTEGRATION_GUIDE.md with setup instructions
 
 ## AOT Compatibility
 
-This project must remain AOT-compatible for iOS and console platforms:
+This project must remain AOT-compatible for iOS:
 
-### ❌ Avoid:
+### Avoid:
 - `System.Text.Json.JsonSerializer` (use `Godot.Json` instead)
 - Reflection for type discovery
 - Dynamic code generation
 - `Activator.CreateInstance`
 
-### ✅ Use:
+### Use:
 - `Godot.Json` for serialization
 - `Godot.Collections.Dictionary` for data structures
 - Static type references
@@ -245,19 +260,13 @@ Use conventional commits:
 
 ```
 <type>(<scope>): <subject>
-
-<body>
-
-<footer>
 ```
 
 Types:
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation only
-- `style`: Code style changes (formatting)
 - `refactor`: Code refactoring
-- `test`: Adding tests
 - `chore`: Maintenance tasks
 
 Examples:
@@ -271,24 +280,21 @@ docs(readme): Update installation instructions
 
 All PRs require:
 
-1. **Passing builds** - All projects must compile
-2. **Code review** - At least one maintainer approval
-3. **Documentation** - README and code comments updated
-4. **No breaking changes** - Unless version bump to next major
+1. **Code review** - At least one maintainer approval
+2. **Documentation** - README and code comments updated
+3. **Testing** - Verified in Godot editor
 
 Reviewers will check:
 - [ ] Code follows style guidelines
 - [ ] AOT compatibility maintained
 - [ ] Public APIs have XML documentation
-- [ ] No unnecessary dependencies added
 - [ ] Platform-specific code properly isolated
-- [ ] Changes align with project architecture
+- [ ] Signal handlers properly disconnected in `_ExitTree()`
 
 ## Getting Help
 
 - **Questions**: Open a GitHub Discussion
 - **Bugs**: Open a GitHub Issue
-- **Chat**: (Discord link TBD)
 
 ## License
 
@@ -296,4 +302,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ## Thank You!
 
-Your contributions make this project better for everyone. We appreciate your time and effort! 🎉
+Your contributions make this project better for everyone!
