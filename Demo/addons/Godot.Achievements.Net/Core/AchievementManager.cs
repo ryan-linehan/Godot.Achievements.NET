@@ -25,6 +25,7 @@ public partial class AchievementManager : Node
 
     private LocalAchievementProvider? _localProvider;
     private readonly List<IAchievementProvider> _platformProviders = new();
+    private bool _initializingProviders;
 
     // Signals
     [Signal] public delegate void AchievementUnlockedEventHandler(string achievementId, Achievement achievement);
@@ -111,14 +112,14 @@ public partial class AchievementManager : Node
         _localProvider = new LocalAchievementProvider(Database);
         AchievementLogger.Log(AchievementLogger.Areas.Core, "Initialized LocalAchievementProvider");
 
-        CallDeferred(nameof(SyncLocalToPlatforms));
-
         return true;
     }
 
     private void InitializePlatformProviders()
     {
         if (Database == null) return;
+
+        _initializingProviders = true;
 
         if (SteamAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.SteamEnabled))
         {
@@ -140,6 +141,9 @@ public partial class AchievementManager : Node
             RegisterProvider(googlePlayProvider);
             AchievementLogger.Log(AchievementLogger.Areas.Sync, "Google Play provider initialized from settings");
         }
+
+        _initializingProviders = false;
+        SyncLocalToPlatforms();
     }
 
     private static bool GetPlatformSetting(string settingKey)
@@ -193,9 +197,10 @@ public partial class AchievementManager : Node
 
         EmitSignal(SignalName.ProviderRegistered, provider.ProviderName);
 
-        if (provider.IsAvailable)
+        // Sync existing achievements to newly registered provider (skip during startup init)
+        if (provider.IsAvailable && !_initializingProviders)
         {
-            CallDeferred(nameof(SyncLocalToPlatforms));
+            SyncLocalToPlatforms();
         }
     }
 
