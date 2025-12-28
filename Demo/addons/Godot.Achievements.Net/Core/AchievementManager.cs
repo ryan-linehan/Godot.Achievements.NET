@@ -225,12 +225,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public void Unlock(string achievementId)
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return;
-        }
-
         var achievement = Database?.GetById(achievementId);
         if (achievement == null)
         {
@@ -265,12 +259,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public void IncrementProgress(string achievementId, int amount = 1)
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return;
-        }
-
         var achievement = Database?.GetById(achievementId);
         if (achievement == null)
         {
@@ -301,12 +289,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public void ResetAchievement(string achievementId)
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return;
-        }
-
         // Reset locally first (fire-and-forget)
         _localProvider.ResetAchievement(achievementId);
 
@@ -327,12 +309,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public void ResetAllAchievements()
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return;
-        }
-
         // Reset locally first (fire-and-forget)
         _localProvider.ResetAllAchievements();
 
@@ -355,12 +331,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public async Task<AchievementUnlockResult> UnlockAsync(string achievementId)
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return AchievementUnlockResult.FailureResult("LocalProvider not initialized");
-        }
-
         var achievement = Database?.GetById(achievementId);
         if (achievement == null)
         {
@@ -395,12 +365,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public async Task<SyncResult> IncrementProgressAsync(string achievementId, int amount = 1)
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return SyncResult.FailureResult("LocalProvider not initialized");
-        }
-
         var achievement = Database?.GetById(achievementId);
         if (achievement == null)
         {
@@ -438,12 +402,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public async Task<SyncResult> ResetAchievementAsync(string achievementId)
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return SyncResult.FailureResult("LocalProvider not initialized");
-        }
-
         // Reset locally first
         var localResult = await _localProvider.ResetAchievementAsync(achievementId);
         if (!localResult.Success)
@@ -468,12 +426,6 @@ public partial class AchievementManager : Node
     /// </summary>
     public async Task<SyncResult> ResetAllAchievementsAsync()
     {
-        if (_localProvider == null)
-        {
-            AchievementLogger.Error(AchievementLogger.Areas.Core, "LocalProvider not initialized");
-            return SyncResult.FailureResult("LocalProvider not initialized");
-        }
-
         // Reset locally first
         var localResult = await _localProvider.ResetAllAchievementsAsync();
         if (!localResult.Success)
