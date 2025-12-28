@@ -275,9 +275,16 @@ public partial class AchievementImportExportHandler : RefCounted
         var dialog = new AcceptDialog();
         dialog.Title = title;
         dialog.DialogText = message;
-        // Free the dialog when it's closed to prevent memory leak
-        dialog.Confirmed += () => dialog.QueueFree();
-        dialog.Canceled += () => dialog.QueueFree();
+
+        void OnDialogClosed()
+        {
+            dialog.Confirmed -= OnDialogClosed;
+            dialog.Canceled -= OnDialogClosed;
+            dialog.QueueFree();
+        }
+
+        dialog.Confirmed += OnDialogClosed;
+        dialog.Canceled += OnDialogClosed;
         parent.AddChild(dialog);
         dialog.PopupCentered();
     }
