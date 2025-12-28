@@ -617,24 +617,4 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
     #endregion
 }
-
-/// <summary>
-/// Result type for GetProgressAsync that includes error information.
-/// </summary>
-public readonly struct GetProgressResult
-{
-    public int Progress { get; }
-    public bool Success { get; }
-    public string? Error { get; }
-
-    private GetProgressResult(int progress, bool success, string? error)
-    {
-        Progress = progress;
-        Success = success;
-        Error = error;
-    }
-
-    public static GetProgressResult SuccessResult(int progress) => new(progress, true, null);
-    public static GetProgressResult FailureResult(string error) => new(0, false, error);
-}
 #endif
