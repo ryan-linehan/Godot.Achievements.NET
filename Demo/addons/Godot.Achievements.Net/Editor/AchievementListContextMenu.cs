@@ -21,7 +21,12 @@ public partial class AchievementListContextMenu : RefCounted
 
     [Signal]
     public delegate void MoveDownRequestedEventHandler(Achievement achievement);
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    public AchievementListContextMenu()
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    {
 
+    }
     public AchievementListContextMenu(
         ItemList itemList,
         Func<AchievementDatabase?> getDatabaseFunc,
