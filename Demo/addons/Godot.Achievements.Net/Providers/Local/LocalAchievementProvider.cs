@@ -252,9 +252,11 @@ public partial class LocalAchievementProvider : AchievementProviderBase
 
             _achievementStates[kvp.Key] = state;
         }
-
+        // Sync loaded states to Achievement objects in the database
+        SyncStatesToDatabase();
         this.Log($"Loaded {_achievementStates.Count} achievement states from {SavePath}");
     }
+
 
     private void SaveToDisk()
     {
@@ -291,6 +293,19 @@ public partial class LocalAchievementProvider : AchievementProviderBase
         this.Log($"Saved {_achievementStates.Count} achievement states to {SavePath}");
     }
 
+    private void SyncStatesToDatabase()
+    {
+        foreach (var kvp in _achievementStates)
+        {
+            var achievement = _database.GetById(kvp.Key);
+            if (achievement != null)
+            {
+                achievement.IsUnlocked = kvp.Value.IsUnlocked;
+                achievement.CurrentProgress = kvp.Value.CurrentProgress;
+                achievement.UnlockedAt = kvp.Value.UnlockedAt;
+            }
+        }
+    }
     #endregion
 }
 

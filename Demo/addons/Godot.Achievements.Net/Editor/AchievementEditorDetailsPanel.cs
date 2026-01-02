@@ -110,6 +110,15 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
     {
         _undoRedoManager = undoRedoManager;
+        _customPropertiesEditor?.SetUndoRedoManager(undoRedoManager);
+    }
+
+    /// <summary>
+    /// Sets the database reference for propagating property keys across all achievements
+    /// </summary>
+    public void SetDatabase(AchievementDatabase? database)
+    {
+        _customPropertiesEditor?.SetDatabase(database);
     }
 
     public override void _Ready()

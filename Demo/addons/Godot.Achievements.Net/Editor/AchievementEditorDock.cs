@@ -283,6 +283,7 @@ public partial class AchievementEditorDock : Control
             _currentDatabase = null;
             _currentDatabasePath = string.Empty;
             DatabasePathLabel.Text = "No database loaded";
+            DetailsPanel.SetDatabase(null);
             RefreshAchievementList();
             return;
         }
@@ -316,6 +317,7 @@ public partial class AchievementEditorDock : Control
         _currentDatabasePath = path;
         SaveDatabasePath(path);
         UpdateDatabasePathLabel();
+        DetailsPanel.SetDatabase(_currentDatabase);
         RefreshAchievementList();
 
         AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Loaded database from {path}");

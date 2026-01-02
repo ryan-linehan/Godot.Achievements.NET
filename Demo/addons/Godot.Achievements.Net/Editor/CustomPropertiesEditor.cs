@@ -12,12 +12,32 @@ namespace Godot.Achievements.Core.Editor;
 public partial class CustomPropertiesEditor : VBoxContainer
 {
     private Achievement? _currentAchievement;
+    private AchievementDatabase? _database;
+    private EditorUndoRedoManager? _undoRedoManager;
     private readonly List<PropertyEntry> _entries = new();
     private Button? _addButton;
     private VBoxContainer? _propertiesContainer;
+    private ConfirmationDialog? _removeConfirmDialog;
+    private string _pendingRemoveKey = string.Empty;
 
     [Signal]
     public delegate void PropertyChangedEventHandler();
+
+    /// <summary>
+    /// Sets the database reference for propagating property keys across all achievements
+    /// </summary>
+    public void SetDatabase(AchievementDatabase? database)
+    {
+        _database = database;
+    }
+
+    /// <summary>
+    /// Sets the undo/redo manager for editor history support
+    /// </summary>
+    public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
+    {
+        _undoRedoManager = undoRedoManager;
+    }
 
     private class PropertyEntry
     {
@@ -55,6 +75,11 @@ public partial class CustomPropertiesEditor : VBoxContainer
         _addButton.Text = "+ Add Property";
         _addButton.Pressed += OnAddPropertyPressed;
         buttonContainer.AddChild(_addButton);
+
+        // Create confirmation dialog for removing properties with data
+        _removeConfirmDialog = new ConfirmationDialog();
+        _removeConfirmDialog.Confirmed += OnRemoveConfirmed;
+        AddChild(_removeConfirmDialog);
     }
 
     public override void _ExitTree()
@@ -62,6 +87,12 @@ public partial class CustomPropertiesEditor : VBoxContainer
         if (_addButton != null)
         {
             _addButton.Pressed -= OnAddPropertyPressed;
+        }
+
+        if (_removeConfirmDialog != null)
+        {
+            _removeConfirmDialog.Confirmed -= OnRemoveConfirmed;
+            _removeConfirmDialog.QueueFree();
         }
 
         ClearEntries();
@@ -85,6 +116,8 @@ public partial class CustomPropertiesEditor : VBoxContainer
         foreach (var entry in _entries)
         {
             DisconnectEntry(entry);
+            // Remove from parent immediately so UI updates, then queue free
+            _propertiesContainer?.RemoveChild(entry.Container);
             entry.Container.QueueFree();
         }
         _entries.Clear();
@@ -220,20 +253,55 @@ public partial class CustomPropertiesEditor : VBoxContainer
     {
         if (_currentAchievement == null) return;
 
-        // Generate unique key
+        // Generate unique key (check all achievements if database is available)
         var baseKey = "new_property";
         var key = baseKey;
         var counter = 1;
-        while (_currentAchievement.ExtraProperties.ContainsKey(key))
+
+        // Find a key that doesn't exist in any achievement
+        while (KeyExistsInAnyAchievement(key))
         {
             key = $"{baseKey}_{counter}";
             counter++;
         }
 
         var defaultValue = Variant.From("");
-        _currentAchievement.ExtraProperties[key] = defaultValue;
+
+        // Propagate the new key to all achievements in the database
+        if (_database != null)
+        {
+            foreach (var achievement in _database.Achievements)
+            {
+                if (!achievement.ExtraProperties.ContainsKey(key))
+                {
+                    achievement.ExtraProperties[key] = defaultValue;
+                }
+            }
+        }
+        else
+        {
+            // Fallback: only add to current achievement
+            _currentAchievement.ExtraProperties[key] = defaultValue;
+        }
+
         CreatePropertyEntry(key, defaultValue);
         EmitSignal(SignalName.PropertyChanged);
+    }
+
+    private bool KeyExistsInAnyAchievement(string key)
+    {
+        if (_database != null)
+        {
+            foreach (var achievement in _database.Achievements)
+            {
+                if (achievement.ExtraProperties.ContainsKey(key))
+                    return true;
+            }
+            return false;
+        }
+
+        // Fallback: only check current achievement
+        return _currentAchievement?.ExtraProperties.ContainsKey(key) ?? false;
     }
 
     private void OnKeyFocusExited()
@@ -293,16 +361,133 @@ public partial class CustomPropertiesEditor : VBoxContainer
             {
                 var key = entry.OriginalKey;
 
-                // Remove from achievement
-                _currentAchievement.ExtraProperties.Remove(key);
+                // Check if other achievements have non-empty values for this key
+                var achievementsWithData = CountAchievementsWithNonEmptyValue(key);
 
-                // Clean up UI
+                if (achievementsWithData > 0 && _removeConfirmDialog != null)
+                {
+                    // Show confirmation dialog
+                    _pendingRemoveKey = key;
+                    var plural = achievementsWithData == 1 ? "achievement has" : "achievements have";
+                    _removeConfirmDialog.DialogText = $"Remove property '{key}' from all achievements?\n\n{achievementsWithData} other {plural} non-empty values that will be deleted.";
+                    _removeConfirmDialog.PopupCentered();
+                }
+                else
+                {
+                    // No data loss, remove directly
+                    RemovePropertyFromAll(key);
+                }
+                return;
+            }
+        }
+    }
+
+    private void OnRemoveConfirmed()
+    {
+        if (!string.IsNullOrEmpty(_pendingRemoveKey))
+        {
+            RemovePropertyFromAll(_pendingRemoveKey);
+            _pendingRemoveKey = string.Empty;
+        }
+    }
+
+    private int CountAchievementsWithNonEmptyValue(string key)
+    {
+        if (_database == null) return 0;
+
+        var count = 0;
+        foreach (var achievement in _database.Achievements)
+        {
+            // Skip the current achievement
+            if (achievement == _currentAchievement) continue;
+
+            if (achievement.ExtraProperties.TryGetValue(key, out var value))
+            {
+                // Check if value is non-empty (not null, not empty string)
+                if (value.VariantType != Variant.Type.Nil &&
+                    !(value.VariantType == Variant.Type.String && string.IsNullOrEmpty(value.AsString())))
+                {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private void RemovePropertyFromAll(string key)
+    {
+        if (_database == null)
+        {
+            // Fallback: only remove from current (no undo support without database)
+            _currentAchievement?.ExtraProperties.Remove(key);
+            RemoveEntryUI(key);
+            EmitSignal(SignalName.PropertyChanged);
+            return;
+        }
+
+        // Collect all values for undo
+        var savedValues = new Godot.Collections.Dictionary<Achievement, Variant>();
+        foreach (var achievement in _database.Achievements)
+        {
+            if (achievement.ExtraProperties.TryGetValue(key, out var value))
+            {
+                savedValues[achievement] = value;
+            }
+        }
+
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Remove Custom Property");
+            _undoRedoManager.AddDoMethod(this, nameof(DoRemoveProperty), key);
+            _undoRedoManager.AddUndoMethod(this, nameof(UndoRemoveProperty), key, savedValues);
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoRemoveProperty(key);
+        }
+    }
+
+    private void DoRemoveProperty(string key)
+    {
+        if (_database != null)
+        {
+            foreach (var achievement in _database.Achievements)
+            {
+                achievement.ExtraProperties.Remove(key);
+            }
+        }
+
+        RemoveEntryUI(key);
+        EmitSignal(SignalName.PropertyChanged);
+    }
+
+    private void UndoRemoveProperty(string key, Godot.Collections.Dictionary<Achievement, Variant> savedValues)
+    {
+        // Restore all values
+        foreach (var kvp in savedValues)
+        {
+            kvp.Key.ExtraProperties[key] = kvp.Value;
+        }
+
+        // Refresh UI if this is the current achievement
+        RefreshProperties();
+        EmitSignal(SignalName.PropertyChanged);
+    }
+
+    private void RemoveEntryUI(string key)
+    {
+        // Clean up UI for this entry
+        for (int i = _entries.Count - 1; i >= 0; i--)
+        {
+            var entry = _entries[i];
+            if (entry.OriginalKey == key)
+            {
                 DisconnectEntry(entry);
+                _propertiesContainer?.RemoveChild(entry.Container);
                 entry.Container.QueueFree();
                 _entries.RemoveAt(i);
-
-                EmitSignal(SignalName.PropertyChanged);
-                return;
+                break;
             }
         }
     }
