@@ -21,6 +21,8 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     [Export]
     private LineEdit InternalIDLineEdit = null!;
     [Export]
+    private Label InternalIDValidationLabel = null!;
+    [Export]
     private TextEdit DescriptionTextBox = null!;
 
     // Progress Tracking
@@ -37,15 +39,21 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     [Export]
     private LineEdit SteamIDLineEdit = null!;
     [Export]
+    private Label SteamValidationLabel = null!;
+    [Export]
     private LineEdit SteamStatIdLineEdit = null!;
     [Export]
     public VBoxContainer GooglePlayVBox = null!;
     [Export]
     private LineEdit GooglePlayIDLineEdit = null!;
     [Export]
+    private Label GooglePlayValidationLabel = null!;
+    [Export]
     public VBoxContainer GameCenterVBox = null!;
     [Export]
     private LineEdit GameCenterIDLineEdit = null!;
+    [Export]
+    private Label GameCenterValidationLabel = null!;
 
     // Custom Properties
     [Export]
@@ -72,12 +80,6 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     private string _steamStatIdBeforeEdit = string.Empty;
     private string _googlePlayIdBeforeEdit = string.Empty;
     private string _gameCenterIdBeforeEdit = string.Empty;
-
-    // Validation labels
-    private Label? _internalIdErrorLabel;
-    private Label? _steamWarningLabel;
-    private Label? _googlePlayWarningLabel;
-    private Label? _gameCenterWarningLabel;
 
     // Signals
     [Signal]
@@ -169,32 +171,6 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         _customPropertiesEditor = new CustomPropertiesEditor();
         _customPropertiesEditor.PropertyChanged += OnCustomPropertyChanged;
         CustomPropertiesContainer.AddChild(_customPropertiesEditor);
-
-        // Create validation labels
-        _internalIdErrorLabel = CreateValidationLabel(InternalIDLineEdit, isError: true);
-        _steamWarningLabel = CreateValidationLabel(SteamIDLineEdit, isError: false);
-        _googlePlayWarningLabel = CreateValidationLabel(GooglePlayIDLineEdit, isError: false);
-        _gameCenterWarningLabel = CreateValidationLabel(GameCenterIDLineEdit, isError: false);
-    }
-
-    private Label? CreateValidationLabel(Control? siblingControl, bool isError)
-    {
-        if (siblingControl == null) return null;
-
-        var label = new Label();
-        label.AddThemeColorOverride("font_color", isError ? new Color(1, 0.4f, 0.4f) : new Color(1, 0.75f, 0.3f));
-        label.Visible = false;
-
-        // Add after the sibling control
-        var parent = siblingControl.GetParent();
-        if (parent != null)
-        {
-            var siblingIndex = siblingControl.GetIndex();
-            parent.AddChild(label);
-            parent.MoveChild(label, siblingIndex + 1);
-        }
-
-        return label;
     }
 
     /// <summary>
@@ -203,30 +179,25 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     public void UpdateValidation(AchievementValidationResult? validationResult, System.Collections.Generic.List<string>? duplicateInternalIds)
     {
         // Update internal ID error label
-        if (_internalIdErrorLabel != null)
-        {
-            var isMissing = _currentAchievement != null
-                && string.IsNullOrWhiteSpace(_currentAchievement.Id);
+        var isMissing = _currentAchievement != null
+            && string.IsNullOrWhiteSpace(_currentAchievement.Id);
 
-            var hasDuplicateId = _currentAchievement != null
-                && duplicateInternalIds != null
-                && !string.IsNullOrWhiteSpace(_currentAchievement.Id)
-                && duplicateInternalIds.Contains(_currentAchievement.Id);
+        var hasDuplicateId = _currentAchievement != null
+            && duplicateInternalIds != null
+            && !string.IsNullOrWhiteSpace(_currentAchievement.Id)
+            && duplicateInternalIds.Contains(_currentAchievement.Id);
 
-            _internalIdErrorLabel.Visible = isMissing || hasDuplicateId;
-            _internalIdErrorLabel.Text = isMissing ? "\u274c Required" : (hasDuplicateId ? "\u274c Duplicate" : string.Empty);
-        }
+        InternalIDValidationLabel.Visible = isMissing || hasDuplicateId;
+        InternalIDValidationLabel.Text = isMissing ? "\u274c Required" : (hasDuplicateId ? "\u274c Duplicate" : string.Empty);
 
         // Update platform warning labels based on validation result
-        UpdateFieldWarningLabel(_steamWarningLabel, validationResult, ValidationFields.SteamId);
-        UpdateFieldWarningLabel(_googlePlayWarningLabel, validationResult, ValidationFields.GooglePlayId);
-        UpdateFieldWarningLabel(_gameCenterWarningLabel, validationResult, ValidationFields.GameCenterId);
+        UpdateFieldWarningLabel(SteamValidationLabel, validationResult, ValidationFields.SteamId);
+        UpdateFieldWarningLabel(GooglePlayValidationLabel, validationResult, ValidationFields.GooglePlayId);
+        UpdateFieldWarningLabel(GameCenterValidationLabel, validationResult, ValidationFields.GameCenterId);
     }
 
-    private void UpdateFieldWarningLabel(Label? label, AchievementValidationResult? validationResult, string fieldKey)
+    private static void UpdateFieldWarningLabel(Label label, AchievementValidationResult? validationResult, string fieldKey)
     {
-        if (label == null) return;
-
         string? warningText = null;
         if (validationResult != null && validationResult.FieldWarnings.TryGetValue(fieldKey, out var warningType))
         {
@@ -242,26 +213,14 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     /// </summary>
     public void ClearValidation()
     {
-        if (_internalIdErrorLabel != null)
-        {
-            _internalIdErrorLabel.Visible = false;
-            _internalIdErrorLabel.Text = string.Empty;
-        }
-        if (_steamWarningLabel != null)
-        {
-            _steamWarningLabel.Visible = false;
-            _steamWarningLabel.Text = string.Empty;
-        }
-        if (_googlePlayWarningLabel != null)
-        {
-            _googlePlayWarningLabel.Visible = false;
-            _googlePlayWarningLabel.Text = string.Empty;
-        }
-        if (_gameCenterWarningLabel != null)
-        {
-            _gameCenterWarningLabel.Visible = false;
-            _gameCenterWarningLabel.Text = string.Empty;
-        }
+        InternalIDValidationLabel.Visible = false;
+        InternalIDValidationLabel.Text = string.Empty;
+        SteamValidationLabel.Visible = false;
+        SteamValidationLabel.Text = string.Empty;
+        GooglePlayValidationLabel.Visible = false;
+        GooglePlayValidationLabel.Text = string.Empty;
+        GameCenterValidationLabel.Visible = false;
+        GameCenterValidationLabel.Text = string.Empty;
     }
 
     #region Name Field Handlers
@@ -727,12 +686,6 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
             _customPropertiesEditor.QueueFree();
         }
 
-        // Clean up validation labels
-        _internalIdErrorLabel?.QueueFree();
-        _steamWarningLabel?.QueueFree();
-        _googlePlayWarningLabel?.QueueFree();
-        _gameCenterWarningLabel?.QueueFree();
-
         // Disconnect signals
         NameLineEdit.TextChanged -= OnNameChanged;
         NameLineEdit.FocusEntered -= OnNameFocusEntered;
@@ -852,7 +805,8 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     }
 
     /// <summary>
-    /// Replaces a LineEdit with a fresh instance to clear its internal undo/redo history.
+    /// Replaces a LineEdit with a fresh instance to clear its internal undo/redo history,
+    /// handling signal disconnection and reconnection.
     /// </summary>
     /// <remarks>
     /// Godot's LineEdit maintains an internal undo/redo stack that cannot be cleared via any public API.
@@ -860,12 +814,26 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     /// restoring text from a previously selected achievement. This is the only way to reset the history.
     /// </remarks>
     /// <returns>The new LineEdit instance that replaces the old one.</returns>
-    private static LineEdit ReplaceLineEdit(LineEdit oldLineEdit, string newText)
+    private static LineEdit ReplaceLineEditWithHandlers(
+        LineEdit oldLineEdit,
+        string newText,
+        LineEdit.TextChangedEventHandler textChangedHandler,
+        Action focusEnteredHandler,
+        Action focusExitedHandler)
     {
+        // Disconnect signals from old LineEdit
+        oldLineEdit.TextChanged -= textChangedHandler;
+        oldLineEdit.FocusEntered -= focusEnteredHandler;
+        oldLineEdit.FocusExited -= focusExitedHandler;
+
         var parent = oldLineEdit.GetParent();
         if (parent == null)
         {
             oldLineEdit.Text = newText;
+            // Reconnect signals
+            oldLineEdit.TextChanged += textChangedHandler;
+            oldLineEdit.FocusEntered += focusEnteredHandler;
+            oldLineEdit.FocusExited += focusExitedHandler;
             return oldLineEdit;
         }
 
@@ -892,74 +860,31 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
         parent.MoveChild(newLineEdit, index);
         oldLineEdit.QueueFree();
 
+        // Connect signals to new LineEdit
+        newLineEdit.TextChanged += textChangedHandler;
+        newLineEdit.FocusEntered += focusEnteredHandler;
+        newLineEdit.FocusExited += focusExitedHandler;
+
         return newLineEdit;
     }
 
-    private void ReplaceNameLineEdit(string text)
-    {
-        NameLineEdit.TextChanged -= OnNameChanged;
-        NameLineEdit.FocusEntered -= OnNameFocusEntered;
-        NameLineEdit.FocusExited -= OnNameFocusExited;
-        NameLineEdit = ReplaceLineEdit(NameLineEdit, text);
-        NameLineEdit.TextChanged += OnNameChanged;
-        NameLineEdit.FocusEntered += OnNameFocusEntered;
-        NameLineEdit.FocusExited += OnNameFocusExited;
-    }
+    private void ReplaceNameLineEdit(string text) =>
+        NameLineEdit = ReplaceLineEditWithHandlers(NameLineEdit, text, OnNameChanged, OnNameFocusEntered, OnNameFocusExited);
 
-    private void ReplaceInternalIdLineEdit(string text)
-    {
-        InternalIDLineEdit.TextChanged -= OnIdTextChanged;
-        InternalIDLineEdit.FocusEntered -= OnIdFocusEntered;
-        InternalIDLineEdit.FocusExited -= OnIdFocusExited;
-        InternalIDLineEdit = ReplaceLineEdit(InternalIDLineEdit, text);
-        InternalIDLineEdit.TextChanged += OnIdTextChanged;
-        InternalIDLineEdit.FocusEntered += OnIdFocusEntered;
-        InternalIDLineEdit.FocusExited += OnIdFocusExited;
-    }
+    private void ReplaceInternalIdLineEdit(string text) =>
+        InternalIDLineEdit = ReplaceLineEditWithHandlers(InternalIDLineEdit, text, OnIdTextChanged, OnIdFocusEntered, OnIdFocusExited);
 
-    private void ReplaceSteamIdLineEdit(string text)
-    {
-        SteamIDLineEdit.TextChanged -= OnSteamIdChanged;
-        SteamIDLineEdit.FocusEntered -= OnSteamIdFocusEntered;
-        SteamIDLineEdit.FocusExited -= OnSteamIdFocusExited;
-        SteamIDLineEdit = ReplaceLineEdit(SteamIDLineEdit, text);
-        SteamIDLineEdit.TextChanged += OnSteamIdChanged;
-        SteamIDLineEdit.FocusEntered += OnSteamIdFocusEntered;
-        SteamIDLineEdit.FocusExited += OnSteamIdFocusExited;
-    }
+    private void ReplaceSteamIdLineEdit(string text) =>
+        SteamIDLineEdit = ReplaceLineEditWithHandlers(SteamIDLineEdit, text, OnSteamIdChanged, OnSteamIdFocusEntered, OnSteamIdFocusExited);
 
-    private void ReplaceSteamStatIdLineEdit(string text)
-    {
-        SteamStatIdLineEdit.TextChanged -= OnSteamStatIdChanged;
-        SteamStatIdLineEdit.FocusEntered -= OnSteamStatIdFocusEntered;
-        SteamStatIdLineEdit.FocusExited -= OnSteamStatIdFocusExited;
-        SteamStatIdLineEdit = ReplaceLineEdit(SteamStatIdLineEdit, text);
-        SteamStatIdLineEdit.TextChanged += OnSteamStatIdChanged;
-        SteamStatIdLineEdit.FocusEntered += OnSteamStatIdFocusEntered;
-        SteamStatIdLineEdit.FocusExited += OnSteamStatIdFocusExited;
-    }
+    private void ReplaceSteamStatIdLineEdit(string text) =>
+        SteamStatIdLineEdit = ReplaceLineEditWithHandlers(SteamStatIdLineEdit, text, OnSteamStatIdChanged, OnSteamStatIdFocusEntered, OnSteamStatIdFocusExited);
 
-    private void ReplaceGooglePlayIdLineEdit(string text)
-    {
-        GooglePlayIDLineEdit.TextChanged -= OnGooglePlayIdChanged;
-        GooglePlayIDLineEdit.FocusEntered -= OnGooglePlayIdFocusEntered;
-        GooglePlayIDLineEdit.FocusExited -= OnGooglePlayIdFocusExited;
-        GooglePlayIDLineEdit = ReplaceLineEdit(GooglePlayIDLineEdit, text);
-        GooglePlayIDLineEdit.TextChanged += OnGooglePlayIdChanged;
-        GooglePlayIDLineEdit.FocusEntered += OnGooglePlayIdFocusEntered;
-        GooglePlayIDLineEdit.FocusExited += OnGooglePlayIdFocusExited;
-    }
+    private void ReplaceGooglePlayIdLineEdit(string text) =>
+        GooglePlayIDLineEdit = ReplaceLineEditWithHandlers(GooglePlayIDLineEdit, text, OnGooglePlayIdChanged, OnGooglePlayIdFocusEntered, OnGooglePlayIdFocusExited);
 
-    private void ReplaceGameCenterIdLineEdit(string text)
-    {
-        GameCenterIDLineEdit.TextChanged -= OnGameCenterIdChanged;
-        GameCenterIDLineEdit.FocusEntered -= OnGameCenterIdFocusEntered;
-        GameCenterIDLineEdit.FocusExited -= OnGameCenterIdFocusExited;
-        GameCenterIDLineEdit = ReplaceLineEdit(GameCenterIDLineEdit, text);
-        GameCenterIDLineEdit.TextChanged += OnGameCenterIdChanged;
-        GameCenterIDLineEdit.FocusEntered += OnGameCenterIdFocusEntered;
-        GameCenterIDLineEdit.FocusExited += OnGameCenterIdFocusExited;
-    }
+    private void ReplaceGameCenterIdLineEdit(string text) =>
+        GameCenterIDLineEdit = ReplaceLineEditWithHandlers(GameCenterIDLineEdit, text, OnGameCenterIdChanged, OnGameCenterIdFocusEntered, OnGameCenterIdFocusExited);
 
     private void OnIconResourceChanged(Resource resource)
     {

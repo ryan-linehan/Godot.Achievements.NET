@@ -35,7 +35,7 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("AchievementIconButton", "IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "SteamStatIdLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GameCenterVBox", "GameCenterIDLineEdit", "CustomPropertiesContainer", "VisualizeUnlockButton")]
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("AchievementIconButton", "IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "InternalIDValidationLabel", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "SteamValidationLabel", "SteamStatIdLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GooglePlayValidationLabel", "GameCenterVBox", "GameCenterIDLineEdit", "GameCenterValidationLabel", "CustomPropertiesContainer", "VisualizeUnlockButton")]
 custom_minimum_size = Vector2(400, 0)
 anchors_preset = 15
 anchor_right = 1.0
@@ -48,17 +48,21 @@ AchievementIconButton = NodePath("MarginContainer/VBoxContainer/ScrollContainer/
 IconPickerContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection/IconPickerContainer")
 NameLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox/NameLineEdit")
 InternalIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox/InternalIDLineEdit")
+InternalIDValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox/InternalIDValidationLabel")
 DescriptionTextBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox/DescriptionTextBox")
 TrackProgressCheckBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox/TrackProgressCheckbox")
 TargetValueSpinBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox/TargetValueSpinbox")
 PlatformsContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer")
 SteamVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox")
 SteamIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamIDLineEdit")
+SteamValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamValidationLabel")
 SteamStatIdLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamStatIdLineEdit")
 GooglePlayVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox")
 GooglePlayIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox/GooglePlayIDLineEdit")
+GooglePlayValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox/GooglePlayValidationLabel")
 GameCenterVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox")
 GameCenterIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterIDLineEdit")
+GameCenterValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterValidationLabel")
 CustomPropertiesContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/CustomProperties")
 VisualizeUnlockButton = NodePath("MarginContainer/VBoxContainer/HeaderHBox/VisualizeUnlockButton")
 
@@ -152,6 +156,11 @@ text = "Internal ID"
 layout_mode = 2
 placeholder_text = "unique_achievement_id"
 
+[node name="InternalIDValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+
 [node name="DescriptionVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -228,6 +237,11 @@ text = "Steam Achievement ID"
 layout_mode = 2
 placeholder_text = "steam_achievement_api_name"
 
+[node name="SteamValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+
 [node name="SteamStatIdLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
 layout_mode = 2
 tooltip_text = "Steam stat key for tracking progress. Leave empty to use Achievement ID."
@@ -254,6 +268,11 @@ text = "Google Play Achievement ID"
 layout_mode = 2
 placeholder_text = "CgkI... (Google Play achievement ID)"
 
+[node name="GooglePlayValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+
 [node name="GooglePlaySeparator" type="HSeparator" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -269,6 +288,11 @@ text = "Game Center Achievement ID"
 [node name="GameCenterIDLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox"]
 layout_mode = 2
 placeholder_text = "com.yourcompany.achievement_id"
+
+[node name="GameCenterValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
 
 [node name="CustomProperties" type="FoldableContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
 layout_mode = 2
