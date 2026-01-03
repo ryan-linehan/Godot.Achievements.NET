@@ -8,10 +8,6 @@
 
 config_version=5
 
-[Addons]
-
-GooglePlayServices=0
-
 [addons]
 
 achievements/toast/position=1

@@ -121,7 +121,7 @@ public static class AchievementSettings
     /// <summary>
     /// Default output path for the generated constants file
     /// </summary>
-    public const string DefaultConstantsOutputPath = "res://AchievementIds.cs";
+    public const string DefaultConstantsOutputPath = "res://AchievementConstants.cs";
 
     /// <summary>
     /// Class name for the generated constants class
@@ -131,27 +131,12 @@ public static class AchievementSettings
     /// <summary>
     /// Default class name for the generated constants
     /// </summary>
-    public const string DefaultConstantsClassName = "AchievementIds";
+    public const string DefaultConstantsClassName = "AchievementConstants";
 
     /// <summary>
     /// Namespace for the generated constants class (optional)
     /// </summary>
     public const string ConstantsNamespace = "addons/achievements/codegen/constants_namespace";
-
-    /// <summary>
-    /// Whether to generate constants for custom property keys
-    /// </summary>
-    public const string PropertyKeysGenerate = "addons/achievements/codegen/property_keys_generate";
-
-    /// <summary>
-    /// Class name for the generated property keys class
-    /// </summary>
-    public const string PropertyKeysClassName = "addons/achievements/codegen/property_keys_class_name";
-
-    /// <summary>
-    /// Default class name for the generated property keys
-    /// </summary>
-    public const string DefaultPropertyKeysClassName = "AchievementProperties";
 
     #endregion
 }

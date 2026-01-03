@@ -391,7 +391,13 @@ public partial class AchievementEditorDock : Control
 
         if (result.Success)
         {
-            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Auto-generated constants for {result.GeneratedCount} achievements to {result.OutputPath}");
+            var message = $"Auto-generated constants for {result.GeneratedCount} achievements";
+            if (result.PropertyKeysCount > 0)
+            {
+                message += $" and {result.PropertyKeysCount} property keys";
+            }
+            message += $" to {result.OutputPath}";
+            AchievementLogger.Log(AchievementLogger.Areas.Editor, message);
             EditorInterface.Singleton.GetResourceFilesystem().Scan();
         }
         else

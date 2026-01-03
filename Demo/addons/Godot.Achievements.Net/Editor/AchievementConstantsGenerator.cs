@@ -21,21 +21,22 @@ public static partial class AchievementConstantsGenerator
         public bool Success { get; init; }
         public string? ErrorMessage { get; init; }
         public int GeneratedCount { get; init; }
+        public int PropertyKeysCount { get; init; }
         public string? OutputPath { get; init; }
     }
 
     /// <summary>
-    /// Generates a C# file with constants for all achievement IDs in the database.
+    /// Generates a C# file with constants for all achievement IDs and property keys in the database.
     /// </summary>
     /// <param name="database">The achievement database to generate constants from</param>
     /// <param name="outputPath">The file path to write the generated code to</param>
-    /// <param name="className">The name of the generated class (default: "AchievementIds")</param>
+    /// <param name="className">The name of the generated class (default: "AchievementConstants")</param>
     /// <param name="namespaceName">Optional namespace for the generated class</param>
     /// <returns>A result indicating success or failure</returns>
     public static GenerationResult Generate(
         AchievementDatabase database,
         string outputPath,
-        string className = "AchievementIds",
+        string className = "AchievementConstants",
         string? namespaceName = null)
     {
         if (database == null)
@@ -67,7 +68,20 @@ public static partial class AchievementConstantsGenerator
 
         try
         {
-            var code = GenerateCode(database, className, namespaceName);
+            // Collect unique property keys from all achievements
+            var propertyKeys = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+            foreach (var achievement in database.Achievements)
+            {
+                if (achievement.ExtraProperties != null)
+                {
+                    foreach (var key in achievement.ExtraProperties.Keys)
+                    {
+                        propertyKeys.Add(key);
+                    }
+                }
+            }
+
+            var code = GenerateCode(database, className, namespaceName, propertyKeys);
 
             // Resolve Godot path to filesystem path if needed
             var resolvedPath = ResolvePath(outputPath);
@@ -85,6 +99,7 @@ public static partial class AchievementConstantsGenerator
             {
                 Success = true,
                 GeneratedCount = database.Achievements.Count,
+                PropertyKeysCount = propertyKeys.Count,
                 OutputPath = resolvedPath
             };
         }
@@ -104,7 +119,8 @@ public static partial class AchievementConstantsGenerator
     private static string GenerateCode(
         AchievementDatabase database,
         string className,
-        string? namespaceName)
+        string? namespaceName,
+        System.Collections.Generic.HashSet<string> propertyKeys)
     {
         var sb = new StringBuilder();
 
@@ -126,11 +142,19 @@ public static partial class AchievementConstantsGenerator
 
         // Class declaration
         sb.AppendLine("/// <summary>");
-        sb.AppendLine("/// Contains constants for all achievement IDs defined in the database.");
-        sb.AppendLine("/// Use these constants instead of hardcoding achievement ID strings.");
+        sb.AppendLine("/// Contains constants for all achievement IDs and property keys defined in the database.");
+        sb.AppendLine("/// Use these constants instead of hardcoding strings.");
         sb.AppendLine("/// </summary>");
         sb.AppendLine($"public static class {className}");
         sb.AppendLine("{");
+
+        // Generate Ids nested class
+        sb.AppendLine($"    /// <summary>");
+        sb.AppendLine($"    /// Contains constants for all achievement IDs defined in the database.");
+        sb.AppendLine($"    /// Use these constants instead of hardcoding achievement ID strings.");
+        sb.AppendLine($"    /// </summary>");
+        sb.AppendLine($"    public static class Ids");
+        sb.AppendLine("    {");
 
         // Track used identifiers to handle duplicates
         var usedIdentifiers = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
@@ -158,16 +182,52 @@ public static partial class AchievementConstantsGenerator
             // Add XML documentation if display name is available
             if (!string.IsNullOrWhiteSpace(achievement.DisplayName))
             {
-                sb.AppendLine($"    /// <summary>");
-                sb.AppendLine($"    /// {EscapeXmlComment(achievement.DisplayName)}");
+                sb.AppendLine($"        /// <summary>");
+                sb.AppendLine($"        /// {EscapeXmlComment(achievement.DisplayName)}");
                 if (!string.IsNullOrWhiteSpace(achievement.Description))
                 {
-                    sb.AppendLine($"    /// <para>{EscapeXmlComment(achievement.Description)}</para>");
+                    sb.AppendLine($"        /// <para>{EscapeXmlComment(achievement.Description)}</para>");
                 }
-                sb.AppendLine($"    /// </summary>");
+                sb.AppendLine($"        /// </summary>");
             }
 
-            sb.AppendLine($"    public const string {identifier} = \"{EscapeString(achievement.Id)}\";");
+            sb.AppendLine($"        public const string {identifier} = \"{EscapeString(achievement.Id)}\";");
+        }
+
+        sb.AppendLine("    }");
+        sb.AppendLine();
+
+        // Generate property keys nested class if there are keys
+        if (propertyKeys.Count > 0)
+        {
+            sb.AppendLine($"    /// <summary>");
+            sb.AppendLine($"    /// Contains constants for custom property keys used across achievements.");
+            sb.AppendLine($"    /// Use these constants instead of hardcoding property key strings.");
+            sb.AppendLine($"    /// </summary>");
+            sb.AppendLine($"    public static class Properties");
+            sb.AppendLine("    {");
+
+            // Track used identifiers for property keys
+            var usedPropertyIdentifiers = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var key in propertyKeys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+            {
+                var identifier = ConvertToIdentifier(key);
+
+                // Handle duplicate identifiers
+                var originalIdentifier = identifier;
+                var suffix = 2;
+                while (usedPropertyIdentifiers.Contains(identifier))
+                {
+                    identifier = $"{originalIdentifier}_{suffix}";
+                    suffix++;
+                }
+                usedPropertyIdentifiers.Add(identifier);
+
+                sb.AppendLine($"        public const string {identifier} = \"{EscapeString(key)}\";");
+            }
+
+            sb.AppendLine("    }");
             sb.AppendLine();
         }
 
