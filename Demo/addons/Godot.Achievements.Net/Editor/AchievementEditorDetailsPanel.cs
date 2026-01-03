@@ -58,6 +58,8 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
     // Custom Properties
     [Export]
     private FoldableContainer CustomPropertiesContainer = null!;
+    [Export]
+    private PackedScene CustomPropertiesEditorScene = null!;
 
     // Visualize Unlock
     [Export]
@@ -167,8 +169,8 @@ public partial class AchievementEditorDetailsPanel : PanelContainer
 
         VisualizeUnlockButton.Pressed += OnVisualizeUnlockPressed;
 
-        // Create and setup custom properties editor
-        _customPropertiesEditor = new CustomPropertiesEditor();
+        // Instantiate and setup custom properties editor from scene
+        _customPropertiesEditor = CustomPropertiesEditorScene.Instantiate<CustomPropertiesEditor>();
         _customPropertiesEditor.PropertyChanged += OnCustomPropertyChanged;
         CustomPropertiesContainer.AddChild(_customPropertiesEditor);
     }

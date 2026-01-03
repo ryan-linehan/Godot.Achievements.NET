@@ -11,13 +11,19 @@ namespace Godot.Achievements.Core.Editor;
 [Tool]
 public partial class CustomPropertiesEditor : VBoxContainer
 {
+    [Export]
+    private Label NoteLabel = null!;
+    [Export]
+    private VBoxContainer PropertiesContainer = null!;
+    [Export]
+    private Button AddPropertyButton = null!;
+    [Export]
+    private ConfirmationDialog RemoveConfirmDialog = null!;
+
     private Achievement? _currentAchievement;
     private AchievementDatabase? _database;
     private EditorUndoRedoManager? _undoRedoManager;
     private readonly List<PropertyEntry> _entries = new();
-    private Button? _addButton;
-    private VBoxContainer? _propertiesContainer;
-    private ConfirmationDialog? _removeConfirmDialog;
     private string _pendingRemoveKey = string.Empty;
 
     [Signal]
@@ -97,46 +103,15 @@ public partial class CustomPropertiesEditor : VBoxContainer
 
     public override void _Ready()
     {
-        // Add note about property scope
-        var noteLabel = new Label();
-        noteLabel.Text = "Adding, removing, or renaming a property affects all achievements. Values are per-achievement.";
-        noteLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f, 1f));
-        noteLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        AddChild(noteLabel);
-
-        // Create the properties container
-        _propertiesContainer = new VBoxContainer();
-        _propertiesContainer.AddThemeConstantOverride("separation", 12);
-        AddChild(_propertiesContainer);
-
-        // Create add button
-        var buttonContainer = new HBoxContainer();
-        AddChild(buttonContainer);
-
-        _addButton = new Button();
-        _addButton.Text = "+ Add Property";
-        _addButton.Pressed += OnAddPropertyPressed;
-        buttonContainer.AddChild(_addButton);
-
-        // Create confirmation dialog for removing properties with data
-        _removeConfirmDialog = new ConfirmationDialog();
-        _removeConfirmDialog.Confirmed += OnRemoveConfirmed;
-        AddChild(_removeConfirmDialog);
+        // Connect signals to scene-defined nodes
+        AddPropertyButton.Pressed += OnAddPropertyPressed;
+        RemoveConfirmDialog.Confirmed += OnRemoveConfirmed;
     }
 
     public override void _ExitTree()
     {
-        if (_addButton != null)
-        {
-            _addButton.Pressed -= OnAddPropertyPressed;
-        }
-
-        if (_removeConfirmDialog != null)
-        {
-            _removeConfirmDialog.Confirmed -= OnRemoveConfirmed;
-            _removeConfirmDialog.QueueFree();
-        }
-
+        AddPropertyButton.Pressed -= OnAddPropertyPressed;
+        RemoveConfirmDialog.Confirmed -= OnRemoveConfirmed;
         ClearEntries();
     }
 
@@ -144,7 +119,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
     {
         ClearEntries();
 
-        if (_currentAchievement == null || _propertiesContainer == null)
+        if (_currentAchievement == null || PropertiesContainer == null)
             return;
 
         foreach (var kvp in _currentAchievement.ExtraProperties)
@@ -159,7 +134,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
         {
             DisconnectEntry(entry);
             // Remove from parent immediately so UI updates, then queue free
-            _propertiesContainer?.RemoveChild(entry.Container);
+            PropertiesContainer?.RemoveChild(entry.Container);
             entry.Container.QueueFree();
         }
         _entries.Clear();
@@ -177,7 +152,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
 
     private void CreatePropertyEntry(string key, Variant value)
     {
-        if (_propertiesContainer == null) return;
+        if (PropertiesContainer == null) return;
 
         // Create a holder object for the property value
         var holder = new VariantPropertyHolder();
@@ -192,7 +167,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
         // Main container for this property
         entry.Container = new VBoxContainer();
         entry.Container.AddThemeConstantOverride("separation", 4);
-        _propertiesContainer.AddChild(entry.Container);
+        PropertiesContainer.AddChild(entry.Container);
 
         // Header row with key and remove button
         var headerRow = new HBoxContainer();
@@ -515,13 +490,13 @@ public partial class CustomPropertiesEditor : VBoxContainer
                 // Check if other achievements have non-empty values for this key
                 var achievementsWithData = CountAchievementsWithNonEmptyValue(key);
 
-                if (achievementsWithData > 0 && _removeConfirmDialog != null)
+                if (achievementsWithData > 0 && RemoveConfirmDialog != null)
                 {
                     // Show confirmation dialog
                     _pendingRemoveKey = key;
                     var plural = achievementsWithData == 1 ? "achievement has" : "achievements have";
-                    _removeConfirmDialog.DialogText = $"Remove property '{key}' from all achievements?\n\n{achievementsWithData} other {plural} non-empty values that will be deleted.";
-                    _removeConfirmDialog.PopupCentered();
+                    RemoveConfirmDialog.DialogText = $"Remove property '{key}' from all achievements?\n\n{achievementsWithData} other {plural} non-empty values that will be deleted.";
+                    RemoveConfirmDialog.PopupCentered();
                 }
                 else
                 {
@@ -635,7 +610,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
             if (entry.OriginalKey == key)
             {
                 DisconnectEntry(entry);
-                _propertiesContainer?.RemoveChild(entry.Container);
+                PropertiesContainer?.RemoveChild(entry.Container);
                 entry.Container.QueueFree();
                 _entries.RemoveAt(i);
                 break;

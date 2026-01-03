@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://cjc02uatgibsf"]
+[gd_scene load_steps=6 format=3 uid="uid://cjc02uatgibsf"]
 
 [ext_resource type="Script" uid="uid://cy8i5orrm878e" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDetailsPanel.cs" id="1_ilrbq"]
 [ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_ilrbq"]
+[ext_resource type="PackedScene" uid="uid://b1custom_props_editor" path="res://addons/Godot.Achievements.Net/Editor/CustomPropertiesEditor.tscn" id="3_custprops"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foldable"]
 content_margin_left = 12.0
@@ -64,6 +65,7 @@ GameCenterVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/Content
 GameCenterIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterIDLineEdit")
 GameCenterValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterValidationLabel")
 CustomPropertiesContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/CustomProperties")
+CustomPropertiesEditorScene = ExtResource("3_custprops")
 VisualizeUnlockButton = NodePath("MarginContainer/VBoxContainer/HeaderHBox/VisualizeUnlockButton")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
