@@ -138,5 +138,20 @@ public static class AchievementSettings
     /// </summary>
     public const string ConstantsNamespace = "addons/achievements/codegen/constants_namespace";
 
+    /// <summary>
+    /// Whether to generate constants for custom property keys
+    /// </summary>
+    public const string PropertyKeysGenerate = "addons/achievements/codegen/property_keys_generate";
+
+    /// <summary>
+    /// Class name for the generated property keys class
+    /// </summary>
+    public const string PropertyKeysClassName = "addons/achievements/codegen/property_keys_class_name";
+
+    /// <summary>
+    /// Default class name for the generated property keys
+    /// </summary>
+    public const string DefaultPropertyKeysClassName = "AchievementProperties";
+
     #endregion
 }

@@ -23,6 +23,7 @@ achievements/platforms/googleplay_enabled=true
 achievements/platforms/gamecenter_enabled=true
 GooglePlayServices/GameID=123456789
 achievements/platforms/steam_enabled=true
+achievements/codegen/auto_generate=true
 
 [application]
 

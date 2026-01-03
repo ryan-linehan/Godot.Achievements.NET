@@ -198,6 +198,56 @@ public partial class AchievementPlugin : EditorPlugin
             { "hint_string", "Info,Warning,Error,None" }
         });
 
+        // Code Generation: Auto-generate constants on save
+        if (!ProjectSettings.HasSetting(AchievementSettings.ConstantsAutoGenerate))
+        {
+            ProjectSettings.SetSetting(AchievementSettings.ConstantsAutoGenerate, false);
+        }
+        ProjectSettings.SetInitialValue(AchievementSettings.ConstantsAutoGenerate, false);
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", AchievementSettings.ConstantsAutoGenerate },
+            { "type", (int)Variant.Type.Bool }
+        });
+
+        // Code Generation: Output path for constants file
+        if (!ProjectSettings.HasSetting(AchievementSettings.ConstantsOutputPath))
+        {
+            ProjectSettings.SetSetting(AchievementSettings.ConstantsOutputPath, AchievementSettings.DefaultConstantsOutputPath);
+        }
+        ProjectSettings.SetInitialValue(AchievementSettings.ConstantsOutputPath, AchievementSettings.DefaultConstantsOutputPath);
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", AchievementSettings.ConstantsOutputPath },
+            { "type", (int)Variant.Type.String },
+            { "hint", (int)PropertyHint.SaveFile },
+            { "hint_string", "*.cs" }
+        });
+
+        // Code Generation: Class name for generated constants
+        if (!ProjectSettings.HasSetting(AchievementSettings.ConstantsClassName))
+        {
+            ProjectSettings.SetSetting(AchievementSettings.ConstantsClassName, AchievementSettings.DefaultConstantsClassName);
+        }
+        ProjectSettings.SetInitialValue(AchievementSettings.ConstantsClassName, AchievementSettings.DefaultConstantsClassName);
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", AchievementSettings.ConstantsClassName },
+            { "type", (int)Variant.Type.String }
+        });
+
+        // Code Generation: Namespace for generated constants (optional)
+        if (!ProjectSettings.HasSetting(AchievementSettings.ConstantsNamespace))
+        {
+            ProjectSettings.SetSetting(AchievementSettings.ConstantsNamespace, "");
+        }
+        ProjectSettings.SetInitialValue(AchievementSettings.ConstantsNamespace, "");
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", AchievementSettings.ConstantsNamespace },
+            { "type", (int)Variant.Type.String }
+        });
+
         ProjectSettings.Save();
     }
 
