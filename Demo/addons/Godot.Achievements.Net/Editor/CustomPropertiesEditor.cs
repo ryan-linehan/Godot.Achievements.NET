@@ -97,6 +97,13 @@ public partial class CustomPropertiesEditor : VBoxContainer
 
     public override void _Ready()
     {
+        // Add note about property scope
+        var noteLabel = new Label();
+        noteLabel.Text = "Adding, removing, or renaming a property affects all achievements. Values are per-achievement.";
+        noteLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f, 1f));
+        noteLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        AddChild(noteLabel);
+
         // Create the properties container
         _propertiesContainer = new VBoxContainer();
         _propertiesContainer.AddThemeConstantOverride("separation", 12);
