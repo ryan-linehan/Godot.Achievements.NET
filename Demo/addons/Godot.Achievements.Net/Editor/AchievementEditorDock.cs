@@ -354,6 +354,63 @@ public partial class AchievementEditorDock : Control
         // Refresh the Inspector if it's showing this resource
         _currentDatabase.EmitChanged();
         _currentDatabase.NotifyPropertyListChanged();
+
+        // Auto-generate constants if enabled
+        TryAutoGenerateConstants();
+    }
+
+    private void TryAutoGenerateConstants()
+    {
+        if (_currentDatabase == null || _currentDatabase.Achievements.Count == 0)
+        {
+            return;
+        }
+
+        // Check if auto-generation is enabled
+        if (!ProjectSettings.HasSetting(AchievementSettings.ConstantsAutoGenerate))
+        {
+            return;
+        }
+
+        var autoGenerate = ProjectSettings.GetSetting(AchievementSettings.ConstantsAutoGenerate).AsBool();
+        if (!autoGenerate)
+        {
+            return;
+        }
+
+        // Get settings
+        var outputPath = GetSettingOrDefault(AchievementSettings.ConstantsOutputPath, AchievementSettings.DefaultConstantsOutputPath);
+        var className = GetSettingOrDefault(AchievementSettings.ConstantsClassName, AchievementSettings.DefaultConstantsClassName);
+        var namespaceName = GetSettingOrDefault(AchievementSettings.ConstantsNamespace, null);
+
+        var result = AchievementConstantsGenerator.Generate(
+            _currentDatabase,
+            outputPath,
+            className,
+            string.IsNullOrWhiteSpace(namespaceName) ? null : namespaceName);
+
+        if (result.Success)
+        {
+            AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Auto-generated constants for {result.GeneratedCount} achievements to {result.OutputPath}");
+            EditorInterface.Singleton.GetResourceFilesystem().Scan();
+        }
+        else
+        {
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"Failed to auto-generate constants: {result.ErrorMessage}");
+        }
+    }
+
+    private static string? GetSettingOrDefault(string key, string? defaultValue)
+    {
+        if (ProjectSettings.HasSetting(key))
+        {
+            var value = ProjectSettings.GetSetting(key).AsString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+        return defaultValue;
     }
 
     private string LoadDatabasePath()

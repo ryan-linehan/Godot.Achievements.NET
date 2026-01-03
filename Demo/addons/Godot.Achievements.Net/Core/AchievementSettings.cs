@@ -109,6 +109,11 @@ public static class AchievementSettings
     #region Code Generation Settings
 
     /// <summary>
+    /// Whether to automatically generate C# constants when the database is saved
+    /// </summary>
+    public const string ConstantsAutoGenerate = "addons/achievements/codegen/auto_generate";
+
+    /// <summary>
     /// Output path for generated achievement constants file
     /// </summary>
     public const string ConstantsOutputPath = "addons/achievements/codegen/constants_output_path";
