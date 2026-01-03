@@ -24,11 +24,13 @@ public partial class CustomPropertiesEditor : VBoxContainer
     public delegate void PropertyChangedEventHandler();
 
     /// <summary>
-    /// Sets the database reference for propagating property keys across all achievements
+    /// Sets the database reference for propagating property keys across all achievements.
+    /// Automatically syncs property keys across all achievements when a database is set.
     /// </summary>
     public void SetDatabase(AchievementDatabase? database)
     {
         _database = database;
+        SyncPropertiesAcrossDatabase();
     }
 
     /// <summary>
@@ -37,6 +39,39 @@ public partial class CustomPropertiesEditor : VBoxContainer
     public void SetUndoRedoManager(EditorUndoRedoManager undoRedoManager)
     {
         _undoRedoManager = undoRedoManager;
+    }
+
+    /// <summary>
+    /// Synchronizes property keys across all achievements in the database.
+    /// Ensures all achievements have all keys that exist in any achievement.
+    /// Call this on editor launch. Does not support undo/redo.
+    /// </summary>
+    public void SyncPropertiesAcrossDatabase()
+    {
+        if (_database == null) return;
+
+        // Collect all unique keys from all achievements
+        var allKeys = new HashSet<string>();
+        foreach (var achievement in _database.Achievements)
+        {
+            foreach (var key in achievement.ExtraProperties.Keys)
+            {
+                allKeys.Add(key);
+            }
+        }
+
+        // Ensure every achievement has all keys
+        var defaultValue = Variant.From("");
+        foreach (var achievement in _database.Achievements)
+        {
+            foreach (var key in allKeys)
+            {
+                if (!achievement.ExtraProperties.ContainsKey(key))
+                {
+                    achievement.ExtraProperties[key] = defaultValue;
+                }
+            }
+        }
     }
 
     private class PropertyEntry
@@ -237,14 +272,42 @@ public partial class CustomPropertiesEditor : VBoxContainer
         if (_currentAchievement == null || entry.ValueEditor == null)
             return;
 
-        // Update holder with the new value from the signal
-        entry.Holder.Value = newValue;
+        var key = entry.OriginalKey;
+        var oldValue = _currentAchievement.ExtraProperties.TryGetValue(key, out var existing) ? existing : Variant.From("");
 
-        // Sync the value to achievement
-        _currentAchievement.ExtraProperties[entry.OriginalKey] = newValue;
+        // Skip if value hasn't actually changed
+        if (oldValue.Equals(newValue)) return;
 
-        // Defer UpdateProperty to avoid freeing objects during signal emission
-        entry.ValueEditor.CallDeferred(EditorProperty.MethodName.UpdateProperty);
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Change Custom Property Value");
+            _undoRedoManager.AddDoMethod(this, nameof(DoSetPropertyValue), _currentAchievement, key, newValue);
+            _undoRedoManager.AddUndoMethod(this, nameof(DoSetPropertyValue), _currentAchievement, key, oldValue);
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoSetPropertyValue(_currentAchievement, key, newValue);
+        }
+    }
+
+    private void DoSetPropertyValue(Achievement achievement, string key, Variant value)
+    {
+        achievement.ExtraProperties[key] = value;
+
+        // Update UI if this is the current achievement
+        if (achievement == _currentAchievement)
+        {
+            foreach (var entry in _entries)
+            {
+                if (entry.OriginalKey == key)
+                {
+                    entry.Holder.Value = value;
+                    entry.ValueEditor?.CallDeferred(EditorProperty.MethodName.UpdateProperty);
+                    break;
+                }
+            }
+        }
 
         EmitSignal(SignalName.PropertyChanged);
     }
@@ -265,6 +328,21 @@ public partial class CustomPropertiesEditor : VBoxContainer
             counter++;
         }
 
+        if (_undoRedoManager != null && _database != null)
+        {
+            _undoRedoManager.CreateAction("Add Custom Property");
+            _undoRedoManager.AddDoMethod(this, nameof(DoAddProperty), key);
+            _undoRedoManager.AddUndoMethod(this, nameof(DoRemoveProperty), key);
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoAddProperty(key);
+        }
+    }
+
+    private void DoAddProperty(string key)
+    {
         var defaultValue = Variant.From("");
 
         // Propagate the new key to all achievements in the database
@@ -278,13 +356,31 @@ public partial class CustomPropertiesEditor : VBoxContainer
                 }
             }
         }
-        else
+        else if (_currentAchievement != null)
         {
             // Fallback: only add to current achievement
             _currentAchievement.ExtraProperties[key] = defaultValue;
         }
 
-        CreatePropertyEntry(key, defaultValue);
+        // Add UI entry if viewing the current achievement
+        if (_currentAchievement != null && _currentAchievement.ExtraProperties.ContainsKey(key))
+        {
+            // Check if entry already exists in UI
+            bool entryExists = false;
+            foreach (var entry in _entries)
+            {
+                if (entry.OriginalKey == key)
+                {
+                    entryExists = true;
+                    break;
+                }
+            }
+            if (!entryExists)
+            {
+                CreatePropertyEntry(key, defaultValue);
+            }
+        }
+
         EmitSignal(SignalName.PropertyChanged);
     }
 
@@ -322,31 +418,86 @@ public partial class CustomPropertiesEditor : VBoxContainer
                 continue;
             }
 
-            // Check for duplicates
-            if (_currentAchievement.ExtraProperties.ContainsKey(newKey))
+            // Check for duplicates across all achievements
+            if (KeyExistsInAnyAchievement(newKey))
             {
                 entry.KeyEdit.Text = oldKey;
                 AchievementLogger.Warning(AchievementLogger.Areas.Editor, $"Property key '{newKey}' already exists");
                 continue;
             }
 
-            // Rename the property
-            if (_currentAchievement.ExtraProperties.ContainsKey(oldKey))
+            // Rename the property across all achievements
+            RenamePropertyInAll(oldKey, newKey, entry);
+        }
+    }
+
+    private void RenamePropertyInAll(string oldKey, string newKey, PropertyEntry entry)
+    {
+        if (_database == null)
+        {
+            // Fallback: only rename in current achievement (no undo support without database)
+            if (_currentAchievement != null && _currentAchievement.ExtraProperties.ContainsKey(oldKey))
             {
                 var value = _currentAchievement.ExtraProperties[oldKey];
                 _currentAchievement.ExtraProperties.Remove(oldKey);
                 _currentAchievement.ExtraProperties[newKey] = value;
-
-                // Update meta on controls
-                entry.OriginalKey = newKey;
-                entry.KeyEdit.SetMeta("entry_key", newKey);
-                entry.RemoveButton.SetMeta("entry_key", newKey);
-                if (entry.ValueEditor != null)
-                    entry.ValueEditor.SetMeta("entry_key", newKey);
-
+                UpdateEntryKeyMeta(entry, newKey);
                 EmitSignal(SignalName.PropertyChanged);
             }
+            return;
         }
+
+        if (_undoRedoManager != null)
+        {
+            _undoRedoManager.CreateAction("Rename Custom Property");
+            _undoRedoManager.AddDoMethod(this, nameof(DoRenameProperty), oldKey, newKey);
+            _undoRedoManager.AddUndoMethod(this, nameof(DoRenameProperty), newKey, oldKey);
+            _undoRedoManager.CommitAction();
+        }
+        else
+        {
+            DoRenameProperty(oldKey, newKey);
+        }
+
+        // Update UI entry meta
+        UpdateEntryKeyMeta(entry, newKey);
+    }
+
+    private void DoRenameProperty(string oldKey, string newKey)
+    {
+        if (_database == null) return;
+
+        foreach (var achievement in _database.Achievements)
+        {
+            if (achievement.ExtraProperties.ContainsKey(oldKey))
+            {
+                var value = achievement.ExtraProperties[oldKey];
+                achievement.ExtraProperties.Remove(oldKey);
+                achievement.ExtraProperties[newKey] = value;
+            }
+        }
+
+        // Update UI entries to reflect the new key
+        foreach (var entry in _entries)
+        {
+            if (entry.OriginalKey == oldKey)
+            {
+                UpdateEntryKeyMeta(entry, newKey);
+                break;
+            }
+        }
+
+        EmitSignal(SignalName.PropertyChanged);
+    }
+
+    private void UpdateEntryKeyMeta(PropertyEntry entry, string newKey)
+    {
+        entry.OriginalKey = newKey;
+        entry.KeyEdit.Text = newKey;
+        entry.KeyEdit.SetMeta("entry_key", newKey);
+        entry.RemoveButton.SetMeta("entry_key", newKey);
+        if (entry.ValueEditor != null)
+            entry.ValueEditor.SetMeta("entry_key", newKey);
     }
 
     private void OnRemovePressed()
