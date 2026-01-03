@@ -212,7 +212,6 @@ public partial class CustomPropertiesEditor : VBoxContainer
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         entry.KeyEdit.FocusExited += OnKeyFocusExited;
-        entry.KeyEdit.SetMeta("entry_key", key);
         headerRow.AddChild(entry.KeyEdit);
 
         // Remove button
@@ -220,7 +219,6 @@ public partial class CustomPropertiesEditor : VBoxContainer
         entry.RemoveButton.Text = "X";
         entry.RemoveButton.CustomMinimumSize = new Vector2(30, 0);
         entry.RemoveButton.Pressed += OnRemovePressed;
-        entry.RemoveButton.SetMeta("entry_key", key);
         headerRow.AddChild(entry.RemoveButton);
 
         // Value editor row using Godot's built-in property editor
@@ -248,7 +246,6 @@ public partial class CustomPropertiesEditor : VBoxContainer
 
             // Set size flags
             propertyEditor.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            propertyEditor.SetMeta("entry_key", key);
             propertyEditor.UpdateProperty();
             // Add to tree
             valueRow.AddChild(propertyEditor);
@@ -448,7 +445,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
                 var value = _currentAchievement.ExtraProperties[oldKey];
                 _currentAchievement.ExtraProperties.Remove(oldKey);
                 _currentAchievement.ExtraProperties[newKey] = value;
-                UpdateEntryKeyMeta(entry, newKey);
+                UpdateEntryKey(entry, newKey);
                 EmitSignal(SignalName.PropertyChanged);
             }
             return;
@@ -467,7 +464,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
         }
 
         // Update UI entry meta
-        UpdateEntryKeyMeta(entry, newKey);
+        UpdateEntryKey(entry, newKey);
     }
 
     private void DoRenameProperty(string oldKey, string newKey)
@@ -489,7 +486,7 @@ public partial class CustomPropertiesEditor : VBoxContainer
         {
             if (entry.OriginalKey == oldKey)
             {
-                UpdateEntryKeyMeta(entry, newKey);
+                UpdateEntryKey(entry, newKey);
                 break;
             }
         }
@@ -497,14 +494,10 @@ public partial class CustomPropertiesEditor : VBoxContainer
         EmitSignal(SignalName.PropertyChanged);
     }
 
-    private void UpdateEntryKeyMeta(PropertyEntry entry, string newKey)
+    private void UpdateEntryKey(PropertyEntry entry, string newKey)
     {
         entry.OriginalKey = newKey;
         entry.KeyEdit.Text = newKey;
-        entry.KeyEdit.SetMeta("entry_key", newKey);
-        entry.RemoveButton.SetMeta("entry_key", newKey);
-        if (entry.ValueEditor != null)
-            entry.ValueEditor.SetMeta("entry_key", newKey);
     }
 
     private void OnRemovePressed()
