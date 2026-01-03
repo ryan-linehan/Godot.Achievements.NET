@@ -18,6 +18,7 @@ public partial class AchievementImportExportHandler : RefCounted
     private EditorFileDialog? _exportCSVFileDialog;
     private EditorFileDialog? _importJSONFileDialog;
     private EditorFileDialog? _exportJSONFileDialog;
+    private EditorFileDialog? _exportConstantsFileDialog;
     /// <summary>
     /// Parameterless constructor required by Godot's serialization system.
     /// This constructor is never called directly - use the parameterized constructor instead.
@@ -47,6 +48,8 @@ public partial class AchievementImportExportHandler : RefCounted
         var exportPopup = exportButton.GetPopup();
         exportPopup.AddItem("CSV", 0);
         exportPopup.AddItem("JSON", 1);
+        exportPopup.AddSeparator();
+        exportPopup.AddItem("C# Constants", 2);
         exportPopup.IdPressed += OnExportMenuItemPressed;
     }
 
@@ -87,6 +90,15 @@ public partial class AchievementImportExportHandler : RefCounted
         _exportJSONFileDialog.Title = "Export Achievements to JSON";
         _exportJSONFileDialog.FileSelected += OnExportJSONFileSelected;
         parent.AddChild(_exportJSONFileDialog);
+
+        // Create export C# constants file dialog
+        _exportConstantsFileDialog = new EditorFileDialog();
+        _exportConstantsFileDialog.FileMode = EditorFileDialog.FileModeEnum.SaveFile;
+        _exportConstantsFileDialog.AddFilter("*.cs", "C# Files");
+        _exportConstantsFileDialog.Access = EditorFileDialog.AccessEnum.Resources;
+        _exportConstantsFileDialog.Title = "Export Achievement Constants";
+        _exportConstantsFileDialog.FileSelected += OnExportConstantsFileSelected;
+        parent.AddChild(_exportConstantsFileDialog);
     }
 
     public void Cleanup(MenuButton importButton, MenuButton exportButton)
@@ -119,6 +131,12 @@ public partial class AchievementImportExportHandler : RefCounted
         {
             _exportJSONFileDialog.FileSelected -= OnExportJSONFileSelected;
             _exportJSONFileDialog.QueueFree();
+        }
+
+        if (_exportConstantsFileDialog != null)
+        {
+            _exportConstantsFileDialog.FileSelected -= OnExportConstantsFileSelected;
+            _exportConstantsFileDialog.QueueFree();
         }
     }
 
@@ -173,6 +191,14 @@ public partial class AchievementImportExportHandler : RefCounted
                 {
                     _exportJSONFileDialog.CurrentPath = "achievements.json";
                     _exportJSONFileDialog.PopupCentered(new Vector2I(800, 600));
+                }
+                break;
+            case 2: // C# Constants
+                if (_exportConstantsFileDialog != null)
+                {
+                    var defaultPath = GetConstantsOutputPath();
+                    _exportConstantsFileDialog.CurrentPath = defaultPath;
+                    _exportConstantsFileDialog.PopupCentered(new Vector2I(800, 600));
                 }
                 break;
         }
@@ -252,6 +278,78 @@ public partial class AchievementImportExportHandler : RefCounted
         {
             ShowErrorDialog(result.ErrorMessage ?? "Unknown error");
         }
+    }
+
+    private void OnExportConstantsFileSelected(string path)
+    {
+        var database = _getDatabaseFunc();
+        if (database == null || database.Achievements.Count == 0) return;
+
+        var className = GetConstantsClassName();
+        var namespaceName = GetConstantsNamespace();
+
+        var result = AchievementConstantsGenerator.Generate(
+            database,
+            path,
+            className,
+            string.IsNullOrWhiteSpace(namespaceName) ? null : namespaceName);
+
+        if (result.Success)
+        {
+            // Save the path for next time
+            SaveConstantsOutputPath(path);
+
+            // Refresh the filesystem so Godot sees the new file
+            EditorInterface.Singleton.GetResourceFilesystem().Scan();
+
+            ShowSuccessDialog("Generation Successful",
+                $"Successfully generated C# constants for {result.GeneratedCount} achievements to:\n\n{result.OutputPath}");
+        }
+        else
+        {
+            ShowErrorDialog(result.ErrorMessage ?? "Unknown error");
+        }
+    }
+
+    private static string GetConstantsOutputPath()
+    {
+        if (ProjectSettings.HasSetting(AchievementSettings.ConstantsOutputPath))
+        {
+            var path = ProjectSettings.GetSetting(AchievementSettings.ConstantsOutputPath).AsString();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                return path;
+            }
+        }
+        return AchievementSettings.DefaultConstantsOutputPath;
+    }
+
+    private static void SaveConstantsOutputPath(string path)
+    {
+        ProjectSettings.SetSetting(AchievementSettings.ConstantsOutputPath, path);
+        ProjectSettings.Save();
+    }
+
+    private static string GetConstantsClassName()
+    {
+        if (ProjectSettings.HasSetting(AchievementSettings.ConstantsClassName))
+        {
+            var name = ProjectSettings.GetSetting(AchievementSettings.ConstantsClassName).AsString();
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+        }
+        return AchievementSettings.DefaultConstantsClassName;
+    }
+
+    private static string? GetConstantsNamespace()
+    {
+        if (ProjectSettings.HasSetting(AchievementSettings.ConstantsNamespace))
+        {
+            return ProjectSettings.GetSetting(AchievementSettings.ConstantsNamespace).AsString();
+        }
+        return null;
     }
 
     private void ShowInfoDialog(string message)

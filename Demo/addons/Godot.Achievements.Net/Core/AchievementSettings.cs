@@ -105,4 +105,33 @@ public static class AchievementSettings
     public const Core.LogLevel DefaultLogLevel = Core.LogLevel.Info;
 
     #endregion
+
+    #region Code Generation Settings
+
+    /// <summary>
+    /// Output path for generated achievement constants file
+    /// </summary>
+    public const string ConstantsOutputPath = "addons/achievements/codegen/constants_output_path";
+
+    /// <summary>
+    /// Default output path for the generated constants file
+    /// </summary>
+    public const string DefaultConstantsOutputPath = "res://AchievementIds.cs";
+
+    /// <summary>
+    /// Class name for the generated constants class
+    /// </summary>
+    public const string ConstantsClassName = "addons/achievements/codegen/constants_class_name";
+
+    /// <summary>
+    /// Default class name for the generated constants
+    /// </summary>
+    public const string DefaultConstantsClassName = "AchievementIds";
+
+    /// <summary>
+    /// Namespace for the generated constants class (optional)
+    /// </summary>
+    public const string ConstantsNamespace = "addons/achievements/codegen/constants_namespace";
+
+    #endregion
 }
