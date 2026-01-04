@@ -13,6 +13,7 @@ public partial class AchievementImportExportHandler : RefCounted
     private readonly Action _saveDatabase;
     private readonly Action<bool> _refreshList;
     private readonly Func<Node> _getParentNodeFunc;
+    private EditorUndoRedoManager? _undoRedoManager;
 
     private EditorFileDialog? _importCSVFileDialog;
     private EditorFileDialog? _exportCSVFileDialog;
@@ -36,6 +37,11 @@ public partial class AchievementImportExportHandler : RefCounted
         _saveDatabase = saveDatabase;
         _refreshList = refreshList;
         _getParentNodeFunc = getParentNodeFunc;
+    }
+
+    public void SetUndoRedoManager(EditorUndoRedoManager? undoRedoManager)
+    {
+        _undoRedoManager = undoRedoManager;
     }
 
     public void SetupMenuButtons(MenuButton importButton, MenuButton exportButton)
@@ -213,6 +219,7 @@ public partial class AchievementImportExportHandler : RefCounted
 
         if (result.Success)
         {
+            _undoRedoManager?.ClearHistory();
             _saveDatabase();
             _refreshList(true);
             ShowSuccessDialog("Import Successful",
@@ -251,6 +258,7 @@ public partial class AchievementImportExportHandler : RefCounted
 
         if (result.Success)
         {
+            _undoRedoManager?.ClearHistory();
             _saveDatabase();
             _refreshList(true);
             ShowSuccessDialog("Import Successful",

@@ -117,6 +117,7 @@ public partial class AchievementEditorDock : Control
         {
             DetailsPanel.SetUndoRedoManager(_undoRedoManager);
             _crudOperations.SetUndoRedoManager(_undoRedoManager);
+            _importExportHandler.SetUndoRedoManager(_undoRedoManager);
         }
 
         // Connect visibility change
@@ -148,6 +149,7 @@ public partial class AchievementEditorDock : Control
         _undoRedoManager = undoRedoManager;
         DetailsPanel.SetUndoRedoManager(undoRedoManager);
         _crudOperations?.SetUndoRedoManager(undoRedoManager);
+        _importExportHandler?.SetUndoRedoManager(undoRedoManager);
     }
 
     private void OnProjectSettingsChanged()

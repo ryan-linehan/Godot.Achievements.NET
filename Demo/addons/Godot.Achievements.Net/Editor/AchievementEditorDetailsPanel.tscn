@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cy8i5orrm878e" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDetailsPanel.cs" id="1_ilrbq"]
 [ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_ilrbq"]
-[ext_resource type="PackedScene" uid="uid://b1custom_props_editor" path="res://addons/Godot.Achievements.Net/Editor/CustomPropertiesEditor.tscn" id="3_custprops"]
+[ext_resource type="PackedScene" uid="uid://c65a63ypob086" path="res://addons/Godot.Achievements.Net/Editor/CustomPropertiesEditor.tscn" id="3_custprops"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foldable"]
 content_margin_left = 12.0
