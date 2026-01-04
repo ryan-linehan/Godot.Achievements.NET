@@ -152,10 +152,9 @@ public partial class LocalAchievementProvider : AchievementProviderBase
             return Task.FromResult(AchievementUnlockResult.FailureResult($"Achievement '{achievementId}' not found in database"));
         }
 
-        bool wasAlreadyUnlocked = achievement.IsUnlocked;
         UnlockAchievement(achievementId);
 
-        return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked));
+        return Task.FromResult(AchievementUnlockResult.SuccessResult());
     }
 
     public override Task<int> GetProgressAsync(string achievementId)

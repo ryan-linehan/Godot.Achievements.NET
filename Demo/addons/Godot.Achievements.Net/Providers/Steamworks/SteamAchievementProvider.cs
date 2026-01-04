@@ -223,7 +223,7 @@ public partial class SteamAchievementProvider : AchievementProviderBase
             if (_achievements!.IsAchievementUnlocked(steamId!))
             {
                 this.Log($"Achievement already unlocked: {steamId}");
-                return Task.FromResult(AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked: true));
+                return Task.FromResult(AchievementUnlockResult.SuccessResult());
             }
 
             _achievements.UnlockAchievement(steamId!);

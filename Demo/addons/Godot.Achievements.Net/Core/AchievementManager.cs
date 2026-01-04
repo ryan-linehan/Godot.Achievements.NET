@@ -241,7 +241,7 @@ public partial class AchievementManager : Node
         bool wasAlreadyUnlocked = achievement.IsUnlocked;
 
         // Unlock locally first (source of truth) - fire-and-forget
-        _localProvider.UnlockAchievement(achievementId);
+        _localProvider!.UnlockAchievement(achievementId);
 
         // Suppress signals for already unlocked achievements
         if (wasAlreadyUnlocked)
@@ -274,7 +274,7 @@ public partial class AchievementManager : Node
         bool wasUnlocked = achievement.IsUnlocked;
 
         // Increment progress locally (fire-and-forget)
-        _localProvider.IncrementProgress(achievementId, amount);
+        _localProvider!.IncrementProgress(achievementId, amount);
 
         // Emit progress changed signal
         EmitSignal(SignalName.AchievementProgressChanged, achievementId, achievement.CurrentProgress, achievement.MaxProgress);
@@ -295,7 +295,7 @@ public partial class AchievementManager : Node
     public void ResetAchievement(string achievementId)
     {
         // Reset locally first (fire-and-forget)
-        _localProvider.ResetAchievement(achievementId);
+        _localProvider!.ResetAchievement(achievementId);
 
         // Reset on all platform providers (fire-and-forget)
         foreach (var provider in _platformProviders)
@@ -315,7 +315,7 @@ public partial class AchievementManager : Node
     public void ResetAllAchievements()
     {
         // Reset locally first (fire-and-forget)
-        _localProvider.ResetAllAchievements();
+        _localProvider!.ResetAllAchievements();
 
         // Reset on all platform providers (fire-and-forget)
         foreach (var provider in _platformProviders)
@@ -346,7 +346,7 @@ public partial class AchievementManager : Node
         bool wasAlreadyUnlocked = achievement.IsUnlocked;
 
         // Unlock locally first (source of truth)
-        var localResult = await _localProvider.UnlockAchievementAsync(achievementId);
+        var localResult = await _localProvider!.UnlockAchievementAsync(achievementId);
         if (!localResult.Success)
         {
             return localResult;
@@ -361,7 +361,7 @@ public partial class AchievementManager : Node
         // Sync to platform providers and await all
         await SyncAchievementToPlatformsAsync(achievementId);
 
-        return AchievementUnlockResult.SuccessResult(wasAlreadyUnlocked);
+        return AchievementUnlockResult.SuccessResult();
     }
 
     /// <summary>
@@ -380,7 +380,7 @@ public partial class AchievementManager : Node
         bool wasUnlocked = achievement.IsUnlocked;
 
         // Increment progress locally first
-        var localResult = await _localProvider.IncrementProgressAsync(achievementId, amount);
+        var localResult = await _localProvider!.IncrementProgressAsync(achievementId, amount);
         if (!localResult.Success)
         {
             return localResult;
@@ -408,7 +408,7 @@ public partial class AchievementManager : Node
     public async Task<SyncResult> ResetAchievementAsync(string achievementId)
     {
         // Reset locally first
-        var localResult = await _localProvider.ResetAchievementAsync(achievementId);
+        var localResult = await _localProvider!.ResetAchievementAsync(achievementId);
         if (!localResult.Success)
         {
             return localResult;
@@ -432,7 +432,7 @@ public partial class AchievementManager : Node
     public async Task<SyncResult> ResetAllAchievementsAsync()
     {
         // Reset locally first
-        var localResult = await _localProvider.ResetAllAchievementsAsync();
+        var localResult = await _localProvider!.ResetAllAchievementsAsync();
         if (!localResult.Success)
         {
             return localResult;
