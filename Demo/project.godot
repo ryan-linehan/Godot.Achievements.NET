@@ -1,0 +1,54 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[addons]
+
+achievements/toast/position=1
+achievements/toast/display_duration=2.0
+achievements/database_path="uid://ddebvxw8oopod"
+achievements/toast/scene_path="uid://betgshcwd2vle"
+achievements/toast/unlock_sound="uid://tfy5p37ns3cg"
+achievements/platforms/googleplay_enabled=true
+achievements/platforms/gamecenter_enabled=true
+GooglePlayServices/GameID=123456789
+achievements/platforms/steam_enabled=true
+achievements/codegen/auto_generate=true
+
+[application]
+
+config/name="demo"
+run/main_scene="uid://d0fk2ricf63xa"
+config/features=PackedStringArray("4.5", "C#", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Achievements="*res://addons/Godot.Achievements.Net/Core/AchievementManager.cs"
+AchievementToasts="*res://addons/Godot.Achievements.Net/Toast/AchievementToastContainer.tscn"
+GodotSteamworks="*res://addons/Godot.Steamworks.NET/GodotSteamworks.cs"
+GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
+
+[display]
+
+window/handheld/orientation=1
+
+[dotnet]
+
+project/assembly_name="demo"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/Godot.Achievements.Net/plugin.cfg", "res://addons/Godot.Steamworks.NET/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

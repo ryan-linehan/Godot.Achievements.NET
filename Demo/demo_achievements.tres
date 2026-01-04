@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="AchievementDatabase" load_steps=5 format=3 uid="uid://ddebvxw8oopod"]
+
+[ext_resource type="Script" uid="uid://dsqo75ulogvcd" path="res://addons/Godot.Achievements.Net/Core/Achievement.cs" id="1_pevyi"]
+[ext_resource type="Script" uid="uid://b5jk8htcq1rfi" path="res://addons/Godot.Achievements.Net/Core/AchievementDatabase.cs" id="2_1mgol"]
+
+[sub_resource type="Resource" id="Resource_pevyi"]
+script = ExtResource("1_pevyi")
+Id = "achievement_01"
+DisplayName = "Hit the button!"
+Description = "Just click any button!"
+SteamId = "testing"
+GameCenterId = "achievement_01"
+GooglePlayId = "CgkI9Nyp4OkBEAIQAg"
+
+[sub_resource type="Resource" id="Resource_1mgol"]
+script = ExtResource("1_pevyi")
+Id = "achievement_02"
+DisplayName = "Hit the button 20x!"
+Description = "Hit the button 20 times!"
+GameCenterId = "achievement_02"
+GooglePlayId = "CgkI9Nyp4OkBEAIQAw"
+IsIncremental = true
+MaxProgress = 20
+
+[resource]
+script = ExtResource("2_1mgol")
+Achievements = Array[ExtResource("1_pevyi")]([SubResource("Resource_pevyi"), SubResource("Resource_1mgol")])
+metadata/_custom_type_script = "uid://b5jk8htcq1rfi"

@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3 uid="uid://c65a63ypob086"]
+
+[ext_resource type="Script" uid="uid://drusf6e1lae1n" path="res://addons/Godot.Achievements.Net/Editor/CustomPropertiesEditor.cs" id="1_script"]
+
+[node name="CustomPropertiesEditor" type="VBoxContainer" node_paths=PackedStringArray("NoteLabel", "PropertiesContainer", "AddPropertyButton", "RemoveConfirmDialog")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+NoteLabel = NodePath("NoteLabel")
+PropertiesContainer = NodePath("PropertiesContainer")
+AddPropertyButton = NodePath("ButtonContainer/AddPropertyButton")
+RemoveConfirmDialog = NodePath("RemoveConfirmDialog")
+
+[node name="NoteLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Adding, removing, or renaming a property affects all achievements. Values are per-achievement."
+autowrap_mode = 2
+
+[node name="PropertiesContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ButtonContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="AddPropertyButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "+ Add Property"
+
+[node name="RemoveConfirmDialog" type="ConfirmationDialog" parent="."]
+oversampling_override = 1.0

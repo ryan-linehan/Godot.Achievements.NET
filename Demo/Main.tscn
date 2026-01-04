@@ -1,0 +1,152 @@
+[gd_scene load_steps=2 format=3 uid="uid://d0fk2ricf63xa"]
+
+[ext_resource type="Script" uid="uid://nlt7ytewnslm" path="res://Main.cs" id="1_main"]
+
+[node name="Main" type="CanvasLayer" node_paths=PackedStringArray("UnlockAllButton", "ResetAllButton", "ButtonsVBox", "CompletedVBox", "NotCompletedVBox")]
+script = ExtResource("1_main")
+UnlockAllButton = NodePath("Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox/BulkActions/UnlockAllButton")
+ResetAllButton = NodePath("Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox/BulkActions/ResetAllButton")
+ButtonsVBox = NodePath("Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox/ScrollContainer/ButtonsVBox")
+CompletedVBox = NodePath("Control/HBoxContainer/CompletedPanel/MarginContainer/VBox/ScrollContainer/CompletedVBox")
+NotCompletedVBox = NodePath("Control/HBoxContainer/NotCompletedPanel/MarginContainer/VBox/ScrollContainer/NotCompletedVBox")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="Control"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 20.0
+offset_right = 150.0
+offset_bottom = 50.0
+grow_horizontal = 2
+text = "Welcome to Godot.Achievements.NET"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 60.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="ButtonsPanel" type="PanelContainer" parent="Control/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="Control/HBoxContainer/ButtonsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ButtonsLabel" type="Label" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox"]
+layout_mode = 2
+text = "Achievements"
+horizontal_alignment = 1
+
+[node name="BulkActions" type="HBoxContainer" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UnlockAllButton" type="Button" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox/BulkActions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Unlock All"
+
+[node name="ResetAllButton" type="Button" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox/BulkActions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Reset All"
+
+[node name="HSeparator" type="HSeparator" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ButtonsVBox" type="VBoxContainer" parent="Control/HBoxContainer/ButtonsPanel/MarginContainer/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CompletedPanel" type="PanelContainer" parent="Control/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="Control/HBoxContainer/CompletedPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Control/HBoxContainer/CompletedPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CompletedLabel" type="Label" parent="Control/HBoxContainer/CompletedPanel/MarginContainer/VBox"]
+layout_mode = 2
+text = "Completed"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Control/HBoxContainer/CompletedPanel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CompletedVBox" type="VBoxContainer" parent="Control/HBoxContainer/CompletedPanel/MarginContainer/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="NotCompletedPanel" type="PanelContainer" parent="Control/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="Control/HBoxContainer/NotCompletedPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Control/HBoxContainer/NotCompletedPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NotCompletedLabel" type="Label" parent="Control/HBoxContainer/NotCompletedPanel/MarginContainer/VBox"]
+layout_mode = 2
+text = "Not Completed"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Control/HBoxContainer/NotCompletedPanel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="NotCompletedVBox" type="VBoxContainer" parent="Control/HBoxContainer/NotCompletedPanel/MarginContainer/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4

@@ -1,0 +1,12 @@
+<Project Sdk="Godot.NET.Sdk/4.5.1">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(GodotTargetPlatform)' == '' OR '$(GodotTargetPlatform)' == 'windows' OR '$(GodotTargetPlatform)' == 'linux' OR '$(GodotTargetPlatform)' == 'macos' ">
+    <PackageReference Include="Steamworks.NET.AnyCPU" Version="2025.162.6-b-socket.1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,302 @@
+[gd_scene load_steps=6 format=3 uid="uid://cjc02uatgibsf"]
+
+[ext_resource type="Script" uid="uid://cy8i5orrm878e" path="res://addons/Godot.Achievements.Net/Editor/AchievementEditorDetailsPanel.cs" id="1_ilrbq"]
+[ext_resource type="Texture2D" uid="uid://bimvdp75lvlfv" path="res://addons/Godot.Achievements.Net/Editor/assets/NoImage.png" id="2_ilrbq"]
+[ext_resource type="PackedScene" uid="uid://c65a63ypob086" path="res://addons/Godot.Achievements.Net/Editor/CustomPropertiesEditor.tscn" id="3_custprops"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foldable"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.15, 0.15, 0.15, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.3, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_customprops"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.15, 0.15, 0.15, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.3, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="DetailsPanel" type="PanelContainer" node_paths=PackedStringArray("AchievementIconButton", "IconPickerContainer", "NameLineEdit", "InternalIDLineEdit", "InternalIDValidationLabel", "DescriptionTextBox", "TrackProgressCheckBox", "TargetValueSpinBox", "PlatformsContainer", "SteamVBox", "SteamIDLineEdit", "SteamValidationLabel", "SteamStatIdLineEdit", "GooglePlayVBox", "GooglePlayIDLineEdit", "GooglePlayValidationLabel", "GameCenterVBox", "GameCenterIDLineEdit", "GameCenterValidationLabel", "CustomPropertiesContainer", "VisualizeUnlockButton")]
+custom_minimum_size = Vector2(400, 0)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+script = ExtResource("1_ilrbq")
+AchievementIconButton = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection/AchievementIconButton")
+IconPickerContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection/IconPickerContainer")
+NameLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox/NameLineEdit")
+InternalIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox/InternalIDLineEdit")
+InternalIDValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox/InternalIDValidationLabel")
+DescriptionTextBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox/DescriptionTextBox")
+TrackProgressCheckBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox/TrackProgressCheckbox")
+TargetValueSpinBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox/TargetValueSpinbox")
+PlatformsContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer")
+SteamVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox")
+SteamIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamIDLineEdit")
+SteamValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamValidationLabel")
+SteamStatIdLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox/SteamStatIdLineEdit")
+GooglePlayVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox")
+GooglePlayIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox/GooglePlayIDLineEdit")
+GooglePlayValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox/GooglePlayValidationLabel")
+GameCenterVBox = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox")
+GameCenterIDLineEdit = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterIDLineEdit")
+GameCenterValidationLabel = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox/GameCenterValidationLabel")
+CustomPropertiesContainer = NodePath("MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/CustomProperties")
+CustomPropertiesEditorScene = ExtResource("3_custprops")
+VisualizeUnlockButton = NodePath("MarginContainer/VBoxContainer/HeaderHBox/VisualizeUnlockButton")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderHBox" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Achievement Details"
+
+[node name="VisualizeUnlockButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderHBox"]
+layout_mode = 2
+tooltip_text = "Preview how the achievement unlock toast will appear in your game.
+Note: This does not actually unlock the achievement."
+text = "Visualize Unlock"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+scroll_vertical = 100
+
+[node name="ContentVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="BasicInfoSection" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="GeneralContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ImageSection" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AchievementIconButton" type="TextureButton" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
+layout_mode = 2
+texture_normal = ExtResource("2_ilrbq")
+
+[node name="IconPickerContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/ImageSection"]
+custom_minimum_size = Vector2(128, 32)
+layout_mode = 2
+size_flags_vertical = 8
+
+[node name="FieldsSection" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="NameVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox"]
+layout_mode = 2
+text = "Display Name"
+
+[node name="NameLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/NameVBox"]
+layout_mode = 2
+placeholder_text = "Enter achievement name..."
+
+[node name="InternalIDVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="InternalIDLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox"]
+layout_mode = 2
+tooltip_text = "The unique identifier used when unlocking this achievement in code"
+mouse_filter = 1
+text = "Internal ID"
+
+[node name="InternalIDLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox"]
+layout_mode = 2
+placeholder_text = "unique_achievement_id"
+
+[node name="InternalIDValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/InternalIDVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+
+[node name="DescriptionVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="DescriptionLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox"]
+layout_mode = 2
+text = "Description"
+
+[node name="DescriptionTextBox" type="TextEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/DescriptionVBox"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+placeholder_text = "Describe how players can unlock this achievement..."
+wrap_mode = 1
+
+[node name="IncrementalProgressVBox" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TrackProgressCheckbox" type="CheckBox" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Track Progress?"
+
+[node name="Spacer" type="Control" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+
+[node name="TargetValueLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+text = "Target Value"
+vertical_alignment = 1
+
+[node name="TargetValueSpinbox" type="SpinBox" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/BasicInfoSection/GeneralContainer/FieldsSection/IncrementalProgressVBox"]
+custom_minimum_size = Vector2(128, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+min_value = 1.0
+max_value = 999999.0
+value = 1.0
+rounded = true
+editable = false
+
+[node name="PlatformsContainer" type="FoldableContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_foldable")
+title = "Platform Identifiers"
+
+[node name="PlatformsHBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PlatformNote" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Enter the platform-specific achievement IDs. Enable in project settings > addons > Achievements."
+autowrap_mode = 3
+
+[node name="SteamVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SteamIDLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+text = "Steam Achievement ID"
+
+[node name="SteamIDLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+placeholder_text = "steam_achievement_api_name"
+
+[node name="SteamValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+
+[node name="SteamStatIdLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+tooltip_text = "Steam stat key for tracking progress. Leave empty to use Achievement ID."
+mouse_filter = 1
+text = "Steam Stat ID (for progress)"
+
+[node name="SteamStatIdLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/SteamVBox"]
+layout_mode = 2
+placeholder_text = "steam_stat_api_name (optional)"
+
+[node name="SteamSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GooglePlayVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GooglePlayIDLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox"]
+layout_mode = 2
+text = "Google Play Achievement ID"
+
+[node name="GooglePlayIDLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox"]
+layout_mode = 2
+placeholder_text = "CgkI... (Google Play achievement ID)"
+
+[node name="GooglePlayValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GooglePlayVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+
+[node name="GooglePlaySeparator" type="HSeparator" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GameCenterVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GameCenterLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox"]
+layout_mode = 2
+text = "Game Center Achievement ID"
+
+[node name="GameCenterIDLineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox"]
+layout_mode = 2
+placeholder_text = "com.yourcompany.achievement_id"
+
+[node name="GameCenterValidationLabel" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox/PlatformsContainer/PlatformsHBox/GameCenterVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+
+[node name="CustomProperties" type="FoldableContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_customprops")
+title = "Custom Properties"

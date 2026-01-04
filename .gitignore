@@ -1,10 +1,10 @@
 # Godot 4+ specific ignores
 .godot/
+android/
 .nomedia
 
 # Godot-specific ignores
 .import/
-export.cfg
 export_credentials.cfg
 
 # Imported translations (automatically generated from CSV files)
@@ -14,3 +14,43 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+
+# .NET build artifacts
+bin/
+obj/
+*.dll
+*.pdb
+*.cache
+
+# NuGet packages
+nupkgs/
+*.nupkg
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+# Test results
+TestResults/
+*.trx
+
+Exports/*
+*.xcscheme
+*.pbxproj
+*.xcworkspacedata
