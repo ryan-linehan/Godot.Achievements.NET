@@ -62,7 +62,7 @@ public partial class AchievementEditorDock : Control
     private const string ERROR_PREFIX = "\u274c "; // ❌ Unicode cross mark
 
     // Track last known database path for change detection
-    private string _lastKnownDatabasePath = string.Empty;    
+    private string _lastKnownDatabasePath = string.Empty;
 
     public override void _Ready()
     {
@@ -382,7 +382,12 @@ public partial class AchievementEditorDock : Control
         var outputPath = GetSettingOrDefault(AchievementSettings.ConstantsOutputPath, AchievementSettings.DefaultConstantsOutputPath);
         var className = GetSettingOrDefault(AchievementSettings.ConstantsClassName, AchievementSettings.DefaultConstantsClassName);
         var namespaceName = GetSettingOrDefault(AchievementSettings.ConstantsNamespace, null);
-
+        if (string.IsNullOrWhiteSpace(outputPath) || string.IsNullOrWhiteSpace(className))
+        {
+            AchievementLogger.Warning(AchievementLogger.Areas.Editor, "Cannot auto-generate constants: output path or class name is not set");
+            return;
+        }
+        
         var result = AchievementConstantsGenerator.Generate(
             _currentDatabase,
             outputPath,
