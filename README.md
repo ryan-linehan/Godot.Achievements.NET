@@ -1,8 +1,22 @@
-# Godot.Achievements.NET
+# 🏆 Godot.Achievements.NET
 
 A cross-platform achievement system for Godot 4+ with C#/.NET support. Abstracts platform-specific achievement APIs behind a unified interface, making it easy to ship to Steam, iOS, and Android with a single codebase.
 
-## Features
+![Steam Lobby](.github/images/editor.png)
+
+## 📑 Table of Contents
+
+- [✨ Features](#-features)
+- [🎮 Supported Platforms](#-supported-platforms)
+- [📦 Installation](#-installation)
+- [🚀 Quick Start](#-quick-start)
+- [🛠️ Setup Achievements in the Editor](#️-setup-achievements-in-the-editor)
+- [⚙️ Enable Different Providers](#️-enable-different-providers)
+- [🔧 Adding a Custom Provider](#-adding-a-custom-provider)
+- [🤝 Contributing](#-contributing)
+- [📋 Roadmap](#-roadmap)
+
+## ✨ Features
 
 - **Cross-platform abstraction** - Single API for Local, Steam, Game Center, Google Play, and custom providers
 - **Visual editor** - Manage achievements from a dedicated editor dock
@@ -11,7 +25,7 @@ A cross-platform achievement system for Godot 4+ with C#/.NET support. Abstracts
 - **Progress tracking** - Support for incremental/progressive achievements
 - **Extensible** - Add custom providers by implementing a simple interface
 
-## Supported Platforms
+## 🎮 Supported Platforms
 
 | Platform | Provider | Required Addon |
 | ---------- | ---------- | ---------------- |
@@ -20,15 +34,15 @@ A cross-platform achievement system for Godot 4+ with C#/.NET support. Abstracts
 | **iOS Game Center** | `GameCenterAchievementProvider` | [GodotApplePlugins](https://github.com/migueldeicaza/GodotApplePlugins) |
 | **Google Play** | `GooglePlayAchievementProvider` | [godot-play-game-services](https://github.com/Suspended/godot-play-game-services) |
 
-## Installation
+## 📦 Installation
 
 1. Copy the `Demo/addons/Godot.Achievements.Net` folder to your project's `addons/` directory
 2. Build the project
 3. Enable the plugin in **Project > Project Settings > Plugins**
 
-> Note: It might help to reload the project before continuing to setting up your achievements
+> 💡 **Tip:** It might help to reload the project before continuing to setting up your achievements
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Unlock Achievements in Code
 
@@ -43,13 +57,14 @@ achievements.IncrementProgress("kill_100_enemies", 1);
 ### 2. Listen for Events
 
 ```csharp
-
 AchievementManager.Instance.AchievementUnlocked += (id, achievement) => {
     GD.Print($"Unlocked: {achievement.DisplayName}");
 };
 ```
 
-## Setup Achievements in the Editor
+---
+
+## 🛠️ Setup Achievements in the Editor
 
 Once the plugin is enabled, you'll find an **Achievements** dock at the bottom of the editor (next to Output, Debugger, etc.).
 
@@ -91,9 +106,9 @@ Custom properties let you store additional metadata on achievements, such as IDs
 - Rename a property key to rename it across all achievements
 - Removing a property removes it from all achievements
 
-This is particularly useful for custom providers - see [Adding a Custom Provider](#adding-a-custom-provider).
+This is particularly useful for custom providers - see [Adding a Custom Provider](#-adding-a-custom-provider).
 
-> Note: You can even set a property to use godot resources!
+> 💡 **Tip:** You can even set a property to use Godot resources!
 
 ### Import/Export
 
@@ -121,7 +136,9 @@ public static class AchievementConstants
 AchievementManager.Instance.Unlock(AchievementConstants.Ids.FirstBlood);
 ```
 
-## Enable different providers
+---
+
+## ⚙️ Enable Different Providers
 
 You can enable different built-in provider integrations via **Project Settings > Addons > Achievements > Platforms**:
 
@@ -137,19 +154,19 @@ The local provider is always active and serves as the source of truth. Platform 
 
 Each provider requires its respective SDK addon to be installed and configured:
 
-**Steam:**
+**🎮 Steam:**
 
 1. Install [Godot.Steamworks.NET](https://github.com/ryan-linehan/Godot.Steamworks.NET)
 2. Initialize the SDK in your project (the addon provides a `GodotSteamworks` autoload)
 3. Enable `Steam Enabled` in project settings for the achievements plugin
 
-**Game Center (iOS/macOS):**
+**🍎 Game Center (iOS/macOS):**
 
 1. Install [GodotApplePlugins](https://github.com/migueldeicaza/GodotApplePlugins)
 2. Configure Game Center in App Store Connect
 3. Enable `GameCenter Enabled` in project settings for the achievements plugin
 
-**Google Play Games:**
+**🤖 Google Play Games:**
 
 1. Install [godot-play-game-services](https://github.com/Suspended/godot-play-game-services)
 2. Configure your app in Google Play Console
@@ -157,9 +174,11 @@ Each provider requires its respective SDK addon to be installed and configured:
 
 Providers only initialize when their setting is enabled AND the SDK reports it's available at runtime. This allows the same build to gracefully handle missing SDKs.
 
-## Adding a Custom Provider
+---
 
-If you need the plugin to work with a new provider (for example epic games, a console, etc) that isn't offically supported you can register one via the achievement manager by creating a class that implement `IAchievementProvider` or extend `AchievementProviderBase`:
+## 🔧 Adding a Custom Provider
+
+If you need the plugin to work with a new provider (for example Epic Games, a console, etc.) that isn't officially supported, you can register one via the achievement manager by creating a class that implements `IAchievementProvider` or extends `AchievementProviderBase`:
 
 ```csharp
 public class MyPlatformProvider : AchievementProviderBase
@@ -178,14 +197,38 @@ public class MyPlatformProvider : AchievementProviderBase
 }
 ```
 
-to track the platform's ID use the extra properties part of the editor UI.
+To track the platform's ID, use the custom properties section in the editor UI.
 
-> Note: You will want to use preprocessor statements to make sure your game can cross compile across different OSes. For the default providers this is done for you. See `<Provider>.Stubs.cs` for examples
+> ⚠️ **Note:** You will want to use preprocessor statements to make sure your game can cross-compile across different OSes. For the default providers this is done for you. See `<Provider>.Stubs.cs` for examples.
 
-## Documentation
+## 🤝 Contributing
 
-- [Plugin README](Demo/addons/Godot.Achievements.Net/README.md) - Detailed usage guide
+Contributions are welcome! Here's how you can help:
 
-## License
+1. **Report bugs** - Open an issue describing the problem and steps to reproduce
+2. **Suggest features** - Open an issue describing your idea and use case
+3. **Submit PRs** - Fork the repo, make your changes, and submit a pull request
 
-MIT License - see LICENSE file for details.
+## 📋 Roadmap
+
+- [ ] Documentation: Steam integration setup guide
+- [ ] Documentation: Game Center integration setup guide
+- [ ] Documentation: Google Play Games integration setup guide
+- [ ] CI/CD examples for each supported OS/Provider
+
+## 💖 Support
+
+I'm building this plugin for my own upcoming game targeting Steam, iOS, and Android.
+
+If this plugin helps your game, consider:
+
+- ⭐ Starring this repo
+- 🎮 Checking out my games on [itch.io](https://rcubdev.itch.io)
+
+## 🤖 AI Disclosure
+
+This plugin was developed with assistance from generative AI tools. Plugin was architected, reviewed, and tested by humans.
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
