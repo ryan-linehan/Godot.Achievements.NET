@@ -1,8 +1,52 @@
 #if TOOLS
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Godot.Achievements.Core.Editor;
+
+/// <summary>
+/// DTO for importing achievements from JSON
+/// </summary>
+public class AchievementImportDto
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("displayName")]
+    public string? DisplayName { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("steamId")]
+    public string? SteamId { get; set; }
+
+    [JsonPropertyName("gameCenterId")]
+    public string? GameCenterId { get; set; }
+
+    [JsonPropertyName("googlePlayId")]
+    public string? GooglePlayId { get; set; }
+
+    [JsonPropertyName("isIncremental")]
+    public bool? IsIncremental { get; set; }
+
+    [JsonPropertyName("maxProgress")]
+    public int? MaxProgress { get; set; }
+
+    [JsonPropertyName("iconPath")]
+    public string? IconPath { get; set; }
+}
+
+/// <summary>
+/// Wrapper for JSON format: { "achievements": [...] }
+/// </summary>
+public class AchievementImportWrapper
+{
+    [JsonPropertyName("achievements")]
+    public List<AchievementImportDto>? Achievements { get; set; }
+}
 
 /// <summary>
 /// Result of an import operation
@@ -294,133 +338,104 @@ public static class AchievementImportExport
             if (string.IsNullOrWhiteSpace(jsonContent))
                 return ImportResult.FailureResult("JSON file is empty.");
 
-            // Parse JSON
-            JsonDocument? doc;
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Peek first non-whitespace character to determine format
+            List<AchievementImportDto>? dtos;
+            var firstChar = jsonContent.TrimStart()[0];
+
             try
             {
-                doc = JsonDocument.Parse(jsonContent);
+                if (firstChar == '[')
+                {
+                    // Direct array format: [...]
+                    dtos = JsonSerializer.Deserialize<List<AchievementImportDto>>(jsonContent, options);
+                }
+                else if (firstChar == '{')
+                {
+                    // Wrapper format: { "achievements": [...] }
+                    var wrapper = JsonSerializer.Deserialize<AchievementImportWrapper>(jsonContent, options);
+                    dtos = wrapper?.Achievements;
+                }
+                else
+                {
+                    return ImportResult.FailureResult("JSON must be an array of achievements or an object with an 'achievements' array.");
+                }
             }
             catch (JsonException ex)
             {
                 return ImportResult.FailureResult($"Invalid JSON format: {ex.Message}");
             }
 
-            var root = doc.RootElement;
-            JsonElement achievementsArray;
-
-            // Support both { "achievements": [...] } and direct array [...]
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                achievementsArray = root;
-            }
-            else if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("achievements", out var achProp))
-            {
-                achievementsArray = achProp;
-            }
-            else
-            {
-                doc.Dispose();
-                return ImportResult.FailureResult("JSON must be an array of achievements or an object with an 'achievements' array.");
-            }
+            if (dtos == null || dtos.Count == 0)
+                return ImportResult.FailureResult("No achievements found in JSON.");
 
             int importedCount = 0;
             int updatedCount = 0;
             int skippedCount = 0;
 
-            foreach (var item in achievementsArray.EnumerateArray())
+            foreach (var dto in dtos)
             {
-                if (item.ValueKind != JsonValueKind.Object)
-                    continue;
-
-                // Get Id (required)
-                if (!item.TryGetProperty("Id", out var idProp) && !item.TryGetProperty("id", out idProp))
-                    continue;
-
-                var id = idProp.GetString();
-                if (string.IsNullOrWhiteSpace(id))
+                if (string.IsNullOrWhiteSpace(dto.Id))
                     continue;
 
                 // Check if achievement already exists
-                var existing = database.GetById(id);
+                var existing = database.GetById(dto.Id);
                 bool isNew = existing == null;
 
-                var achievement = existing ?? new Achievement { Id = id };
+                var achievement = existing ?? new Achievement { Id = dto.Id };
                 bool hasChanges = false;
 
-                // Update fields from JSON, tracking if any changes occur
-                if (TryGetJsonString(item, "DisplayName", out var displayName) || TryGetJsonString(item, "displayName", out displayName))
+                // Update fields from DTO, tracking if any changes occur
+                if (dto.DisplayName != null && achievement.DisplayName != dto.DisplayName)
                 {
-                    if (achievement.DisplayName != displayName)
-                    {
-                        achievement.DisplayName = displayName;
-                        hasChanges = true;
-                    }
+                    achievement.DisplayName = dto.DisplayName;
+                    hasChanges = true;
                 }
 
-                if (TryGetJsonString(item, "Description", out var description) || TryGetJsonString(item, "description", out description))
+                if (dto.Description != null && achievement.Description != dto.Description)
                 {
-                    if (achievement.Description != description)
-                    {
-                        achievement.Description = description;
-                        hasChanges = true;
-                    }
+                    achievement.Description = dto.Description;
+                    hasChanges = true;
                 }
 
-                if (TryGetJsonString(item, "SteamId", out var steamId) || TryGetJsonString(item, "steamId", out steamId))
+                if (dto.SteamId != null && achievement.SteamId != dto.SteamId)
                 {
-                    if (achievement.SteamId != steamId)
-                    {
-                        achievement.SteamId = steamId;
-                        hasChanges = true;
-                    }
+                    achievement.SteamId = dto.SteamId;
+                    hasChanges = true;
                 }
 
-                if (TryGetJsonString(item, "GameCenterId", out var gameCenterId) || TryGetJsonString(item, "gameCenterId", out gameCenterId))
+                if (dto.GameCenterId != null && achievement.GameCenterId != dto.GameCenterId)
                 {
-                    if (achievement.GameCenterId != gameCenterId)
-                    {
-                        achievement.GameCenterId = gameCenterId;
-                        hasChanges = true;
-                    }
+                    achievement.GameCenterId = dto.GameCenterId;
+                    hasChanges = true;
                 }
 
-                if (TryGetJsonString(item, "GooglePlayId", out var googlePlayId) || TryGetJsonString(item, "googlePlayId", out googlePlayId))
+                if (dto.GooglePlayId != null && achievement.GooglePlayId != dto.GooglePlayId)
                 {
-                    if (achievement.GooglePlayId != googlePlayId)
-                    {
-                        achievement.GooglePlayId = googlePlayId;
-                        hasChanges = true;
-                    }
+                    achievement.GooglePlayId = dto.GooglePlayId;
+                    hasChanges = true;
                 }
 
-                if (TryGetJsonBool(item, "IsIncremental", out var isIncremental) || TryGetJsonBool(item, "isIncremental", out isIncremental))
+                if (dto.IsIncremental.HasValue && achievement.IsIncremental != dto.IsIncremental.Value)
                 {
-                    if (achievement.IsIncremental != isIncremental)
-                    {
-                        achievement.IsIncremental = isIncremental;
-                        hasChanges = true;
-                    }
+                    achievement.IsIncremental = dto.IsIncremental.Value;
+                    hasChanges = true;
                 }
 
-                if (TryGetJsonInt(item, "MaxProgress", out var maxProgress) || TryGetJsonInt(item, "maxProgress", out maxProgress))
+                if (dto.MaxProgress.HasValue && achievement.MaxProgress != dto.MaxProgress.Value)
                 {
-                    if (achievement.MaxProgress != maxProgress)
-                    {
-                        achievement.MaxProgress = maxProgress;
-                        hasChanges = true;
-                    }
+                    achievement.MaxProgress = dto.MaxProgress.Value;
+                    hasChanges = true;
                 }
 
-                if (TryGetJsonString(item, "IconPath", out var iconPath) || TryGetJsonString(item, "iconPath", out iconPath))
+                if (!string.IsNullOrWhiteSpace(dto.IconPath))
                 {
-                    if (!string.IsNullOrWhiteSpace(iconPath))
+                    var newIcon = ResourceLoader.Load<Texture2D>(dto.IconPath);
+                    if (newIcon != null && achievement.Icon != newIcon)
                     {
-                        var newIcon = ResourceLoader.Load<Texture2D>(iconPath);
-                        if (newIcon != null && achievement.Icon != newIcon)
-                        {
-                            achievement.Icon = newIcon;
-                            hasChanges = true;
-                        }
+                        achievement.Icon = newIcon;
+                        hasChanges = true;
                     }
                 }
 
@@ -439,8 +454,6 @@ public static class AchievementImportExport
                     skippedCount++;
                 }
             }
-
-            doc.Dispose();
 
             AchievementLogger.Log(AchievementLogger.Areas.Editor, $"Imported JSON from {path}: {importedCount} new, {updatedCount} updated, {skippedCount} skipped");
             return ImportResult.SuccessResult(importedCount, updatedCount, skippedCount);
@@ -515,47 +528,6 @@ public static class AchievementImportExport
         if (!columnMap.TryGetValue(columnName, out int index) || index >= values.Length)
             return null;
         return values[index].Trim();
-    }
-
-    private static bool TryGetJsonString(JsonElement element, string propertyName, out string value)
-    {
-        value = string.Empty;
-        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String)
-        {
-            value = prop.GetString() ?? string.Empty;
-            return true;
-        }
-        return false;
-    }
-
-    private static bool TryGetJsonBool(JsonElement element, string propertyName, out bool value)
-    {
-        value = false;
-        if (element.TryGetProperty(propertyName, out var prop))
-        {
-            if (prop.ValueKind == JsonValueKind.True)
-            {
-                value = true;
-                return true;
-            }
-            if (prop.ValueKind == JsonValueKind.False)
-            {
-                value = false;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool TryGetJsonInt(JsonElement element, string propertyName, out int value)
-    {
-        value = 0;
-        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number)
-        {
-            if (prop.TryGetInt32(out value))
-                return true;
-        }
-        return false;
     }
 
     #endregion
