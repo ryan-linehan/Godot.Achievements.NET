@@ -204,7 +204,6 @@ public partial class AchievementToastContainer : CanvasLayer
         }
         else if (toast.HasMethod("Setup"))
         {
-            // Fallback for legacy custom toasts that don't implement the interface
             toast.Call("Setup", achievement);
         }
         else

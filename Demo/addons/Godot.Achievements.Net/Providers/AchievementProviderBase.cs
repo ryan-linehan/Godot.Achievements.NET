@@ -5,7 +5,6 @@ namespace Godot.Achievements.Providers;
 
 /// <summary>
 /// Abstract base class for achievement providers that provides Godot signal support.
-/// Providers inherit from RefCounted to enable Godot signals for sync operation results.
 /// </summary>
 public abstract partial class AchievementProviderBase : RefCounted, IAchievementProvider
 {

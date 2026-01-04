@@ -6,7 +6,7 @@ using Godot.Achievements.Core;
 namespace Godot.Achievements.Core.Editor;
 
 /// <summary>
-/// Validates achievements against enabled platform integrations
+/// Validates achievements and their setup
 /// </summary>
 public static class AchievementValidator
 {
