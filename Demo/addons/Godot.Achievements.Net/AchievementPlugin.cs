@@ -87,6 +87,20 @@ public partial class AchievementPlugin : EditorPlugin
             { "type", (int)Variant.Type.Bool }
         });
 
+        // Platform: Steam provider selection
+        if (!ProjectSettings.HasSetting(AchievementSettings.SteamProviderType))
+        {
+            ProjectSettings.SetSetting(AchievementSettings.SteamProviderType, (int)AchievementSettings.DefaultSteamProvider);
+        }
+        ProjectSettings.SetInitialValue(AchievementSettings.SteamProviderType, (int)AchievementSettings.DefaultSteamProvider);
+        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
+        {
+            { "name", AchievementSettings.SteamProviderType },
+            { "type", (int)Variant.Type.Int },
+            { "hint", (int)PropertyHint.Enum },
+            { "hint_string", "Godot.Steamworks.NET,GodotSteam" }
+        });
+
         // Platform: Game Center enabled
         if (!ProjectSettings.HasSetting(AchievementSettings.GameCenterEnabled))
         {
