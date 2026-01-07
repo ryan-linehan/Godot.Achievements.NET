@@ -78,20 +78,6 @@ public static class AchievementSettings
 
     #endregion
 
-    #region Sync Settings
-
-    /// <summary>
-    /// Maximum number of retry attempts before abandoning a sync (0 = infinite)
-    /// </summary>
-    public const string SyncMaxRetryCount = "addons/achievements/sync/max_retry_count";
-
-    /// <summary>
-    /// Default max retry count
-    /// </summary>
-    public const int DefaultSyncMaxRetryCount = 5;
-
-    #endregion
-
     #region Logging Settings
 
     /// <summary>

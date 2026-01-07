@@ -170,20 +170,6 @@ public partial class AchievementPlugin : EditorPlugin
             { "hint_string", "*.wav,*.ogg,*.mp3" }
         });
 
-        // Sync: Max retry count (0 = infinite retries)
-        if (!ProjectSettings.HasSetting(AchievementSettings.SyncMaxRetryCount))
-        {
-            ProjectSettings.SetSetting(AchievementSettings.SyncMaxRetryCount, AchievementSettings.DefaultSyncMaxRetryCount);
-        }
-        ProjectSettings.SetInitialValue(AchievementSettings.SyncMaxRetryCount, AchievementSettings.DefaultSyncMaxRetryCount);
-        ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
-        {
-            { "name", AchievementSettings.SyncMaxRetryCount },
-            { "type", (int)Variant.Type.Int },
-            { "hint", (int)PropertyHint.Range },
-            { "hint_string", "0,100,1,or_greater" }
-        });
-
         // Log level (default: Info = show all messages)
         if (!ProjectSettings.HasSetting(AchievementSettings.LogLevel))
         {
