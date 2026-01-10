@@ -33,6 +33,16 @@ public static class AchievementSettings
     public const string SteamEnabled = "addons/achievements/platforms/steam_enabled";
 
     /// <summary>
+    /// Which Steam library to use (GodotSteamworksNet or GodotSteam)
+    /// </summary>
+    public const string SteamProviderType = "addons/achievements/platforms/steam_provider";
+
+    /// <summary>
+    /// Default Steam provider (Godot.Steamworks.NET)
+    /// </summary>
+    public const Core.SteamProvider DefaultSteamProvider = Core.SteamProvider.GodotSteamworksNet;
+
+    /// <summary>
     /// Whether Game Center integration is enabled
     /// </summary>
     public const string GameCenterEnabled = "addons/achievements/platforms/gamecenter_enabled";

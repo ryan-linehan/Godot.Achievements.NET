@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Godot.Achievements.Providers;
 using Godot.Achievements.Providers.Local;
 using Godot.Achievements.Providers.Steamworks;
+using Godot.Achievements.Providers.GodotSteam;
 using Godot.Achievements.Providers.GooglePlay;
 using Godot.Achievements.Providers.GameCenter;
 
@@ -121,11 +122,10 @@ public partial class AchievementManager : Node
 
         _initializingProviders = true;
 
-        if (SteamAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.SteamEnabled))
+        if (GetPlatformSetting(AchievementSettings.SteamEnabled))
         {
-            var steamProvider = new SteamAchievementProvider(Database);
-            RegisterProvider(steamProvider);
-            AchievementLogger.Log(AchievementLogger.Areas.Sync, "Steam provider initialized from settings");
+            var selectedProvider = GetSteamProviderSetting();
+            InitializeSteamProvider(selectedProvider);
         }
 
         if (GameCenterAchievementProvider.IsPlatformSupported && GetPlatformSetting(AchievementSettings.GameCenterEnabled))
@@ -153,6 +153,48 @@ public partial class AchievementManager : Node
             return ProjectSettings.GetSetting(settingKey).AsBool();
         }
         return false;
+    }
+
+    private static SteamProvider GetSteamProviderSetting()
+    {
+        if (ProjectSettings.HasSetting(AchievementSettings.SteamProviderType))
+        {
+            return (SteamProvider)ProjectSettings.GetSetting(AchievementSettings.SteamProviderType).AsInt32();
+        }
+        return AchievementSettings.DefaultSteamProvider;
+    }
+
+    private void InitializeSteamProvider(SteamProvider providerType)
+    {
+        IAchievementProvider? steamProvider = null;
+
+        switch (providerType)
+        {
+            case SteamProvider.GodotSteamworksNet:
+                if (SteamAchievementProvider.IsPlatformSupported)
+                {
+                    steamProvider = new SteamAchievementProvider(Database!);
+                    AchievementLogger.Log(AchievementLogger.Areas.Sync, "Steam provider (Godot.Steamworks.NET) initialized from settings");
+                }
+                break;
+
+            case SteamProvider.GodotSteam:
+                if (GodotSteamAchievementProvider.IsPlatformSupported)
+                {
+                    steamProvider = new GodotSteamAchievementProvider(Database!);
+                    AchievementLogger.Log(AchievementLogger.Areas.Sync, "Steam provider (GodotSteam) initialized from settings");
+                }
+                break;
+        }
+
+        if (steamProvider != null)
+        {
+            RegisterProvider(steamProvider);
+        }
+        else
+        {
+            AchievementLogger.Warning(AchievementLogger.Areas.Sync, $"Steam provider '{providerType}' is not supported on this platform");
+        }
     }
 
     public bool SetDatabase(AchievementDatabase database)
