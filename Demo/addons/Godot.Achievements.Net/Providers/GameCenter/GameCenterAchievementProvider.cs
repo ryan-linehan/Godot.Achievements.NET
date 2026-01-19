@@ -5,6 +5,8 @@ using Godot;
 using Godot.Achievements.Core;
 using Godot.Achievements.Providers;
 using Godot.Collections;
+using GodotApplePlugins.NET;
+using GodotApplePlugins.NET.GameCenter;
 
 namespace Godot.Achievements.Providers.GameCenter;
 
@@ -19,17 +21,12 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 {
     private const double DefaultTimeoutSeconds = 30.0;
 
-    // API method names (typos are intentional - matches GodotApplePlugins API)
-    private static readonly StringName MethodReportAchievement = "report_achivement";
-    private static readonly StringName MethodResetAchievements = "reset_achivements";
-    private static readonly StringName MethodLoadAchievements = "load_achievements";
-
     public static bool IsPlatformSupported => true;
 
     private readonly AchievementDatabase _database;
-    private GodotObject? _gameCenterManager;
-    private GodotObject? _localPlayer;
-    private GodotObject? _gkAchievementStatic; // Cached instance for static method calls
+    private GameCenterManager? _gameCenterManager;
+    private GKLocalPlayer? _localPlayer;
+    private GKAchievement? _gkAchievementStatic; // Cached instance for static method calls
     private TaskCompletionSource<bool>? _authenticationTcs;
     private bool _isInitialized;
     private bool _isAuthenticated;
@@ -48,55 +45,47 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         try
         {
             // Check if GodotApplePlugins is available
-            if (!ClassDB.ClassExists("GameCenterManager"))
+            if (!ApplePlugins.IsAvailable())
             {
-                this.LogWarning("GameCenterManager class not found - ensure GodotApplePlugins is installed");
+                this.LogWarning("GodotApplePlugins is not available on this platform");
                 _isInitialized = false;
                 return;
             }
 
-            if (!ClassDB.ClassExists("GKAchievement"))
+            // Create GameCenterManager instance using typed factory
+            _gameCenterManager = ApplePlugins.TryCreateGameCenterManager();
+            if (_gameCenterManager == null)
             {
-                this.LogWarning("GKAchievement class not found - ensure GodotApplePlugins is installed");
+                this.LogWarning("Could not instantiate GameCenterManager - ensure GodotApplePlugins is installed");
                 _isInitialized = false;
                 return;
             }
 
-            // Create GameCenterManager instance
-            var managerInstance = ClassDB.Instantiate("GameCenterManager");
-            if (managerInstance.Obj is GodotObject managerObj)
+            // Connect to authentication signals using typed events
+            _gameCenterManager.AuthenticationResult += OnAuthenticationResult;
+            _gameCenterManager.AuthenticationError += OnAuthenticationError;
+
+            // Cache a GKAchievement instance for static method calls
+            _gkAchievementStatic = ApplePlugins.TryCreateGKAchievement();
+            if (_gkAchievementStatic == null)
             {
-                _gameCenterManager = managerObj;
-
-                // Connect to authentication signals
-                _gameCenterManager.Connect("authentication_result", Callable.From<bool>(OnAuthenticationResult));
-                _gameCenterManager.Connect("authentication_error", Callable.From<string>(OnAuthenticationError));
-
-                // Cache a GKAchievement instance for static method calls
-                var gkInstance = ClassDB.Instantiate("GKAchievement");
-                if (gkInstance.Obj is GodotObject gkObj)
-                {
-                    _gkAchievementStatic = gkObj;
-                }
-
-                // Connect cleanup to tree exit
-                var sceneTree = Engine.GetMainLoop() as SceneTree;
-                if (sceneTree?.Root != null)
-                {
-                    sceneTree.Root.TreeExiting += Cleanup;
-                }
-
-                _isInitialized = true;
-                this.Log("GameCenterManager initialized, attempting authentication...");
-
-                // Trigger authentication
-                _gameCenterManager.Call("authenticate");
-            }
-            else
-            {
-                this.LogWarning("Could not instantiate GameCenterManager");
+                this.LogWarning("Could not instantiate GKAchievement - ensure GodotApplePlugins is installed");
                 _isInitialized = false;
+                return;
             }
+
+            // Connect cleanup to tree exit
+            var sceneTree = Engine.GetMainLoop() as SceneTree;
+            if (sceneTree?.Root != null)
+            {
+                sceneTree.Root.TreeExiting += Cleanup;
+            }
+
+            _isInitialized = true;
+            this.Log("GameCenterManager initialized, attempting authentication...");
+
+            // Trigger authentication
+            _gameCenterManager.Authenticate();
         }
         catch (Exception ex)
         {
@@ -118,7 +107,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             return false;
 
         _authenticationTcs = new TaskCompletionSource<bool>();
-        _gameCenterManager.Call("authenticate");
+        _gameCenterManager.Authenticate();
 
         return await AsyncTimeoutHelper.AwaitWithTimeout(_authenticationTcs, DefaultTimeoutSeconds, false);
     }
@@ -130,14 +119,11 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
         if (success && _gameCenterManager != null)
         {
-            // Get the local player from GameCenterManager
-            var localPlayerVariant = _gameCenterManager.Get("local_player");
-            if (localPlayerVariant.Obj is GodotObject localPlayerObj)
-            {
-                _localPlayer = localPlayerObj;
-                var playerAlias = _localPlayer.Get("alias").AsString();
-                this.Log($"Authenticated as: {playerAlias}");
-            }
+            // Get the local player from GameCenterManager using typed property
+            _localPlayer = _gameCenterManager.LocalPlayer;
+            // Alias is on GKPlayer base class, access via Instance
+            var playerAlias = _localPlayer.Instance.Get("alias").AsString();
+            this.Log($"Authenticated as: {playerAlias}");
         }
 
         _authenticationTcs?.TrySetResult(success);
@@ -165,7 +151,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         try
         {
             bool wasAuthenticated = _isAuthenticated;
-            _isAuthenticated = _localPlayer.Get("is_authenticated").AsBool();
+            _isAuthenticated = _localPlayer.IsAuthenticated;
 
             if (wasAuthenticated != _isAuthenticated)
             {
@@ -173,7 +159,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
                 if (_isAuthenticated)
                 {
-                    var playerAlias = _localPlayer.Get("alias").AsString();
+                    var playerAlias = _localPlayer.Instance.Get("alias").AsString();
                     this.Log($"Now authenticated as: {playerAlias}");
                 }
             }
@@ -204,8 +190,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             return;
         }
 
-        var achievementsArray = new Godot.Collections.Array { gcAchievement };
-        var callback = Callable.From<Variant>((err) =>
+        var achievementsArray = new Godot.Collections.Array { gcAchievement.Instance };
+        _gkAchievementStatic!.ReportAchievement(achievementsArray, Callable.From<Variant>((err) =>
         {
             if (IsSuccess(err))
             {
@@ -218,9 +204,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 this.LogError($"Failed to unlock achievement {gameCenterId}: {errorMessage}");
                 EmitAchievementUnlocked(achievementId, false, errorMessage);
             }
-        });
-
-        CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+        }));
         this.Log($"Unlock fired for: {gameCenterId}");
     }
 
@@ -261,8 +245,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             return;
         }
 
-        var achievementsArray = new Godot.Collections.Array { gcAchievement };
-        var callback = Callable.From<Variant>((err) =>
+        var achievementsArray = new Godot.Collections.Array { gcAchievement.Instance };
+        _gkAchievementStatic!.ReportAchievement(achievementsArray, Callable.From<Variant>((err) =>
         {
             if (IsSuccess(err))
             {
@@ -275,9 +259,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 this.LogError($"Failed to set progress for {gameCenterId}: {errorMessage}");
                 EmitProgressIncremented(achievementId, currentProgress, false, errorMessage);
             }
-        });
-
-        CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+        }));
         this.Log($"Increment progress fired for: {gameCenterId} (new total: {currentProgress})");
     }
 
@@ -295,7 +277,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
             return;
         }
 
-        var callback = Callable.From<Variant>((err) =>
+        _gkAchievementStatic!.ResetAchievements(Callable.From<Variant>((err) =>
         {
             if (IsSuccess(err))
             {
@@ -308,9 +290,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 this.LogError($"Failed to reset achievements: {errorMessage}");
                 EmitAllAchievementsReset(false, errorMessage);
             }
-        });
-
-        CallGKAchievementStatic(MethodResetAchievements, callback);
+        }));
         this.Log("Reset all achievements fired");
     }
 
@@ -331,9 +311,9 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 return AchievementUnlockResult.FailureResult("Failed to create GKAchievement instance");
 
             var tcs = new TaskCompletionSource<AchievementUnlockResult>();
-            var achievementsArray = new Godot.Collections.Array { gcAchievement };
+            var achievementsArray = new Godot.Collections.Array { gcAchievement.Instance };
 
-            var callback = Callable.From<Variant>((err) =>
+            _gkAchievementStatic!.ReportAchievement(achievementsArray, Callable.From<Variant>((err) =>
             {
                 if (IsSuccess(err))
                 {
@@ -346,9 +326,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                     this.LogError($"Failed to unlock achievement {gameCenterId}: {errorMessage}");
                     tcs.TrySetResult(AchievementUnlockResult.FailureResult(errorMessage));
                 }
-            });
-
-            CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+            }));
 
             return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
                 AchievementUnlockResult.FailureResult("Game Center request timed out"));
@@ -371,7 +349,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         {
             var tcs = new TaskCompletionSource<int>();
 
-            var callback = Callable.From<Godot.Collections.Array, Variant>((achievements, err) =>
+            // LoadAchievements has a 2-param callback (Array, Variant), use Callable overload
+            _gkAchievementStatic!.LoadAchievements(Callable.From<Godot.Collections.Array, Variant>((achievements, err) =>
             {
                 if (!IsSuccess(err))
                 {
@@ -381,14 +360,13 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
                 foreach (var item in achievements)
                 {
-                    if (item.Obj is GodotObject gcAchievement)
+                    if (item.Obj is GodotObject gcAchievementObj)
                     {
-                        var identifier = gcAchievement.Get("identifier").AsString();
-                        if (identifier == gameCenterId)
+                        var gcAchievement = ApplePlugins.CreateGKAchievement(gcAchievementObj);
+                        if (gcAchievement.Identifier == gameCenterId)
                         {
-                            var percentComplete = gcAchievement.Get("percent_complete").AsDouble();
                             int progress = achievement.MaxProgress > 0
-                                ? (int)Math.Round(percentComplete / 100.0 * achievement.MaxProgress)
+                                ? (int)Math.Round(gcAchievement.PercentComplete / 100.0 * achievement.MaxProgress)
                                 : 0;
                             tcs.TrySetResult(progress);
                             return;
@@ -397,9 +375,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 }
 
                 tcs.TrySetResult(0);
-            });
-
-            CallGKAchievementStatic(MethodLoadAchievements, callback);
+            }));
 
             return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds, 0);
         }
@@ -435,9 +411,9 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                 return SyncResult.FailureResult("Failed to create GKAchievement instance");
 
             var tcs = new TaskCompletionSource<SyncResult>();
-            var achievementsArray = new Godot.Collections.Array { gcAchievement };
+            var achievementsArray = new Godot.Collections.Array { gcAchievement.Instance };
 
-            var callback = Callable.From<Variant>((err) =>
+            _gkAchievementStatic!.ReportAchievement(achievementsArray, Callable.From<Variant>((err) =>
             {
                 if (IsSuccess(err))
                 {
@@ -450,9 +426,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                     this.LogError($"Failed to set progress for {gameCenterId}: {errorMessage}");
                     tcs.TrySetResult(SyncResult.FailureResult(errorMessage));
                 }
-            });
-
-            CallGKAchievementStatic(MethodReportAchievement, achievementsArray, callback);
+            }));
 
             return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
                 SyncResult.FailureResult("Game Center request timed out"));
@@ -478,7 +452,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         {
             var tcs = new TaskCompletionSource<SyncResult>();
 
-            var callback = Callable.From<Variant>((err) =>
+            _gkAchievementStatic!.ResetAchievements(Callable.From<Variant>((err) =>
             {
                 if (IsSuccess(err))
                 {
@@ -491,9 +465,7 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
                     this.LogError($"Failed to reset achievements: {errorMessage}");
                     tcs.TrySetResult(SyncResult.FailureResult(errorMessage));
                 }
-            });
-
-            CallGKAchievementStatic(MethodResetAchievements, callback);
+            }));
 
             return await AsyncTimeoutHelper.AwaitWithTimeout(tcs, DefaultTimeoutSeconds,
                 SyncResult.FailureResult("Game Center request timed out"));
@@ -533,16 +505,16 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
     /// <summary>
     /// Creates a GKAchievement instance with the specified identifier and progress percentage.
     /// </summary>
-    private GodotObject? CreateGKAchievement(string identifier, double percentComplete)
+    private GKAchievement? CreateGKAchievement(string identifier, double percentComplete)
     {
         try
         {
-            var achievement = ClassDB.Instantiate("GKAchievement");
-            if (achievement.Obj is GodotObject gcAchievement)
+            var gcAchievement = ApplePlugins.TryCreateGKAchievement();
+            if (gcAchievement != null)
             {
-                gcAchievement.Set("identifier", identifier);
-                gcAchievement.Set("percent_complete", percentComplete);
-                gcAchievement.Set("shows_completion_banner", true);
+                gcAchievement.Identifier = identifier;
+                gcAchievement.PercentComplete = percentComplete;
+                gcAchievement.ShowsCompletionBanner = true;
                 return gcAchievement;
             }
 
@@ -553,27 +525,6 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
         {
             this.LogError($"Error creating GKAchievement: {ex.Message}");
             return null;
-        }
-    }
-
-    /// <summary>
-    /// Calls a static method on the GKAchievement class using the cached instance.
-    /// </summary>
-    private void CallGKAchievementStatic(StringName method, params Variant[] args)
-    {
-        try
-        {
-            if (_gkAchievementStatic == null)
-            {
-                this.LogError($"Failed to call GKAchievement.{method} - cached instance not available");
-                return;
-            }
-
-            _gkAchievementStatic.Call(method, args);
-        }
-        catch (Exception ex)
-        {
-            this.LogError($"Error calling GKAchievement.{method}: {ex.Message}");
         }
     }
 
@@ -604,8 +555,8 @@ public partial class GameCenterAchievementProvider : AchievementProviderBase
 
         if (_gameCenterManager != null)
         {
-            _gameCenterManager.Disconnect("authentication_result", Callable.From<bool>(OnAuthenticationResult));
-            _gameCenterManager.Disconnect("authentication_error", Callable.From<string>(OnAuthenticationError));
+            _gameCenterManager.AuthenticationResult -= OnAuthenticationResult;
+            _gameCenterManager.AuthenticationError -= OnAuthenticationError;
             _gameCenterManager = null;
         }
 
