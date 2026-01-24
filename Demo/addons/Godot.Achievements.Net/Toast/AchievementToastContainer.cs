@@ -184,6 +184,24 @@ public partial class AchievementToastContainer : CanvasLayer
     }
 
     /// <summary>
+    /// Gets the slide offset for the entrance animation based on position.
+    /// Left positions slide from left (negative X), right positions slide from right (positive X).
+    /// </summary>
+    private Vector2 GetSlideOffset()
+    {
+        const float slideDistance = 450f; // Slightly more than toast width to ensure it's fully off-screen
+
+        return _position switch
+        {
+            ToastPosition.TopLeft or ToastPosition.BottomLeft => new Vector2(-slideDistance, 0),
+            ToastPosition.TopRight or ToastPosition.BottomRight => new Vector2(slideDistance, 0),
+            ToastPosition.TopCenter => new Vector2(0, -slideDistance), // Slide from top
+            ToastPosition.BottomCenter => new Vector2(0, slideDistance), // Slide from bottom
+            _ => new Vector2(-slideDistance, 0)
+        };
+    }
+
+    /// <summary>
     /// Show a toast notification for an achievement
     /// </summary>
     public void ShowToast(Achievement achievement)
@@ -223,8 +241,10 @@ public partial class AchievementToastContainer : CanvasLayer
             ToastVBox.AddChild(toast);
         }
 
-        // Start hidden
-        toast.Modulate = new Color(1, 1, 1, 0);
+        // Set up initial state for slide-in animation
+        var slideOffset = GetSlideOffset();
+        toast.Position = slideOffset;
+        toast.Modulate = new Color(1, 1, 1, 1); // Start fully visible for slide-in
 
         var entry = new ToastEntry { Toast = toast };
         _activeToasts.Add(entry);
@@ -233,8 +253,8 @@ public partial class AchievementToastContainer : CanvasLayer
         var tween = CreateTween();
         entry.Tween = tween;
 
-        // Fade in
-        tween.TweenProperty(toast, "modulate:a", 1.0f, 0.3f)
+        // Slide in from offset position to origin
+        tween.TweenProperty(toast, "position", Vector2.Zero, 0.3f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
