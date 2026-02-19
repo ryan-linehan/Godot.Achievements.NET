@@ -4,6 +4,7 @@
     <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <Nullable>enable</Nullable>
+    <DefineConstants>STEAMWORKS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(GodotTargetPlatform)' == '' OR '$(GodotTargetPlatform)' == 'windows' OR '$(GodotTargetPlatform)' == 'linux' OR '$(GodotTargetPlatform)' == 'macos' ">
