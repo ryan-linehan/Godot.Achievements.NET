@@ -1,4 +1,4 @@
-#if !GODOT_PC
+#if !(GODOT_PC && STEAMWORKS)
 using System.Threading.Tasks;
 using Godot.Achievements.Core;
 using Godot.Achievements.Providers;
