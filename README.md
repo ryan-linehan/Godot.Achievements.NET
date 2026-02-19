@@ -158,7 +158,13 @@ Each provider requires its respective SDK addon to be installed and configured:
 
 1. Install [Godot.Steamworks.NET](https://github.com/ryan-linehan/Godot.Steamworks.NET)
 2. Initialize the SDK in your project (the addon provides a `GodotSteamworks` autoload)
-3. Enable `Steam Enabled` in project settings for the achievements plugin
+3. Define the `STEAMWORKS` constant in your `.csproj`:
+   ```xml
+   <PropertyGroup>
+     <DefineConstants>STEAMWORKS</DefineConstants>
+   </PropertyGroup>
+   ```
+4. Enable `Steam Enabled` in project settings for the achievements plugin
 
 **🍎 Game Center (iOS/macOS):**
 
